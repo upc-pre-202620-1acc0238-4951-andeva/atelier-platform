@@ -11,10 +11,11 @@ import jakarta.validation.constraints.NotBlank;
  * @author Joel Huamani Estefanero
  */
 public record SignInResource(
-        @NotBlank @Email
+        @NotBlank(message = "{iam.validation.user.email.required}")
+        @Email(message = "{iam.validation.user.email.format}")
         String email,
 
-        @NotBlank
+        @NotBlank(message = "{iam.validation.user.password.required}")
         String password
 ) {
 }

@@ -11,10 +11,10 @@ import jakarta.validation.constraints.NotBlank;
  * @author Joel Huamani Estefanero
  */
 public record VerifyEmailResource(
-        @Email
+        @Email(message = "{iam.validation.user.email.format}")
         String email,
 
-        @NotBlank
+        @NotBlank(message = "{iam.validation.auth.token.required}")
         String token
 ) {
     public VerifyEmailResource(String token) {

@@ -15,13 +15,18 @@ import jakarta.validation.constraints.NotNull;
  * @author Joel Huamani Estefanero
  */
 public record UpdateBranchLocationResource(
-        @NotNull @DecimalMin("-90.0") @DecimalMax("90.0")
+        @NotNull(message = "{iam.validation.branch.latitude.required}")
+        @DecimalMin(value = "-90.0", message = "{iam.validation.branch.latitude.range}")
+        @DecimalMax(value = "90.0", message = "{iam.validation.branch.latitude.range}")
         Double latitude,
 
-        @NotNull @DecimalMin("-180.0") @DecimalMax("180.0")
+        @NotNull(message = "{iam.validation.branch.longitude.required}")
+        @DecimalMin(value = "-180.0", message = "{iam.validation.branch.longitude.range}")
+        @DecimalMax(value = "180.0", message = "{iam.validation.branch.longitude.range}")
         Double longitude,
 
-        @Min(10) @Max(1000)
+        @Min(value = 10, message = "{iam.validation.branch.geofence.min}")
+        @Max(value = 1000, message = "{iam.validation.branch.geofence.max}")
         int geofenceRadiusMeters
 ) {
 }

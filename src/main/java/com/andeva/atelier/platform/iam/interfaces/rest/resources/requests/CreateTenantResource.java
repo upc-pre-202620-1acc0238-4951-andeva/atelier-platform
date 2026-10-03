@@ -19,28 +19,37 @@ import jakarta.validation.constraints.Size;
  * @author Joel Huamani Estefanero
  */
 public record CreateTenantResource(
-        @NotBlank @Size(max = 100)
+        @NotBlank(message = "{iam.validation.tenant.business_name.required}")
+        @Size(max = 100, message = "{iam.validation.tenant.business_name.size}")
         String name,
 
-        @NotBlank @Size(max = 150)
+        @NotBlank(message = "{iam.validation.tenant.trade_name.required}")
+        @Size(max = 150, message = "{iam.validation.tenant.trade_name.size}")
         String legalName,
 
-        @NotBlank @Pattern(regexp = "^(10|15|17|20)\\d{9}$")
+        @NotBlank(message = "{iam.validation.tenant.tax_id.required}")
+        @Pattern(regexp = "^(10|15|17|20)\\d{9}$", message = "{iam.validation.tenant.tax_id.format}")
         String taxId,
 
-        @NotBlank @Email @Size(max = 150)
+        @NotBlank(message = "{iam.validation.tenant.admin_email.required}")
+        @Email(message = "{iam.validation.user.email.format}")
+        @Size(max = 150, message = "{iam.validation.user.email.size}")
         String adminEmail,
 
-        @NotBlank @Size(min = 8, max = 64)
+        @NotBlank(message = "{iam.validation.tenant.admin_password.required}")
+        @Size(min = 8, max = 64, message = "{iam.validation.user.password.size}")
         String adminPassword,
 
-        @NotBlank @Size(max = 100)
+        @NotBlank(message = "{iam.validation.tenant.admin_first_name.required}")
+        @Size(max = 100, message = "{iam.validation.user.first_name.size}")
         String adminFirstName,
 
-        @NotBlank @Size(max = 100)
+        @NotBlank(message = "{iam.validation.tenant.admin_last_name.required}")
+        @Size(max = 100, message = "{iam.validation.user.last_name.size}")
         String adminLastName,
 
-        @NotBlank @Pattern(regexp = "^\\+?[0-9]{9,15}$")
+        @NotBlank(message = "{iam.validation.tenant.admin_phone.required}")
+        @Pattern(regexp = "^\\+?[0-9]{9,15}$", message = "{iam.validation.user.phone.format}")
         String adminPhone
 ) {
 }

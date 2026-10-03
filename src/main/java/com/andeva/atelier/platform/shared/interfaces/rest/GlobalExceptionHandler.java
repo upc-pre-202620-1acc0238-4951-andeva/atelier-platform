@@ -6,10 +6,13 @@ import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -25,9 +28,9 @@ import java.util.ResourceBundle;
 
 /**
  * Global REST controller advice (@RestControllerAdvice) intercepting web anomalies,
- * Bean Validation constraint violations, domain invariant breaches, and unhandled exceptions.
- * Translates all exceptions into standardized RFC 7807 ErrorResource responses with
- * dynamic internationalization (i18n) via Spring's LocaleContextHolder and ResourceBundle.
+ * Bean Validation constraint violations, domain invariant breaches, security authorization failures,
+ * and unhandled exceptions. Translates all exceptions into standardized RFC 7807 ErrorResource
+ * responses with dynamic internationalization (i18n) via Spring's MessageSource and LocaleContextHolder.
  *
  * @author Joel Huamani Estefanero
  */
@@ -36,6 +39,17 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     private static final String MESSAGES_BASENAME = "messages";
+
+    private final MessageSource messageSource;
+
+    public GlobalExceptionHandler() {
+        this(null);
+    }
+
+    @Autowired
+    public GlobalExceptionHandler(MessageSource messageSource) {
+        this.messageSource = messageSource;
+    }
 
     /**
      * Handles Jakarta Bean Validation errors (@Valid) on incoming request DTO bodies.
@@ -80,8 +94,23 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResource> handleDomainException(DomainException ex) {
         log.warn("Domain business invariant violated: [{}] {}", ex.errorCode(), ex.getMessage());
 
-        String messageKey = "error.domain." + ex.errorCode().toLowerCase(Locale.ROOT);
-        String resolvedMessage = resolveMessageOrDefault(messageKey, ex.getMessage());
+        String code = ex.errorCode() != null ? ex.errorCode() : "GENERIC";
+        String codeLower = code.toLowerCase(Locale.ROOT);
+        List<String> candidateKeys = List.of(
+                "error.domain." + codeLower,
+                "error.application." + codeLower,
+                "error." + codeLower.replace('_', '.'),
+                code
+        );
+
+        String resolvedMessage = ex.getMessage();
+        for (String key : candidateKeys) {
+            String candidate = resolveMessageOrDefault(key, null);
+            if (candidate != null) {
+                resolvedMessage = candidate;
+                break;
+            }
+        }
 
         ErrorResource errorResource = ErrorResource.of(ex.errorCode(), resolvedMessage);
         return new ResponseEntity<>(errorResource, HttpStatus.UNPROCESSABLE_ENTITY);
@@ -113,7 +142,21 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handles unsupported HTTP methods.
+     * Handles Spring Security access denied authorization failures (@PreAuthorize).
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResource> handleAccessDenied(AccessDeniedException ex) {
+        log.warn("Access denied authorization failure: {}", ex.getMessage());
+        String message = resolveMessageOrDefault(
+                "ACCESS_DENIED",
+                resolveMessageOrDefault("error.application.forbidden", "Access is forbidden for the current user or security context")
+        );
+        ErrorResource errorResource = ErrorResource.of("ACCESS_DENIED", message);
+        return new ResponseEntity<>(errorResource, HttpStatus.FORBIDDEN);
+    }
+
+    /**
+     * Handles unsupported HTTP methods (e.g. POST on a GET-only endpoint).
      */
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorResource> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
@@ -155,14 +198,23 @@ public class GlobalExceptionHandler {
     }
 
     private String resolveMessageOrDefault(String key, String defaultValue, Object... args) {
-        try {
-            ResourceBundle bundle = ResourceBundle.getBundle(MESSAGES_BASENAME, LocaleContextHolder.getLocale());
-            if (!bundle.containsKey(key)) {
-                return defaultValue;
-            }
-            return MessageFormat.format(bundle.getString(key), args);
-        } catch (MissingResourceException ex) {
+        if (key == null || key.isBlank()) {
             return defaultValue;
         }
+        Locale locale = LocaleContextHolder.getLocale();
+        if (messageSource != null) {
+            try {
+                return messageSource.getMessage(key, args, defaultValue, locale);
+            } catch (Exception ignored) {
+            }
+        }
+        try {
+            ResourceBundle bundle = ResourceBundle.getBundle(MESSAGES_BASENAME, locale);
+            if (bundle.containsKey(key)) {
+                return MessageFormat.format(bundle.getString(key), args);
+            }
+        } catch (MissingResourceException ignored) {
+        }
+        return defaultValue;
     }
 }

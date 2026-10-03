@@ -12,7 +12,7 @@ import java.util.UUID;
  * @author Joel Huamani Estefanero
  */
 public record UpdateRolePermissionsResource(
-        @NotEmpty
+        @NotEmpty(message = "{iam.validation.role.permissions.required}")
         List<UUID> permissionIds
 ) {
 }

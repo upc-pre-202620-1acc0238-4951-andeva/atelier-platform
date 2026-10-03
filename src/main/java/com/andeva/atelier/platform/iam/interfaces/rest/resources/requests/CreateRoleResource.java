@@ -16,13 +16,14 @@ import java.util.UUID;
  * @author Joel Huamani Estefanero
  */
 public record CreateRoleResource(
-        @NotBlank @Size(max = 100)
+        @NotBlank(message = "{iam.validation.role.name.required}")
+        @Size(max = 100, message = "{iam.validation.role.name.size}")
         String name,
 
-        @Size(max = 255)
+        @Size(max = 255, message = "{iam.validation.role.description.size}")
         String description,
 
-        @NotEmpty
+        @NotEmpty(message = "{iam.validation.role.permissions.required}")
         List<UUID> permissionIds
 ) {
 }

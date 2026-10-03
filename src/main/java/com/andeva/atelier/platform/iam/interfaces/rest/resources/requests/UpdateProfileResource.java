@@ -13,13 +13,15 @@ import jakarta.validation.constraints.Size;
  * @author Joel Huamani Estefanero
  */
 public record UpdateProfileResource(
-        @NotBlank @Size(max = 100)
+        @NotBlank(message = "{iam.validation.user.first_name.required}")
+        @Size(max = 100, message = "{iam.validation.user.first_name.size}")
         String firstName,
 
-        @NotBlank @Size(max = 100)
+        @NotBlank(message = "{iam.validation.user.last_name.required}")
+        @Size(max = 100, message = "{iam.validation.user.last_name.size}")
         String lastName,
 
-        @Pattern(regexp = "^\\+?[0-9]{9,15}$")
+        @Pattern(regexp = "^\\+?[0-9]{9,15}$", message = "{iam.validation.user.phone.format}")
         String phone
 ) {
 }
