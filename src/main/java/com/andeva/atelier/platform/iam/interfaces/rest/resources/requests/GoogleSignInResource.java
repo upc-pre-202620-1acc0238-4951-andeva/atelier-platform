@@ -9,7 +9,7 @@ import jakarta.validation.constraints.NotBlank;
  * @author Joel Huamani Estefanero
  */
 public record GoogleSignInResource(
-        @NotBlank
+        @NotBlank(message = "{iam.validation.auth.id_token.required}")
         String idToken
 ) {
 }

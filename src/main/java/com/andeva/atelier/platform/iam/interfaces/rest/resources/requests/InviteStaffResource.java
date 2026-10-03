@@ -15,10 +15,12 @@ import java.util.UUID;
  * @author Joel Huamani Estefanero
  */
 public record InviteStaffResource(
-        @NotBlank @Email @Size(max = 150)
+        @NotBlank(message = "{iam.validation.user.email.required}")
+        @Email(message = "{iam.validation.user.email.format}")
+        @Size(max = 150, message = "{iam.validation.user.email.size}")
         String email,
 
-        @NotNull
+        @NotNull(message = "{iam.validation.role.id.required}")
         UUID roleId
 ) {
 }

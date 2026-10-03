@@ -35,7 +35,9 @@ public record ApplicationError(
      * @return an ApplicationError representing not found
      */
     public static ApplicationError notFound(String resource, Object id) {
-        return new ApplicationError("NOT_FOUND", String.format("%s with identifier %s was not found", resource, id), List.of());
+        String res = resource != null ? resource : "Resource";
+        String idStr = id != null ? String.valueOf(id) : "unknown";
+        return new ApplicationError("NOT_FOUND", String.format("%s with identifier %s was not found", res, idStr), List.of());
     }
 
     /**

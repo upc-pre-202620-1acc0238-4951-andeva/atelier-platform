@@ -20,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -42,7 +43,11 @@ class BillingExceptionHandlerTest {
 
     @BeforeEach
     void setUp() {
-        handler = new BillingExceptionHandler();
+        ReloadableResourceBundleMessageSource messageSource = new ReloadableResourceBundleMessageSource();
+        messageSource.setBasename("classpath:messages");
+        messageSource.setDefaultEncoding("UTF-8");
+
+        handler = new BillingExceptionHandler(messageSource);
         request = new MockHttpServletRequest();
         request.setRequestURI("/api/v1/billing/test");
         LocaleContextHolder.setLocale(Locale.ENGLISH);
@@ -192,7 +197,7 @@ class BillingExceptionHandlerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getStatus()).isEqualTo(403);
-        assertThat(response.getBody().getType().toString()).contains("forbidden");
+        assertThat(response.getBody().getType().toString()).contains("access-denied");
         assertThat(response.getBody().getProperties().get("errorCode")).isEqualTo("ACCESS_DENIED");
     }
 
@@ -200,24 +205,37 @@ class BillingExceptionHandlerTest {
     @DisplayName("Generic BillingDomainException maps to 400 BAD_REQUEST")
     void handleGenericBillingDomainException() {
         BillingDomainException ex = new BillingDomainException("CUSTOM_CODE", "Custom invariant breach") {};
-        ResponseEntity<ProblemDetail> response = handler.handleGenericBillingDomainException(ex, request);
+        ResponseEntity<ProblemDetail> response = handler.handleBillingDomain(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getStatus()).isEqualTo(400);
-        assertThat(response.getBody().getType().toString()).contains("billing-domain-violation");
+        assertThat(response.getBody().getType().toString()).contains("billing-error");
         assertThat(response.getBody().getProperties().get("errorCode")).isEqualTo("CUSTOM_CODE");
     }
 
     @Test
-    @DisplayName("i18n message lookup adapts to Spanish locale")
+    @DisplayName("i18n message lookup adapts to Spanish locale with exact localized text")
     void i18nMessageLookupSpanish() {
         LocaleContextHolder.setLocale(Locale.of("es"));
         QuotaExceededException ex = new QuotaExceededException("Branches quota exceeded");
         ResponseEntity<ProblemDetail> response = handler.handleQuotaExceeded(ex, request);
 
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getDetail()).isNotEmpty();
+        assertThat(response.getBody().getTitle()).isEqualTo("Límite de cuota excedido");
+        assertThat(response.getBody().getDetail()).isEqualTo("Se ha superado el limite maximo de cuota operativa de su plan. Por favor aumente de categoria comercial.");
+    }
+
+    @Test
+    @DisplayName("i18n message lookup adapts to English locale with exact localized text")
+    void i18nMessageLookupEnglish() {
+        LocaleContextHolder.setLocale(Locale.ENGLISH);
+        QuotaExceededException ex = new QuotaExceededException("Branches quota exceeded");
+        ResponseEntity<ProblemDetail> response = handler.handleQuotaExceeded(ex, request);
+
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getTitle()).isEqualTo("Quota Limit Exceeded");
+        assertThat(response.getBody().getDetail()).isEqualTo("Operational quota ceiling exceeded for the active commercial tier. Please upgrade your plan.");
     }
 
     @Test

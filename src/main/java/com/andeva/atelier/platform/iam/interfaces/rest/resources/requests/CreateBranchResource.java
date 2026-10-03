@@ -20,19 +20,25 @@ import jakarta.validation.constraints.Size;
  * @author Joel Huamani Estefanero
  */
 public record CreateBranchResource(
-        @NotBlank @Size(max = 100)
+        @NotBlank(message = "{iam.validation.branch.name.required}")
+        @Size(max = 100, message = "{iam.validation.branch.name.size}")
         String name,
 
-        @Pattern(regexp = "^\\d{4}$")
+        @Pattern(regexp = "^\\d{4}$", message = "{iam.validation.branch.sunat_code.format}")
         String sunatCode,
 
-        @NotNull @DecimalMin("-90.0") @DecimalMax("90.0")
+        @NotNull(message = "{iam.validation.branch.latitude.required}")
+        @DecimalMin(value = "-90.0", message = "{iam.validation.branch.latitude.range}")
+        @DecimalMax(value = "90.0", message = "{iam.validation.branch.latitude.range}")
         Double latitude,
 
-        @NotNull @DecimalMin("-180.0") @DecimalMax("180.0")
+        @NotNull(message = "{iam.validation.branch.longitude.required}")
+        @DecimalMin(value = "-180.0", message = "{iam.validation.branch.longitude.range}")
+        @DecimalMax(value = "180.0", message = "{iam.validation.branch.longitude.range}")
         Double longitude,
 
-        @Min(10) @Max(1000)
+        @Min(value = 10, message = "{iam.validation.branch.geofence.min}")
+        @Max(value = 1000, message = "{iam.validation.branch.geofence.max}")
         int geofenceRadiusMeters
 ) {
 }

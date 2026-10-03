@@ -43,6 +43,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
+
 import java.util.Objects;
 
 /**
@@ -61,6 +65,24 @@ public class AuthenticationController {
     private final TenantQueryService tenantQueryService;
     private final CreateTenantCommandFromResourceAssembler createTenantCommandAssembler;
     private final BCryptHashingService hashingService;
+    private final MessageSource messageSource;
+
+    @Autowired
+    public AuthenticationController(
+            TenantCommandService tenantCommandService,
+            UserCommandService userCommandService,
+            TenantQueryService tenantQueryService,
+            CreateTenantCommandFromResourceAssembler createTenantCommandAssembler,
+            BCryptHashingService hashingService,
+            @Autowired(required = false) MessageSource messageSource
+    ) {
+        this.tenantCommandService = Objects.requireNonNull(tenantCommandService, "TenantCommandService cannot be null");
+        this.userCommandService = Objects.requireNonNull(userCommandService, "UserCommandService cannot be null");
+        this.tenantQueryService = Objects.requireNonNull(tenantQueryService, "TenantQueryService cannot be null");
+        this.createTenantCommandAssembler = Objects.requireNonNull(createTenantCommandAssembler, "CreateTenantCommandFromResourceAssembler cannot be null");
+        this.hashingService = Objects.requireNonNull(hashingService, "BCryptHashingService cannot be null");
+        this.messageSource = messageSource;
+    }
 
     public AuthenticationController(
             TenantCommandService tenantCommandService,
@@ -69,11 +91,7 @@ public class AuthenticationController {
             CreateTenantCommandFromResourceAssembler createTenantCommandAssembler,
             BCryptHashingService hashingService
     ) {
-        this.tenantCommandService = Objects.requireNonNull(tenantCommandService, "TenantCommandService cannot be null");
-        this.userCommandService = Objects.requireNonNull(userCommandService, "UserCommandService cannot be null");
-        this.tenantQueryService = Objects.requireNonNull(tenantQueryService, "TenantQueryService cannot be null");
-        this.createTenantCommandAssembler = Objects.requireNonNull(createTenantCommandAssembler, "CreateTenantCommandFromResourceAssembler cannot be null");
-        this.hashingService = Objects.requireNonNull(hashingService, "BCryptHashingService cannot be null");
+        this(tenantCommandService, userCommandService, tenantQueryService, createTenantCommandAssembler, hashingService, null);
     }
 
     /**
@@ -157,7 +175,7 @@ public class AuthenticationController {
 
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result,
-                unused -> new MessageResponseResource("Email successfully verified"),
+                unused -> new MessageResponseResource(resolveMessage("iam.auth.email_verified", "Email successfully verified")),
                 HttpStatus.OK
         );
     }
@@ -177,7 +195,7 @@ public class AuthenticationController {
 
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result,
-                unused -> new MessageResponseResource("If the email exists, a password reset link has been dispatched"),
+                unused -> new MessageResponseResource(resolveMessage("iam.auth.password_reset_dispatched", "If the email exists, a password reset link has been dispatched")),
                 HttpStatus.OK
         );
     }
@@ -198,9 +216,19 @@ public class AuthenticationController {
 
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result,
-                unused -> new MessageResponseResource("Password successfully reset"),
+                unused -> new MessageResponseResource(resolveMessage("iam.auth.password_reset_success", "Password successfully reset")),
                 HttpStatus.OK
         );
+    }
+
+    private String resolveMessage(String code, String defaultMessage) {
+        if (messageSource != null) {
+            try {
+                return messageSource.getMessage(code, null, defaultMessage, LocaleContextHolder.getLocale());
+            } catch (Exception ignored) {
+            }
+        }
+        return defaultMessage;
     }
 
     private AuthenticatedUserResource toAuthenticatedUserResource(AuthenticatedUser authUser) {

@@ -11,10 +11,12 @@ import jakarta.validation.constraints.Size;
  * @author Joel Huamani Estefanero
  */
 public record UpdateTenantProfileResource(
-        @NotBlank @Size(max = 100)
+        @NotBlank(message = "{iam.validation.tenant.business_name.required}")
+        @Size(max = 100, message = "{iam.validation.tenant.business_name.size}")
         String name,
 
-        @NotBlank @Size(max = 150)
+        @NotBlank(message = "{iam.validation.tenant.trade_name.required}")
+        @Size(max = 150, message = "{iam.validation.tenant.trade_name.size}")
         String legalName
 ) {
 }

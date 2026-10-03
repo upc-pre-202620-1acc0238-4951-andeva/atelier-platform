@@ -11,10 +11,11 @@ import jakarta.validation.constraints.Size;
  * @author Joel Huamani Estefanero
  */
 public record ResetPasswordResource(
-        @NotBlank
+        @NotBlank(message = "{iam.validation.auth.token.required}")
         String token,
 
-        @NotBlank @Size(min = 8, max = 64)
+        @NotBlank(message = "{iam.validation.user.password.required}")
+        @Size(min = 8, max = 64, message = "{iam.validation.user.password.size}")
         String newPassword
 ) {
 }

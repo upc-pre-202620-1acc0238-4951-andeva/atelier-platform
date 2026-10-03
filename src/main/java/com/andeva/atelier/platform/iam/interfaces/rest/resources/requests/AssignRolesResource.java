@@ -12,7 +12,7 @@ import java.util.UUID;
  * @author Joel Huamani Estefanero
  */
 public record AssignRolesResource(
-        @NotEmpty
+        @NotEmpty(message = "{iam.validation.role.ids.required}")
         List<UUID> roleIds
 ) {
 }
