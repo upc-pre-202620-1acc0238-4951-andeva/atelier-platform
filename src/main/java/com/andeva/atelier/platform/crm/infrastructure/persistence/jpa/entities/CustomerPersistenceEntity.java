@@ -2,7 +2,6 @@ package com.andeva.atelier.platform.crm.infrastructure.persistence.jpa.entities;
 
 import com.andeva.atelier.platform.crm.domain.model.enums.CustomerType;
 import com.andeva.atelier.platform.crm.infrastructure.persistence.jpa.converters.CustomerTypeAttributeConverter;
-import com.andeva.atelier.platform.shared.infrastructure.persistence.jpa.entities.AuditableAbstractPersistenceEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
@@ -34,7 +33,7 @@ import java.util.UUID;
                 @Index(name = "idx_customers_search", columnList = "tenant_id, status")
         }
 )
-public class CustomerPersistenceEntity extends AuditableAbstractPersistenceEntity {
+public class CustomerPersistenceEntity extends CrmAuditableAbstractPersistenceEntity {
 
     @Column(name = "tenant_id", nullable = false)
     private UUID tenantId;

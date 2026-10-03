@@ -67,4 +67,22 @@ public final class VehiclePersistenceAssembler {
 
         return entity;
     }
+
+    public static void updateEntity(VehiclePersistenceEntity entity, Vehicle domain) {
+        if (entity == null || domain == null) {
+            return;
+        }
+        entity.setPlate(domain.plate().value());
+        entity.setVin(domain.vin() != null ? domain.vin().value() : null);
+        entity.setBrand(domain.brand());
+        entity.setModel(domain.model());
+        entity.setYear(domain.year());
+        entity.setEngineType(domain.engineType());
+        if (domain.ownershipHistory() != null) {
+            entity.getOwnershipHistory().clear();
+            for (VehicleOwnership ownership : domain.ownershipHistory()) {
+                entity.addOwnership(VehicleOwnershipPersistenceAssembler.toEntity(ownership, entity));
+            }
+        }
+    }
 }

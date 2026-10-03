@@ -2,7 +2,6 @@ package com.andeva.atelier.platform.crm.infrastructure.persistence.jpa.entities;
 
 import com.andeva.atelier.platform.crm.domain.model.enums.EngineType;
 import com.andeva.atelier.platform.crm.infrastructure.persistence.jpa.converters.EngineTypeAttributeConverter;
-import com.andeva.atelier.platform.shared.infrastructure.persistence.jpa.entities.AuditableAbstractPersistenceEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -41,7 +40,7 @@ import java.util.UUID;
                 @Index(name = "idx_vehicles_vin", columnList = "vin")
         }
 )
-public class VehiclePersistenceEntity extends AuditableAbstractPersistenceEntity {
+public class VehiclePersistenceEntity extends CrmAuditableAbstractPersistenceEntity {
 
     @Column(name = "plate", nullable = false, unique = true, length = 15)
     private String plate;
@@ -55,7 +54,7 @@ public class VehiclePersistenceEntity extends AuditableAbstractPersistenceEntity
     @Column(name = "model", nullable = false, length = 50)
     private String model;
 
-    @Column(name = "year", nullable = false)
+    @Column(name = "\"year\"", nullable = false)
     private int year;
 
     @Convert(converter = EngineTypeAttributeConverter.class)

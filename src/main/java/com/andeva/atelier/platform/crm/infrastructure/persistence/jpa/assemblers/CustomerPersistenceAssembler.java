@@ -72,4 +72,18 @@ public final class CustomerPersistenceAssembler {
                 domain.status().name().toLowerCase(Locale.ROOT)
         );
     }
+
+    public static void updateEntity(CustomerPersistenceEntity entity, Customer domain) {
+        if (entity == null || domain == null) {
+            return;
+        }
+        entity.setType(domain.type());
+        entity.setFirstName(domain.name() != null ? domain.name().firstName() : null);
+        entity.setLastName(domain.name() != null ? domain.name().lastName() : null);
+        entity.setCompanyName(domain.companyName());
+        entity.setTaxId(domain.taxId().value());
+        entity.setEmail(domain.email() != null ? domain.email().value() : null);
+        entity.setPhone(domain.phone() != null ? domain.phone().value() : null);
+        entity.setStatus(domain.status().name().toLowerCase(Locale.ROOT));
+    }
 }

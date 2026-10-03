@@ -1,6 +1,5 @@
 package com.andeva.atelier.platform.crm.infrastructure.persistence.jpa.entities;
 
-import com.andeva.atelier.platform.shared.infrastructure.persistence.jpa.entities.AuditableAbstractPersistenceEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -33,7 +32,7 @@ import java.util.UUID;
                 @Index(name = "idx_vo_user_active", columnList = "user_id, end_date")
         }
 )
-public class VehicleOwnershipPersistenceEntity extends AuditableAbstractPersistenceEntity {
+public class VehicleOwnershipPersistenceEntity extends CrmAuditableAbstractPersistenceEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vehicle_id", nullable = false, foreignKey = @ForeignKey(name = "fk_vo_vehicle"))

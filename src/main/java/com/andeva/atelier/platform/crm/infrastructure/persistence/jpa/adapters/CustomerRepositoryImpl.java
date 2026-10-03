@@ -31,7 +31,12 @@ public class CustomerRepositoryImpl implements CustomerRepository {
 
     @Override
     public Customer save(Customer customer) {
-        CustomerPersistenceEntity entity = CustomerPersistenceAssembler.toEntity(customer);
+        CustomerPersistenceEntity entity = customerPersistenceRepository.findById(customer.id().value())
+                .map(existing -> {
+                    CustomerPersistenceAssembler.updateEntity(existing, customer);
+                    return existing;
+                })
+                .orElseGet(() -> CustomerPersistenceAssembler.toEntity(customer));
         CustomerPersistenceEntity saved = customerPersistenceRepository.save(entity);
         return CustomerPersistenceAssembler.toDomain(saved);
     }

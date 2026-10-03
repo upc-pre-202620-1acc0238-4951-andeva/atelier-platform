@@ -31,7 +31,12 @@ public class VehicleRepositoryImpl implements VehicleRepository {
 
     @Override
     public Vehicle save(Vehicle vehicle) {
-        VehiclePersistenceEntity entity = VehiclePersistenceAssembler.toEntity(vehicle);
+        VehiclePersistenceEntity entity = vehiclePersistenceRepository.findById(vehicle.id().value())
+                .map(existing -> {
+                    VehiclePersistenceAssembler.updateEntity(existing, vehicle);
+                    return existing;
+                })
+                .orElseGet(() -> VehiclePersistenceAssembler.toEntity(vehicle));
         VehiclePersistenceEntity saved = vehiclePersistenceRepository.save(entity);
         return VehiclePersistenceAssembler.toDomain(saved);
     }

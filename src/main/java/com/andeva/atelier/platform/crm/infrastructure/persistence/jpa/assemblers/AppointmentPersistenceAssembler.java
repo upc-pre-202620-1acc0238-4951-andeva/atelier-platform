@@ -50,4 +50,18 @@ public final class AppointmentPersistenceAssembler {
                 domain.cancellationReason()
         );
     }
+
+    public static void updateEntity(AppointmentPersistenceEntity entity, Appointment domain) {
+        if (entity == null || domain == null) {
+            return;
+        }
+        entity.setBranchId(domain.branchId().value());
+        entity.setCustomerId(domain.customerId().value());
+        entity.setVehicleId(domain.vehicleId().value());
+        entity.setScheduledAt(domain.scheduledAt());
+        entity.setEstimatedDurationMinutes(domain.estimatedDurationMinutes());
+        entity.setReason(domain.reason());
+        entity.setStatus(domain.status());
+        entity.setCancellationReason(domain.cancellationReason());
+    }
 }

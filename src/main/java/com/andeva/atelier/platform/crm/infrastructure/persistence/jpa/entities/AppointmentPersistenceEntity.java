@@ -2,7 +2,6 @@ package com.andeva.atelier.platform.crm.infrastructure.persistence.jpa.entities;
 
 import com.andeva.atelier.platform.crm.domain.model.enums.AppointmentStatus;
 import com.andeva.atelier.platform.crm.infrastructure.persistence.jpa.converters.AppointmentStatusAttributeConverter;
-import com.andeva.atelier.platform.shared.infrastructure.persistence.jpa.entities.AuditableAbstractPersistenceEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
@@ -32,7 +31,7 @@ import java.util.UUID;
                 @Index(name = "idx_appt_vehicle", columnList = "vehicle_id")
         }
 )
-public class AppointmentPersistenceEntity extends AuditableAbstractPersistenceEntity {
+public class AppointmentPersistenceEntity extends CrmAuditableAbstractPersistenceEntity {
 
     @Column(name = "tenant_id", nullable = false)
     private UUID tenantId;

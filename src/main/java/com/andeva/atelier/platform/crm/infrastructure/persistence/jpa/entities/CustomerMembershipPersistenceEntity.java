@@ -2,7 +2,6 @@ package com.andeva.atelier.platform.crm.infrastructure.persistence.jpa.entities;
 
 import com.andeva.atelier.platform.crm.domain.model.enums.CustomerMembershipStatus;
 import com.andeva.atelier.platform.crm.domain.model.enums.FleetRole;
-import com.andeva.atelier.platform.shared.infrastructure.persistence.jpa.entities.AuditableAbstractPersistenceEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -35,7 +34,7 @@ import java.util.UUID;
                 @Index(name = "idx_cm_user", columnList = "user_id, status")
         }
 )
-public class CustomerMembershipPersistenceEntity extends AuditableAbstractPersistenceEntity {
+public class CustomerMembershipPersistenceEntity extends CrmAuditableAbstractPersistenceEntity {
 
     @Column(name = "customer_id", nullable = false)
     private UUID customerId;

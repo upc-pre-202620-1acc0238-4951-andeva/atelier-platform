@@ -33,7 +33,12 @@ public class AppointmentRepositoryImpl implements AppointmentRepository {
 
     @Override
     public Appointment save(Appointment appointment) {
-        AppointmentPersistenceEntity entity = AppointmentPersistenceAssembler.toEntity(appointment);
+        AppointmentPersistenceEntity entity = appointmentPersistenceRepository.findById(appointment.id().value())
+                .map(existing -> {
+                    AppointmentPersistenceAssembler.updateEntity(existing, appointment);
+                    return existing;
+                })
+                .orElseGet(() -> AppointmentPersistenceAssembler.toEntity(appointment));
         AppointmentPersistenceEntity saved = appointmentPersistenceRepository.save(entity);
         return AppointmentPersistenceAssembler.toDomain(saved);
     }
