@@ -262,4 +262,26 @@ public sealed interface Result<T, E> permits Result.Success, Result.Failure {
         var failure = (Failure<T, E>) this;
         throw exceptionSupplier.apply(failure.error());
     }
+
+    /**
+     * Unwraps the success value or throws an IllegalStateException containing the error description.
+     *
+     * @return the success value
+     */
+    default T getOrThrow() {
+        return orElseThrow(e -> new IllegalStateException("Operation failed with error: " + e));
+    }
+
+    /**
+     * Retrieves the error descriptor from a failure result.
+     *
+     * @return the error descriptor
+     * @throws IllegalStateException if called on a Success result
+     */
+    default E getError() {
+        if (this instanceof Failure<T, E> f) {
+            return f.error();
+        }
+        throw new IllegalStateException("Cannot get error from a Success result");
+    }
 }

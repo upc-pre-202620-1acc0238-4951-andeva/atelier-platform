@@ -52,6 +52,20 @@ public record TaxId(String value, TaxIdType type) {
         }
     }
 
+    public static TaxId of(String value) {
+        Objects.requireNonNull(value, "Tax document value cannot be null");
+        String trimmed = value.trim();
+        if (trimmed.length() == 8) {
+            return dni(trimmed);
+        }
+        if (trimmed.length() == 11) {
+            return ruc(trimmed);
+        }
+        throw new BusinessRuleValidationException(
+                "UNSUPPORTED_TAX_ID_LENGTH",
+                "Cannot infer tax identification type for value: " + value);
+    }
+
     public static TaxId ruc(String ruc) {
         return new TaxId(ruc, TaxIdType.RUC);
     }
