@@ -10,7 +10,8 @@ import jakarta.validation.constraints.NotBlank;
  * @author Joel Huamani Estefanero
  */
 public record ForgotPasswordResource(
-        @NotBlank @Email
+        @NotBlank(message = "{iam.validation.user.email.required}")
+        @Email(message = "{iam.validation.user.email.format}")
         String email
 ) {
 }

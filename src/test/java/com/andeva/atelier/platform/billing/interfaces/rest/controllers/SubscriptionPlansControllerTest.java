@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -74,8 +75,12 @@ class SubscriptionPlansControllerTest {
         SubscriptionPlanResourceAssembler assembler = new SubscriptionPlanResourceAssembler(new PlanFeatureResourceAssembler());
         SubscriptionPlansController controller = new SubscriptionPlansController(planCommandService, planQueryService, assembler);
 
+        ReloadableResourceBundleMessageSource messageSource = new ReloadableResourceBundleMessageSource();
+        messageSource.setBasename("classpath:messages");
+        messageSource.setDefaultEncoding("UTF-8");
+
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-                .setControllerAdvice(new BillingExceptionHandler())
+                .setControllerAdvice(new BillingExceptionHandler(messageSource))
                 .build();
 
         objectMapper = new ObjectMapper();
@@ -209,5 +214,33 @@ class SubscriptionPlansControllerTest {
 
         verify(planCommandService).handle(any(UpdateSubscriptionPlanCommand.class));
         verify(planCommandService).handleActivate(planGo.id());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/billing/plans/{id} returns localized 404 in Spanish when Accept-Language: es")
+    void getPlanByIdReturnsLocalizedSpanish404() throws Exception {
+        when(planQueryService.handle(any(GetSubscriptionPlanByIdQuery.class))).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/v1/billing/plans/" + UUID.randomUUID())
+                        .header("Accept-Language", "es"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.title").value("Plan no encontrado"))
+                .andExpect(jsonPath("$.detail").value("El plan comercial de suscripcion solicitado no existe o ha sido archivado."))
+                .andExpect(jsonPath("$.errorCode").value("PLAN_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/billing/plans/{id} returns localized 404 in English when Accept-Language: en")
+    void getPlanByIdReturnsLocalizedEnglish404() throws Exception {
+        when(planQueryService.handle(any(GetSubscriptionPlanByIdQuery.class))).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/v1/billing/plans/" + UUID.randomUUID())
+                        .header("Accept-Language", "en"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.title").value("Plan Not Found"))
+                .andExpect(jsonPath("$.detail").value("The requested commercial subscription plan does not exist or has been archived."))
+                .andExpect(jsonPath("$.errorCode").value("PLAN_NOT_FOUND"));
     }
 }

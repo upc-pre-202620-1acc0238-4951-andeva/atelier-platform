@@ -51,13 +51,20 @@ public final class ErrorResponseAssembler {
         Locale locale = LocaleContextHolder.getLocale();
         try {
             ResourceBundle bundle = ResourceBundle.getBundle(MESSAGES_BASENAME, locale);
-            String specificKey = "error." + error.code().toLowerCase(Locale.ROOT).replace('_', '.');
-            if (bundle.containsKey(specificKey)) {
-                return MessageFormat.format(bundle.getString(specificKey), error.details().toArray());
-            }
-            String applicationKey = "error.application." + error.code().toLowerCase(Locale.ROOT);
-            if (bundle.containsKey(applicationKey)) {
-                return MessageFormat.format(bundle.getString(applicationKey), error.details().toArray());
+            String codeLower = error.code().toLowerCase(Locale.ROOT);
+            java.util.List<String> candidates = java.util.List.of(
+                    "error.domain." + codeLower,
+                    "error.application." + codeLower,
+                    "error." + codeLower.replace('_', '.'),
+                    error.code()
+            );
+            for (String key : candidates) {
+                if (bundle.containsKey(key)) {
+                    Object[] args = !error.details().isEmpty()
+                            ? error.details().toArray()
+                            : new Object[]{error.message()};
+                    return MessageFormat.format(bundle.getString(key), args);
+                }
             }
         } catch (MissingResourceException ignored) {
             // Fallback to error message

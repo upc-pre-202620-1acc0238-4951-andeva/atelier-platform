@@ -33,6 +33,7 @@ import com.andeva.atelier.platform.shared.domain.model.valueobjects.EmailAddress
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TaxId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.UserId;
+import com.andeva.atelier.platform.shared.interfaces.rest.GlobalExceptionHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,9 +42,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 import java.time.Instant;
 import java.util.Collections;
@@ -89,15 +92,27 @@ class AuthenticationControllerTest {
 
     @BeforeEach
     void setUp() {
+        ReloadableResourceBundleMessageSource messageSource = new ReloadableResourceBundleMessageSource();
+        messageSource.setBasename("classpath:messages");
+        messageSource.setDefaultEncoding("UTF-8");
+
+        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+        validator.setValidationMessageSource(messageSource);
+        validator.afterPropertiesSet();
+
         AuthenticationController controller = new AuthenticationController(
                 tenantCommandService,
                 userCommandService,
                 tenantQueryService,
                 createTenantCommandAssembler,
-                hashingService
+                hashingService,
+                messageSource
         );
 
-        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler(messageSource))
+                .setValidator(validator)
+                .build();
         objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
     }
 
@@ -275,5 +290,49 @@ class AuthenticationControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
                 .andExpect(jsonPath("$.message").isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/reset-password returns Spanish message when Accept-Language: es")
+    void resetPasswordReturnsSpanishMessage() throws Exception {
+        ResetPasswordResource resource = new ResetPasswordResource("valid-reset-token", "NewSecretPass2026*");
+        when(hashingService.hash("NewSecretPass2026*")).thenReturn("$2a$12$e80yqZ67G60m8m8e8m8m8e8m8m8e8m8m8e8m8m8e8m8m8e8m8m8e8");
+        when(userCommandService.handle(any(ResetPasswordCommand.class))).thenReturn(Result.success(null));
+
+        mockMvc.perform(post("/api/v1/auth/reset-password")
+                        .header("Accept-Language", "es")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(resource)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Contraseña restablecida exitosamente"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/verify-email returns Spanish message when Accept-Language: es")
+    void verifyEmailReturnsSpanishMessage() throws Exception {
+        VerifyEmailResource resource = new VerifyEmailResource("user@example.pe", "valid-token");
+        when(userCommandService.handle(any(VerifyEmailTokenCommand.class))).thenReturn(Result.success(null));
+
+        mockMvc.perform(post("/api/v1/auth/verify-email")
+                        .header("Accept-Language", "es")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(resource)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Correo electrónico verificado exitosamente"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/sign-in with invalid fields returns localized Spanish validation errors")
+    void signInValidationFailsWithSpanishMessages() throws Exception {
+        SignInResource resource = new SignInResource("", "");
+
+        mockMvc.perform(post("/api/v1/auth/sign-in")
+                        .header("Accept-Language", "es")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(resource)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.message").value("Parámetros o carga útil de la solicitud no válidos."))
+                .andExpect(jsonPath("$.details").isArray());
     }
 }

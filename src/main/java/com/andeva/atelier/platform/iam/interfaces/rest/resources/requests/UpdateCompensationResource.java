@@ -16,13 +16,16 @@ import java.math.BigDecimal;
  * @author Joel Huamani Estefanero
  */
 public record UpdateCompensationResource(
-        @NotBlank @Pattern(regexp = "^(FIXED|HOURLY)$")
+        @NotBlank(message = "{iam.validation.compensation.type.required}")
+        @Pattern(regexp = "^(FIXED|HOURLY)$", message = "{iam.validation.compensation.type.format}")
         String salaryType,
 
-        @NotNull @DecimalMin("0.00")
+        @NotNull(message = "{iam.validation.compensation.amount.required}")
+        @DecimalMin(value = "0.00", message = "{iam.validation.compensation.amount.min}")
         BigDecimal baseSalary,
 
-        @NotBlank @Pattern(regexp = "^(PEN|USD)$")
+        @NotBlank(message = "{iam.validation.compensation.currency.required}")
+        @Pattern(regexp = "^(PEN|USD)$", message = "{iam.validation.compensation.currency.format}")
         String currency
 ) {
 }
