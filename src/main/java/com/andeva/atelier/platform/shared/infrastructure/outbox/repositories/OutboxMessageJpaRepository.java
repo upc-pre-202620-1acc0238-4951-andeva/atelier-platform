@@ -24,4 +24,14 @@ public interface OutboxMessageJpaRepository extends JpaRepository<OutboxMessageP
      * @return ordered list of outbox messages ready for dispatch
      */
     List<OutboxMessagePersistenceEntity> findTop50ByStatusOrderByOccurredOnAsc(OutboxStatus status);
+
+    /**
+     * Retrieves up to 50 outbox messages filtered by status and aggregate type ordered chronologically.
+     * Prevents starvation when multiple bounded contexts share the outbox table.
+     *
+     * @param status processing lifecycle status (e.g. PENDING)
+     * @param aggregateType canonical type or package of the aggregate root
+     * @return ordered list of outbox messages ready for dispatch
+     */
+    List<OutboxMessagePersistenceEntity> findTop50ByStatusAndAggregateTypeOrderByOccurredOnAsc(OutboxStatus status, String aggregateType);
 }

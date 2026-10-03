@@ -55,10 +55,22 @@ class OutboundAdaptersTest {
     }
 
     @Test
-    @DisplayName("SubscriptionQuotaAdapter allows additions within limit and throws when exceeded")
+    @DisplayName("SubscriptionQuotaAdapter allows additions within limit and throws when exceeded via SubscriptionContextFacade")
     void testSubscriptionQuotaAdapter() {
-        SubscriptionQuotaAdapter adapter = new SubscriptionQuotaAdapter(3, 5);
+        com.andeva.atelier.platform.billing.interfaces.acl.SubscriptionContextFacade facade =
+                org.mockito.Mockito.mock(com.andeva.atelier.platform.billing.interfaces.acl.SubscriptionContextFacade.class);
+        SubscriptionQuotaAdapter adapter = new SubscriptionQuotaAdapter(facade);
         TenantId tenantId = TenantId.generate();
+        com.andeva.atelier.platform.billing.interfaces.acl.dto.TenantQuotaLimitsDto limits =
+                new com.andeva.atelier.platform.billing.interfaces.acl.dto.TenantQuotaLimitsDto(
+                        3, 5, 0, 0, 0, false, false, false, 0, false, false);
+
+        org.mockito.Mockito.when(facade.canAddBranch(tenantId.value(), 2)).thenReturn(true);
+        org.mockito.Mockito.when(facade.canAddBranch(tenantId.value(), 3)).thenReturn(false);
+        org.mockito.Mockito.when(facade.getTenantQuotaLimits(tenantId.value())).thenReturn(limits);
+
+        org.mockito.Mockito.when(facade.canAddStaffMember(tenantId.value(), 4)).thenReturn(true);
+        org.mockito.Mockito.when(facade.canAddStaffMember(tenantId.value(), 5)).thenReturn(false);
 
         assertThatCode(() -> adapter.validateBranchCreationAllowed(tenantId, 2))
                 .doesNotThrowAnyException();
