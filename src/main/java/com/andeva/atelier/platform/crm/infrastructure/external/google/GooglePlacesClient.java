@@ -11,7 +11,7 @@ import java.util.Optional;
 /**
  * Adapter for Google Places API to verify and standardize addresses.
  *
- * @author Joel Huamani Estefanero
+ * @author Adiel Sanchez Santin
  */
 @Component
 public class GooglePlacesClient implements PlacesAddressVerificationGateway {

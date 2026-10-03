@@ -18,7 +18,7 @@ import java.util.Optional;
 /**
  * JPA adapter implementing the VehicleRepository domain port.
  *
- * @author Joel Huamani Estefanero
+ * @author Adiel Sanchez Santin
  */
 @Repository
 public class VehicleRepositoryImpl implements VehicleRepository {

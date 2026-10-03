@@ -25,7 +25,7 @@ import java.util.UUID;
  * JPA persistence entity mapped to the {@code vehicles} relational table.
  * Universal vehicle asset independent of TenantId.
  *
- * @author Joel Huamani Estefanero
+ * @author Adiel Sanchez Santin
  */
 @Getter
 @Setter

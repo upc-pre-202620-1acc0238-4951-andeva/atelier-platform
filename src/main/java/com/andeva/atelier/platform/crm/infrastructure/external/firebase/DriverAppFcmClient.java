@@ -10,7 +10,7 @@ import java.util.Map;
 /**
  * Adapter for Firebase Cloud Messaging (FCM) push notifications to Atelier Driver.
  *
- * @author Joel Huamani Estefanero
+ * @author Adiel Sanchez Santin
  */
 @Component
 public class DriverAppFcmClient implements DriverAppPushGateway {

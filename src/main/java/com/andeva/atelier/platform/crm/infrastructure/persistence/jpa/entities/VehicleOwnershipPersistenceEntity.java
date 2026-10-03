@@ -19,7 +19,7 @@ import java.util.UUID;
 /**
  * JPA persistence entity mapped to the {@code vehicle_ownerships} relational table.
  *
- * @author Joel Huamani Estefanero
+ * @author Adiel Sanchez Santin
  */
 @Getter
 @Setter

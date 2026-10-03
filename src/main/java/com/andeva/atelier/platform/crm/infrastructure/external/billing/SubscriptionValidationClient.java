@@ -10,7 +10,7 @@ import java.util.UUID;
 /**
  * Adapter querying tenant plan limits and quotas from Billing context.
  *
- * @author Joel Huamani Estefanero
+ * @author Adiel Sanchez Santin
  */
 @Component
 public class SubscriptionValidationClient implements SubscriptionValidationService {

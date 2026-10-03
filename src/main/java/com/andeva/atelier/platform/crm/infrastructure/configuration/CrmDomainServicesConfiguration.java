@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Spring configuration declaring domain services as managed beans without polluting domain layer.
  *
- * @author Joel Huamani Estefanero
+ * @author Adiel Sanchez Santin
  */
 @Configuration
 public class CrmDomainServicesConfiguration {

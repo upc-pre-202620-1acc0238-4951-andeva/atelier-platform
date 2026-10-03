@@ -18,7 +18,7 @@ import java.util.UUID;
 /**
  * JPA persistence entity mapped to the {@code appointments} relational table.
  *
- * @author Joel Huamani Estefanero
+ * @author Adiel Sanchez Santin
  */
 @Getter
 @Setter

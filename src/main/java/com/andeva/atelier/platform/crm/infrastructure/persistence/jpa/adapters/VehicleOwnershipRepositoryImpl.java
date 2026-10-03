@@ -20,7 +20,7 @@ import java.util.Optional;
 /**
  * JPA adapter implementing the VehicleOwnershipRepository domain port.
  *
- * @author Joel Huamani Estefanero
+ * @author Adiel Sanchez Santin
  */
 @Repository
 public class VehicleOwnershipRepositoryImpl implements VehicleOwnershipRepository {

@@ -20,7 +20,7 @@ import java.util.Optional;
 /**
  * JPA adapter implementing the AppointmentRepository domain port.
  *
- * @author Joel Huamani Estefanero
+ * @author Adiel Sanchez Santin
  */
 @Repository
 public class AppointmentRepositoryImpl implements AppointmentRepository {

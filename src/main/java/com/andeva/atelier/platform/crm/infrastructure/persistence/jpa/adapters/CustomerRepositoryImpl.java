@@ -18,7 +18,7 @@ import java.util.Optional;
 /**
  * JPA adapter implementing the CustomerRepository domain port.
  *
- * @author Joel Huamani Estefanero
+ * @author Adiel Sanchez Santin
  */
 @Repository
 public class CustomerRepositoryImpl implements CustomerRepository {
