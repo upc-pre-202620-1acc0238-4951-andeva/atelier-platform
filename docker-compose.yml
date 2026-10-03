@@ -1,0 +1,86 @@
+# ==============================================================================
+# ATELIER PLATFORM - LOCAL DEVELOPMENT DATABASE INFRASTRUCTURE
+# ==============================================================================
+# Este archivo provee el entorno de base de datos relacional y telemetría IoT
+# estandarizado para todo el equipo de desarrollo de Atelier (Backend, Mobile, QA).
+#
+# Motor: PostgreSQL 16 con la extensión oficial TimescaleDB preinstalada.
+#
+# ------------------------------------------------------------------------------
+# GUÍA RÁPIDA DE USO PARA EL EQUIPO DE DESARROLLO
+# ------------------------------------------------------------------------------
+#
+# 1. REQUISITOS PREVIOS:
+#    - Tener Docker Desktop (Windows / macOS) o Docker Engine (Linux) instalado y abierto.
+#
+# 2. COMANDOS PRINCIPALES (Ejecutar en la terminal en la raíz del proyecto):
+#
+#    * Iniciar la base de datos en segundo plano:
+#        docker compose up -d
+#
+#    * Ver si el contenedor está corriendo saludablemente:
+#        docker compose ps
+#
+#    * Ver los logs del motor PostgreSQL en tiempo real:
+#        docker compose logs -f postgres
+#
+#    * Detener el contenedor (conservando todos los datos):
+#        docker compose stop
+#        (o también: docker compose down)
+#
+#    * Reiniciar el servicio:
+#        docker compose restart
+#
+#    * [CUIDADO] Reiniciar desde cero borrando toda la data de prueba:
+#        docker compose down -v
+#
+# ------------------------------------------------------------------------------
+# 3. VERIFICAR / HABILITAR EXTENSIÓN TIMESCALEDB (Solo la primera vez si se recrea el volumen):
+# ------------------------------------------------------------------------------
+#    Para que la base de datos soporte las tablas de telemetría IoT con hipertablas:
+#
+#    Opción A: Ejecutar desde la terminal en un solo comando:
+#      docker exec -it atelier-postgres psql -U postgres -d atelier_db -c "CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;"
+#
+#    Opción B: Desde DataGrip / DBeaver / pgAdmin, abrir una consola y ejecutar:
+#      CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+#
+#    Para verificar que esté activa:
+#      SELECT extname, extversion FROM pg_extension WHERE extname = 'timescaledb';
+#
+# ------------------------------------------------------------------------------
+# 4. PARÁMETROS DE CONEXIÓN PARA HERRAMIENTAS GUI (DataGrip, DBeaver, TablePlus, pgAdmin):
+# ------------------------------------------------------------------------------
+#    - Tipo de Conexión: PostgreSQL
+#    - Host:             localhost
+#    - Port:             5432
+#    - Database:         atelier_db
+#    - User:             postgres
+#    - Password:         postgres
+#    - URL JDBC:         jdbc:postgresql://localhost:5432/atelier_db
+#
+# ------------------------------------------------------------------------------
+# 5. VARIABLES DE ENTORNO EN .env.dev:
+# ------------------------------------------------------------------------------
+#    DATABASE_URL=jdbc:postgresql://localhost:5432/atelier_db
+#    DATABASE_USERNAME=postgres
+#    DATABASE_PASSWORD=postgres
+# ==============================================================================
+
+services:
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: atelier-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: atelier_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - atelier_pgdata:/var/lib/postgresql/data
+
+volumes:
+  atelier_pgdata:
+    name: atelier_pgdata
