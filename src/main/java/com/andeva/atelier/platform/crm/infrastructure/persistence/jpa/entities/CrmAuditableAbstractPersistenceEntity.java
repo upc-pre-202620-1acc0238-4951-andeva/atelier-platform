@@ -44,6 +44,15 @@ public abstract class CrmAuditableAbstractPersistenceEntity implements Persistab
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @jakarta.persistence.Version
+    @Setter
+    @Column(name = "version", nullable = false)
+    private Long version = 0L;
+
+    @Setter
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
     @Transient
     private boolean isNew = true;
 

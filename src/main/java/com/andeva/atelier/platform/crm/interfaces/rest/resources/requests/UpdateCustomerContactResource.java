@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Size;
  * @author Adiel Sanchez Santin
  */
 public record UpdateCustomerContactResource(
+        @jakarta.validation.constraints.Email(message = "Invalid email format")
         @Size(max = 150, message = "Email address must not exceed 150 characters")
         String email,
 

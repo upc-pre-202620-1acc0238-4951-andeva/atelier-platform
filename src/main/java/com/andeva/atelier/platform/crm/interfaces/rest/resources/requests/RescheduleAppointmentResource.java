@@ -11,5 +11,6 @@ import java.time.Instant;
  */
 public record RescheduleAppointmentResource(
         @NotNull(message = "New scheduled timestamp is mandatory")
+        @jakarta.validation.constraints.Future(message = "New scheduled timestamp must be in the future")
         Instant newScheduledAt
 ) {}

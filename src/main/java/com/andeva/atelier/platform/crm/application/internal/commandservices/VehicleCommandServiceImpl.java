@@ -130,4 +130,40 @@ public class VehicleCommandServiceImpl implements VehicleCommandService {
         Vehicle saved = vehicleRepository.save(vehicle);
         return Result.success(saved);
     }
+
+    @Override
+    public Result<Vehicle, ApplicationError> handle(com.andeva.atelier.platform.crm.domain.model.commands.UpdateVehicleCommand command) {
+        Objects.requireNonNull(command, "UpdateVehicleCommand cannot be null");
+        Optional<Vehicle> vehicleOpt = vehicleRepository.findById(command.vehicleId());
+        if (vehicleOpt.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("Vehicle", command.vehicleId().value()));
+        }
+        Vehicle vehicle = vehicleOpt.get();
+        try {
+            vehicle.updateTechnicalData(command.brand(), command.model(), command.year(), command.engineType());
+        } catch (IllegalArgumentException e) {
+            return Result.failure(ApplicationError.badRequest(e.getMessage()));
+        }
+        Vehicle saved = vehicleRepository.save(vehicle);
+        return Result.success(saved);
+    }
+
+    @Override
+    public Result<Vehicle, ApplicationError> handle(com.andeva.atelier.platform.crm.domain.model.commands.UpdateMileageCommand command) {
+        Objects.requireNonNull(command, "UpdateMileageCommand cannot be null");
+        Optional<Vehicle> vehicleOpt = vehicleRepository.findById(command.vehicleId());
+        if (vehicleOpt.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("Vehicle", command.vehicleId().value()));
+        }
+        Vehicle vehicle = vehicleOpt.get();
+        try {
+            vehicle.updateMileage(command.mileage());
+        } catch (com.andeva.atelier.platform.crm.domain.exceptions.InvalidMileageException e) {
+            return Result.failure(ApplicationError.badRequest(e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return Result.failure(ApplicationError.badRequest(e.getMessage()));
+        }
+        Vehicle saved = vehicleRepository.save(vehicle);
+        return Result.success(saved);
+    }
 }

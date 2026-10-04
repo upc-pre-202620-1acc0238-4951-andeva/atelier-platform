@@ -108,7 +108,7 @@ public class Appointment extends AbstractDomainAggregateRoot<Appointment> {
             throw new AppointmentInvalidStateTransitionException(this.status.name(), AppointmentStatus.ARRIVED.name());
         }
         this.status = AppointmentStatus.ARRIVED;
-        registerEvent(AppointmentArrivedEvent.of(this.id, this.tenantId, this.customerId, this.vehicleId));
+        registerEvent(AppointmentArrivedEvent.of(this.id, this.tenantId, this.branchId, this.customerId, this.vehicleId));
     }
 
     public void cancel(String reason) {

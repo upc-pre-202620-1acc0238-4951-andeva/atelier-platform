@@ -22,6 +22,8 @@ public interface VehicleQueryService {
 
     Optional<Vehicle> handle(GetVehicleByPlateQuery query);
 
+    Optional<Vehicle> handle(com.andeva.atelier.platform.crm.domain.model.queries.GetVehicleByVinQuery query);
+
     List<Vehicle> handle(GetVehiclesByCustomerIdQuery query);
 
     List<VehicleOwnership> handle(GetVehicleOwnershipHistoryQuery query);

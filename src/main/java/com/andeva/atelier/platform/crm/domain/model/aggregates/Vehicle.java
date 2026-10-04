@@ -36,7 +36,30 @@ public class Vehicle extends AbstractDomainAggregateRoot<Vehicle> {
     private String model;
     private int year;
     private EngineType engineType;
+    private Integer currentMileage;
     private final List<VehicleOwnership> ownershipHistory;
+
+    public Vehicle(
+            VehicleId id,
+            LicensePlate plate,
+            Vin vin,
+            String brand,
+            String model,
+            int year,
+            EngineType engineType,
+            Integer currentMileage,
+            List<VehicleOwnership> ownershipHistory
+    ) {
+        this.id = Objects.requireNonNull(id, "VehicleId cannot be null");
+        this.plate = Objects.requireNonNull(plate, "LicensePlate cannot be null");
+        this.brand = validateBrand(brand);
+        this.model = validateModel(model);
+        this.year = validateYear(year);
+        this.engineType = Objects.requireNonNull(engineType, "EngineType cannot be null");
+        this.vin = vin;
+        this.currentMileage = currentMileage != null && currentMileage >= 0 ? currentMileage : null;
+        this.ownershipHistory = ownershipHistory != null ? new ArrayList<>(ownershipHistory) : new ArrayList<>();
+    }
 
     public Vehicle(
             VehicleId id,
@@ -48,14 +71,7 @@ public class Vehicle extends AbstractDomainAggregateRoot<Vehicle> {
             EngineType engineType,
             List<VehicleOwnership> ownershipHistory
     ) {
-        this.id = Objects.requireNonNull(id, "VehicleId cannot be null");
-        this.plate = Objects.requireNonNull(plate, "LicensePlate cannot be null");
-        this.brand = validateBrand(brand);
-        this.model = validateModel(model);
-        this.year = validateYear(year);
-        this.engineType = Objects.requireNonNull(engineType, "EngineType cannot be null");
-        this.vin = vin;
-        this.ownershipHistory = ownershipHistory != null ? new ArrayList<>(ownershipHistory) : new ArrayList<>();
+        this(id, plate, vin, brand, model, year, engineType, null, ownershipHistory);
     }
 
     public static Vehicle register(
@@ -146,6 +162,29 @@ public class Vehicle extends AbstractDomainAggregateRoot<Vehicle> {
         if (newEngineType != null) {
             this.engineType = newEngineType;
         }
+    }
+
+    public void updateTechnicalData(String brand, String model, int year, EngineType engineType) {
+        this.brand = validateBrand(brand);
+        this.model = validateModel(model);
+        this.year = validateYear(year);
+        if (engineType != null) {
+            this.engineType = engineType;
+        }
+    }
+
+    public void updateMileage(int newMileage) {
+        if (newMileage < 0) {
+            throw new IllegalArgumentException("El kilometraje no puede ser negativo");
+        }
+        if (this.currentMileage != null && newMileage < this.currentMileage) {
+            throw new com.andeva.atelier.platform.crm.domain.exceptions.InvalidMileageException(this.currentMileage, newMileage);
+        }
+        this.currentMileage = newMileage;
+    }
+
+    public Integer currentMileage() {
+        return currentMileage;
     }
 
     public VehicleId id() {

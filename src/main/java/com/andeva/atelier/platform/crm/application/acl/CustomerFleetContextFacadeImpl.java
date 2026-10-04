@@ -1,8 +1,10 @@
 package com.andeva.atelier.platform.crm.application.acl;
 
+import com.andeva.atelier.platform.crm.application.commandservices.AppointmentCommandService;
 import com.andeva.atelier.platform.crm.domain.model.aggregates.Appointment;
 import com.andeva.atelier.platform.crm.domain.model.aggregates.Customer;
 import com.andeva.atelier.platform.crm.domain.model.aggregates.Vehicle;
+import com.andeva.atelier.platform.crm.domain.model.commands.MarkAppointmentArrivedCommand;
 import com.andeva.atelier.platform.crm.domain.model.entities.CustomerMembership;
 import com.andeva.atelier.platform.crm.domain.model.entities.VehicleOwnership;
 import com.andeva.atelier.platform.crm.domain.model.enums.CustomerMembershipStatus;
@@ -18,6 +20,8 @@ import com.andeva.atelier.platform.crm.interfaces.acl.dto.AppointmentAclDto;
 import com.andeva.atelier.platform.crm.interfaces.acl.dto.CustomerAclDto;
 import com.andeva.atelier.platform.crm.interfaces.acl.dto.CustomerMembershipAclDto;
 import com.andeva.atelier.platform.crm.interfaces.acl.dto.VehicleAclDto;
+import com.andeva.atelier.platform.shared.application.result.ApplicationError;
+import com.andeva.atelier.platform.shared.application.result.Result;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.CustomerId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.UserId;
@@ -42,17 +46,20 @@ public class CustomerFleetContextFacadeImpl implements CustomerFleetContextFacad
     private final VehicleRepository vehicleRepository;
     private final AppointmentRepository appointmentRepository;
     private final CustomerMembershipRepository customerMembershipRepository;
+    private final AppointmentCommandService appointmentCommandService;
 
     public CustomerFleetContextFacadeImpl(
             CustomerRepository customerRepository,
             VehicleRepository vehicleRepository,
             AppointmentRepository appointmentRepository,
-            CustomerMembershipRepository customerMembershipRepository
+            CustomerMembershipRepository customerMembershipRepository,
+            AppointmentCommandService appointmentCommandService
     ) {
         this.customerRepository = Objects.requireNonNull(customerRepository, "CustomerRepository cannot be null");
         this.vehicleRepository = Objects.requireNonNull(vehicleRepository, "VehicleRepository cannot be null");
         this.appointmentRepository = Objects.requireNonNull(appointmentRepository, "AppointmentRepository cannot be null");
         this.customerMembershipRepository = Objects.requireNonNull(customerMembershipRepository, "CustomerMembershipRepository cannot be null");
+        this.appointmentCommandService = Objects.requireNonNull(appointmentCommandService, "AppointmentCommandService cannot be null");
     }
 
     @Override
@@ -145,13 +152,10 @@ public class CustomerFleetContextFacadeImpl implements CustomerFleetContextFacad
             return false;
         }
         Appointment appointment = appointmentOpt.get();
-        try {
-            appointment.markArrived();
-            appointmentRepository.save(appointment);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
+        Result<Appointment, ApplicationError> result = appointmentCommandService.handle(
+                new MarkAppointmentArrivedCommand(appointment.tenantId(), appointment.id())
+        );
+        return result.isSuccess();
     }
 
     @Override

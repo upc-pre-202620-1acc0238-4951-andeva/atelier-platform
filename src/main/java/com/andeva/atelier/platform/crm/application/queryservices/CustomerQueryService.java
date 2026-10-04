@@ -1,6 +1,7 @@
 package com.andeva.atelier.platform.crm.application.queryservices;
 
 import com.andeva.atelier.platform.crm.domain.model.aggregates.Customer;
+import com.andeva.atelier.platform.crm.domain.model.queries.GetCustomerByDocumentQuery;
 import com.andeva.atelier.platform.crm.domain.model.queries.GetCustomerByIdQuery;
 import com.andeva.atelier.platform.crm.domain.model.queries.GetCustomerByTaxIdQuery;
 import com.andeva.atelier.platform.crm.domain.model.queries.GetCustomersByTenantIdQuery;
@@ -20,4 +21,6 @@ public interface CustomerQueryService {
     List<Customer> handle(GetCustomersByTenantIdQuery query);
 
     Optional<Customer> handle(GetCustomerByTaxIdQuery query);
+
+    Optional<Customer> handle(GetCustomerByDocumentQuery query);
 }

@@ -11,6 +11,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -60,6 +61,9 @@ public class VehiclePersistenceEntity extends CrmAuditableAbstractPersistenceEnt
     @Convert(converter = EngineTypeAttributeConverter.class)
     @Column(name = "engine_type", nullable = false, length = 20)
     private EngineType engineType;
+
+    @Transient
+    private Integer currentMileage;
 
     @OneToMany(mappedBy = "vehicle", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @OrderBy("startDate DESC")

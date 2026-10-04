@@ -16,6 +16,11 @@ import com.andeva.atelier.platform.crm.interfaces.rest.transform.CustomerResourc
 import com.andeva.atelier.platform.crm.interfaces.rest.transform.RegisterCustomerCommandFromResourceAssembler;
 import com.andeva.atelier.platform.crm.interfaces.rest.transform.UpdateCustomerContactCommandFromResourceAssembler;
 import com.andeva.atelier.platform.crm.domain.model.commands.DeactivateCustomerCommand;
+import com.andeva.atelier.platform.crm.application.queryservices.VehicleQueryService;
+import com.andeva.atelier.platform.crm.domain.model.aggregates.Vehicle;
+import com.andeva.atelier.platform.crm.domain.model.queries.GetVehiclesByCustomerIdQuery;
+import com.andeva.atelier.platform.crm.interfaces.rest.resources.responses.VehicleResource;
+import com.andeva.atelier.platform.crm.interfaces.rest.transform.VehicleResourceFromAggregateAssembler;
 import com.andeva.atelier.platform.iam.infrastructure.security.model.CustomUserDetails;
 import com.andeva.atelier.platform.shared.application.result.ApplicationError;
 import com.andeva.atelier.platform.shared.application.result.Result;
@@ -47,23 +52,27 @@ import java.util.UUID;
 
 /**
  * REST controller managing commercial customer accounts and portfolios.
+ * Canonical specification from 03-crm-and-fleet.md Section 5.3.1.
  *
  * @author Adiel Sanchez Santin
  */
 @RestController
-@RequestMapping("/api/v1/crm/customers")
+@RequestMapping("/api/v1/customers")
 @Tag(name = "Customers", description = "Endpoints for managing workshop customer profiles and commercial relationships")
 public class CustomersController {
 
     private final CustomerCommandService customerCommandService;
     private final CustomerQueryService customerQueryService;
+    private final VehicleQueryService vehicleQueryService;
 
     public CustomersController(
             CustomerCommandService customerCommandService,
-            CustomerQueryService customerQueryService
+            CustomerQueryService customerQueryService,
+            VehicleQueryService vehicleQueryService
     ) {
         this.customerCommandService = Objects.requireNonNull(customerCommandService, "CustomerCommandService cannot be null");
         this.customerQueryService = Objects.requireNonNull(customerQueryService, "CustomerQueryService cannot be null");
+        this.vehicleQueryService = Objects.requireNonNull(vehicleQueryService, "VehicleQueryService cannot be null");
     }
 
     @GetMapping
@@ -73,7 +82,9 @@ public class CustomersController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) String status
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
         if (userDetails == null || userDetails.getTenantId() == null) {
             return ErrorResponseAssembler.toErrorResponseFromApplicationError(
@@ -99,10 +110,17 @@ public class CustomersController {
                 .map(CustomerResourceFromAggregateAssembler::toResourceFromEntity)
                 .toList();
 
-        return ResponseEntity.ok(resources);
+        if (size <= 0) {
+            size = 20;
+        }
+        int fromIndex = Math.min(Math.max(0, page) * size, resources.size());
+        int toIndex = Math.min(fromIndex + size, resources.size());
+        List<CustomerResource> paged = resources.subList(fromIndex, toIndex);
+
+        return ResponseEntity.ok(paged);
     }
 
-    @PostMapping("/individual")
+    @PostMapping({"/individuals", "/individual"})
     @PreAuthorize("hasAuthority('crm:customers:create')")
     @Operation(summary = "Register a natural person (individual) customer")
     public ResponseEntity<?> registerIndividualCustomer(
@@ -124,7 +142,7 @@ public class CustomersController {
         );
     }
 
-    @PostMapping("/company")
+    @PostMapping({"/companies", "/company"})
     @PreAuthorize("hasAuthority('crm:customers:create')")
     @Operation(summary = "Register a corporate company customer")
     public ResponseEntity<?> registerCompanyCustomer(
@@ -169,29 +187,6 @@ public class CustomersController {
         return ResponseEntity.ok(CustomerResourceFromAggregateAssembler.toResourceFromEntity(customerOpt.get()));
     }
 
-    @GetMapping("/by-tax-id")
-    @PreAuthorize("hasAuthority('crm:customers:read')")
-    @Operation(summary = "Retrieve customer by tax identification number (DNI or RUC)")
-    public ResponseEntity<?> getCustomerByTaxId(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestParam String taxId
-    ) {
-        if (userDetails == null || userDetails.getTenantId() == null) {
-            return ErrorResponseAssembler.toErrorResponseFromApplicationError(
-                    ApplicationError.unauthorized("Authentication required"));
-        }
-
-        Optional<Customer> customerOpt = customerQueryService.handle(
-                new GetCustomerByTaxIdQuery(TenantId.of(userDetails.getTenantId()), taxId));
-
-        if (customerOpt.isEmpty()) {
-            return ErrorResponseAssembler.toErrorResponseFromApplicationError(
-                    ApplicationError.notFound("Customer with tax ID " + taxId + " not found"));
-        }
-
-        return ResponseEntity.ok(CustomerResourceFromAggregateAssembler.toResourceFromEntity(customerOpt.get()));
-    }
-
     @PutMapping("/{id}/contact")
     @PreAuthorize("hasAuthority('crm:customers:update')")
     @Operation(summary = "Update customer contact phone and email")
@@ -216,26 +211,17 @@ public class CustomersController {
         );
     }
 
-    @PostMapping("/{id}/deactivate")
-    @PreAuthorize("hasAuthority('crm:customers:update')")
-    @Operation(summary = "Deactivate customer profile")
-    public ResponseEntity<?> deactivateCustomer(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable UUID id
-    ) {
-        if (userDetails == null || userDetails.getTenantId() == null) {
-            return ErrorResponseAssembler.toErrorResponseFromApplicationError(
-                    ApplicationError.unauthorized("Authentication required"));
-        }
+    @GetMapping("/{id}/vehicles")
+    @PreAuthorize("hasAuthority('crm:customers:read')")
+    @Operation(summary = "List vehicles currently under active ownership of a customer")
+    public ResponseEntity<?> getCustomerVehicles(@PathVariable UUID id) {
+        List<Vehicle> vehicles = vehicleQueryService.handle(
+                new GetVehiclesByCustomerIdQuery(CustomerId.of(id)));
 
-        Result<Customer, ApplicationError> result = customerCommandService.handle(
-                new com.andeva.atelier.platform.crm.domain.model.commands.DeactivateCustomerCommand(
-                        TenantId.of(userDetails.getTenantId()), CustomerId.of(id)));
+        List<VehicleResource> resources = vehicles.stream()
+                .map(VehicleResourceFromAggregateAssembler::toResourceFromEntity)
+                .toList();
 
-        return ResponseEntityAssembler.toResponseEntityFromResult(
-                result,
-                CustomerResourceFromAggregateAssembler::toResourceFromEntity,
-                HttpStatus.OK
-        );
+        return ResponseEntity.ok(resources);
     }
 }

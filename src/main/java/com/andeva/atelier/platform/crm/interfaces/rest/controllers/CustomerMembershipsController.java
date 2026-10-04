@@ -39,11 +39,12 @@ import java.util.UUID;
 
 /**
  * REST controller managing corporate fleet delegations and customer membership assignments.
+ * Canonical specification from 03-crm-and-fleet.md Section 5.3.1.
  *
  * @author Adiel Sanchez Santin
  */
 @RestController
-@RequestMapping("/api/v1/crm")
+@RequestMapping("/api/v1/customers/{customerId}/members")
 @Tag(name = "Customer Memberships", description = "Endpoints for managing corporate customer fleet memberships and roles")
 public class CustomerMembershipsController {
 
@@ -58,7 +59,7 @@ public class CustomerMembershipsController {
         this.customerMembershipQueryService = Objects.requireNonNull(customerMembershipQueryService, "CustomerMembershipQueryService cannot be null");
     }
 
-    @PostMapping("/customers/{customerId}/members")
+    @PostMapping
     @PreAuthorize("hasAuthority('crm:fleets:manage')")
     @Operation(summary = "Invite or assign user to corporate customer fleet")
     public ResponseEntity<?> inviteMember(
@@ -82,7 +83,7 @@ public class CustomerMembershipsController {
         );
     }
 
-    @DeleteMapping("/customers/{customerId}/members/{userId}")
+    @DeleteMapping("/{userId}")
     @PreAuthorize("hasAuthority('crm:fleets:manage')")
     @Operation(summary = "Revoke corporate fleet membership from user")
     public ResponseEntity<?> revokeMember(
@@ -109,31 +110,12 @@ public class CustomerMembershipsController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/customers/{customerId}/members")
+    @GetMapping
     @PreAuthorize("hasAuthority('crm:fleets:manage')")
     @Operation(summary = "List corporate fleet members assigned to customer")
     public ResponseEntity<?> getMembersByCustomerId(@PathVariable UUID customerId) {
         List<CustomerMembership> members = customerMembershipQueryService.handle(
                 new GetCustomerMembersByCustomerIdQuery(CustomerId.of(customerId)));
-
-        List<CustomerMembershipResource> resources = members.stream()
-                .map(CustomerMembershipResourceFromEntityAssembler::toResourceFromEntity)
-                .toList();
-
-        return ResponseEntity.ok(resources);
-    }
-
-    @GetMapping("/memberships/me")
-    @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "List active fleet memberships of currently authenticated user")
-    public ResponseEntity<?> getMyMemberships(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        if (userDetails == null || userDetails.getUserId() == null) {
-            return ErrorResponseAssembler.toErrorResponseFromApplicationError(
-                    ApplicationError.unauthorized("Authentication required"));
-        }
-
-        List<CustomerMembership> members = customerMembershipQueryService.handle(
-                new GetCustomerMembershipsByUserIdQuery(UserId.of(userDetails.getUserId())));
 
         List<CustomerMembershipResource> resources = members.stream()
                 .map(CustomerMembershipResourceFromEntityAssembler::toResourceFromEntity)

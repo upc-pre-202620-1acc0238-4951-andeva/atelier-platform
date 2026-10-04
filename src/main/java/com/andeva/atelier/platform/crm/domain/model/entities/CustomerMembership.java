@@ -5,7 +5,6 @@ import com.andeva.atelier.platform.crm.domain.model.enums.FleetRole;
 import com.andeva.atelier.platform.crm.domain.model.ids.CustomerMembershipId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.CustomerId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.UserId;
-import lombok.Getter;
 
 import java.util.Objects;
 
@@ -14,7 +13,6 @@ import java.util.Objects;
  *
  * @author Adiel Sanchez Santin
  */
-@Getter
 public class CustomerMembership {
 
     private final CustomerMembershipId id;
@@ -68,5 +66,45 @@ public class CustomerMembership {
 
     public boolean hasAdminPrivileges() {
         return this.role == FleetRole.FLEET_ADMIN;
+    }
+
+    public CustomerMembershipId getId() {
+        return id;
+    }
+
+    public CustomerMembershipId id() {
+        return id;
+    }
+
+    public CustomerId getCustomerId() {
+        return customerId;
+    }
+
+    public CustomerId customerId() {
+        return customerId;
+    }
+
+    public UserId getUserId() {
+        return userId;
+    }
+
+    public UserId userId() {
+        return userId;
+    }
+
+    public FleetRole getRole() {
+        return role;
+    }
+
+    public FleetRole role() {
+        return role;
+    }
+
+    public CustomerMembershipStatus getStatus() {
+        return status;
+    }
+
+    public CustomerMembershipStatus status() {
+        return status;
     }
 }

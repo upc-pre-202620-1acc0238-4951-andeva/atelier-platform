@@ -21,6 +21,7 @@ import com.andeva.atelier.platform.iam.infrastructure.security.model.CustomUserD
 import com.andeva.atelier.platform.shared.application.result.ApplicationError;
 import com.andeva.atelier.platform.shared.application.result.Result;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.CustomerId;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.UserId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.VehicleId;
 import com.andeva.atelier.platform.shared.interfaces.rest.transform.ErrorResponseAssembler;
 import com.andeva.atelier.platform.shared.interfaces.rest.transform.ResponseEntityAssembler;
@@ -45,11 +46,12 @@ import java.util.UUID;
 
 /**
  * REST controller managing universal vehicles and ownership transfer history.
+ * Canonical specification from 03-crm-and-fleet.md Section 5.3.1.
  *
  * @author Adiel Sanchez Santin
  */
 @RestController
-@RequestMapping("/api/v1/crm/vehicles")
+@RequestMapping("/api/v1/vehicles")
 @Tag(name = "Vehicles", description = "Endpoints for managing universal vehicle registry and legal custody transfers")
 public class VehiclesController {
 
@@ -120,37 +122,9 @@ public class VehiclesController {
         return ResponseEntity.ok(VehicleResourceFromAggregateAssembler.toResourceFromEntity(vehicleOpt.get()));
     }
 
-    @GetMapping("/customer/{customerId}")
-    @PreAuthorize("hasAuthority('crm:vehicles:read')")
-    @Operation(summary = "List vehicles currently under active ownership of a customer")
-    public ResponseEntity<?> getVehiclesByCustomerId(@PathVariable UUID customerId) {
-        List<Vehicle> vehicles = vehicleQueryService.handle(
-                new GetVehiclesByCustomerIdQuery(CustomerId.of(customerId)));
-
-        List<VehicleResource> resources = vehicles.stream()
-                .map(VehicleResourceFromAggregateAssembler::toResourceFromEntity)
-                .toList();
-
-        return ResponseEntity.ok(resources);
-    }
-
-    @GetMapping("/{id}/ownership-history")
-    @PreAuthorize("hasAuthority('crm:vehicles:read')")
-    @Operation(summary = "Retrieve chronological ownership transfer history of a vehicle")
-    public ResponseEntity<?> getOwnershipHistory(@PathVariable UUID id) {
-        List<VehicleOwnership> history = vehicleQueryService.handle(
-                new GetVehicleOwnershipHistoryQuery(VehicleId.of(id)));
-
-        List<VehicleOwnershipResource> resources = history.stream()
-                .map(VehicleOwnershipResourceFromEntityAssembler::toResourceFromEntity)
-                .toList();
-
-        return ResponseEntity.ok(resources);
-    }
-
-    @PostMapping("/{id}/transfer-ownership")
+    @PostMapping({"/{id}/ownerships", "/{id}/transfer-ownership"})
     @PreAuthorize("hasAuthority('crm:vehicles:update')")
-    @Operation(summary = "Transfer vehicle ownership to a new customer")
+    @Operation(summary = "Transfer vehicle ownership creating a new custody period")
     public ResponseEntity<?> transferOwnership(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable UUID id,
@@ -168,7 +142,41 @@ public class VehiclesController {
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result,
                 VehicleResourceFromAggregateAssembler::toResourceFromEntity,
-                HttpStatus.OK
+                HttpStatus.CREATED
         );
+    }
+
+    @GetMapping({"/{id}/ownerships", "/{id}/ownership-history"})
+    @PreAuthorize("hasAuthority('crm:vehicles:read')")
+    @Operation(summary = "Retrieve chronological ownership transfer history of a vehicle")
+    public ResponseEntity<?> getOwnershipHistory(@PathVariable UUID id) {
+        List<VehicleOwnership> history = vehicleQueryService.handle(
+                new GetVehicleOwnershipHistoryQuery(VehicleId.of(id)));
+
+        List<VehicleOwnershipResource> resources = history.stream()
+                .map(VehicleOwnershipResourceFromEntityAssembler::toResourceFromEntity)
+                .toList();
+
+        return ResponseEntity.ok(resources);
+    }
+
+    @GetMapping("/my-vehicles")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Retrieve vehicles registered to or actively operated by authenticated user")
+    public ResponseEntity<?> getMyVehicles(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (userDetails == null || userDetails.getUserId() == null) {
+            return ErrorResponseAssembler.toErrorResponseFromApplicationError(
+                    ApplicationError.unauthorized("Authentication required"));
+        }
+
+        List<Vehicle> vehicles = vehicleQueryService.handle(
+                new com.andeva.atelier.platform.crm.domain.model.queries.GetVehiclesByUserIdQuery(
+                        UserId.of(userDetails.getUserId())));
+
+        List<VehicleResource> resources = vehicles.stream()
+                .map(VehicleResourceFromAggregateAssembler::toResourceFromEntity)
+                .toList();
+
+        return ResponseEntity.ok(resources);
     }
 }

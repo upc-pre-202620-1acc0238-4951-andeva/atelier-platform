@@ -50,6 +50,12 @@ public class VehicleQueryServiceImpl implements VehicleQueryService {
     }
 
     @Override
+    public Optional<Vehicle> handle(com.andeva.atelier.platform.crm.domain.model.queries.GetVehicleByVinQuery query) {
+        Objects.requireNonNull(query, "GetVehicleByVinQuery cannot be null");
+        return vehicleRepository.findByVin(query.vin().value());
+    }
+
+    @Override
     public List<Vehicle> handle(GetVehiclesByCustomerIdQuery query) {
         Objects.requireNonNull(query, "GetVehiclesByCustomerIdQuery cannot be null");
         return vehicleRepository.findByCurrentOwnerId(query.customerId());

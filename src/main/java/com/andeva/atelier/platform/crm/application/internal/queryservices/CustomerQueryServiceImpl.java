@@ -45,4 +45,10 @@ public class CustomerQueryServiceImpl implements CustomerQueryService {
         Objects.requireNonNull(query, "GetCustomerByTaxIdQuery cannot be null");
         return customerRepository.findByTenantIdAndTaxId(query.tenantId(), query.taxId());
     }
+
+    @Override
+    public Optional<Customer> handle(com.andeva.atelier.platform.crm.domain.model.queries.GetCustomerByDocumentQuery query) {
+        Objects.requireNonNull(query, "GetCustomerByDocumentQuery cannot be null");
+        return customerRepository.findByTenantIdAndTaxId(query.tenantId(), query.documentNumber());
+    }
 }

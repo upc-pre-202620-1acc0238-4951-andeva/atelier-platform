@@ -15,5 +15,6 @@ public record VehicleResource(
         String model,
         int year,
         String engineType,
-        UUID currentOwnerId
+        UUID currentOwnerId,
+        Integer currentMileage
 ) {}

@@ -16,4 +16,8 @@ public interface VehicleCommandService {
     Result<Vehicle, ApplicationError> handle(RegisterVehicleCommand command);
 
     Result<Vehicle, ApplicationError> handle(TransferVehicleOwnershipCommand command);
+
+    Result<Vehicle, ApplicationError> handle(com.andeva.atelier.platform.crm.domain.model.commands.UpdateVehicleCommand command);
+
+    Result<Vehicle, ApplicationError> handle(com.andeva.atelier.platform.crm.domain.model.commands.UpdateMileageCommand command);
 }

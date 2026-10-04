@@ -22,8 +22,10 @@ public record ScheduleAppointmentResource(
         UUID vehicleId,
 
         @NotNull(message = "Scheduled timestamp is mandatory")
+        @jakarta.validation.constraints.Future(message = "Appointment date must be in the future")
         Instant scheduledAt,
 
+        @jakarta.validation.constraints.Min(value = 15, message = "Estimated duration must be at least 15 minutes")
         int estimatedDurationMinutes,
 
         @Size(max = 1000, message = "Reason must not exceed 1000 characters")

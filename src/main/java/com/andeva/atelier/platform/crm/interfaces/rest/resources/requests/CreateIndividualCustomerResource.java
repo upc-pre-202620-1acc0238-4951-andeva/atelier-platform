@@ -21,6 +21,10 @@ public record CreateIndividualCustomerResource(
         @Size(min = 8, max = 20, message = "Tax ID must be between 8 and 20 characters")
         String taxId,
 
+        @jakarta.validation.constraints.Email(message = "Invalid email format")
+        @Size(max = 150, message = "Email must not exceed 150 characters")
         String email,
+
+        @Size(max = 20, message = "Phone number must not exceed 20 characters")
         String phone
 ) {}

@@ -37,7 +37,8 @@ public final class VehicleResourceFromAggregateAssembler {
                 vehicle.model(),
                 vehicle.year(),
                 vehicle.engineType().name(),
-                currentOwnerId
+                currentOwnerId,
+                vehicle.currentMileage()
         );
     }
 }

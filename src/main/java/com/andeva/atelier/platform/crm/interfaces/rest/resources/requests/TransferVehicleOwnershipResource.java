@@ -15,5 +15,6 @@ public record TransferVehicleOwnershipResource(
         UUID newOwnerId,
 
         @NotNull(message = "Transfer date is mandatory")
+        @jakarta.validation.constraints.PastOrPresent(message = "Transfer date cannot be in the future")
         LocalDate transferDate
 ) {}

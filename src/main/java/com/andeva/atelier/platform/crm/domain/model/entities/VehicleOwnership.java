@@ -4,7 +4,6 @@ import com.andeva.atelier.platform.crm.domain.model.ids.VehicleOwnershipId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.CustomerId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.UserId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.VehicleId;
-import lombok.Getter;
 
 import java.time.LocalDate;
 import java.util.Objects;
@@ -14,7 +13,6 @@ import java.util.Objects;
  *
  * @author Adiel Sanchez Santin
  */
-@Getter
 public class VehicleOwnership {
 
     private final VehicleOwnershipId id;
@@ -84,5 +82,53 @@ public class VehicleOwnership {
 
     public boolean isOwnedByUser(UserId userId) {
         return this.userId != null && this.userId.equals(userId);
+    }
+
+    public VehicleOwnershipId getId() {
+        return id;
+    }
+
+    public VehicleOwnershipId id() {
+        return id;
+    }
+
+    public VehicleId getVehicleId() {
+        return vehicleId;
+    }
+
+    public VehicleId vehicleId() {
+        return vehicleId;
+    }
+
+    public CustomerId getCustomerId() {
+        return customerId;
+    }
+
+    public CustomerId customerId() {
+        return customerId;
+    }
+
+    public UserId getUserId() {
+        return userId;
+    }
+
+    public UserId userId() {
+        return userId;
+    }
+
+    public LocalDate getStartDate() {
+        return startDate;
+    }
+
+    public LocalDate startDate() {
+        return startDate;
+    }
+
+    public LocalDate getEndDate() {
+        return endDate;
+    }
+
+    public LocalDate endDate() {
+        return endDate;
     }
 }

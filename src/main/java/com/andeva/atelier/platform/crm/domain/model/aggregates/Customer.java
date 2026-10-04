@@ -154,6 +154,10 @@ public class Customer extends AbstractDomainAggregateRoot<Customer> {
         this.status = CustomerStatus.INACTIVE;
     }
 
+    public void archive() {
+        deactivate();
+    }
+
     public String getDisplayName() {
         if (this.type == CustomerType.COMPANY) {
             return this.companyName;

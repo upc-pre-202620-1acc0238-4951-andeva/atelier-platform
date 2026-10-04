@@ -53,11 +53,12 @@ import java.util.UUID;
 
 /**
  * REST controller orchestrating service appointment scheduling, status transitions, and agenda projections.
+ * Canonical specification from 03-crm-and-fleet.md Section 5.3.1.
  *
  * @author Adiel Sanchez Santin
  */
 @RestController
-@RequestMapping("/api/v1/crm/appointments")
+@RequestMapping("/api/v1/appointments")
 @Tag(name = "Appointments", description = "Endpoints for scheduling, confirming, rescheduling, and tracking service appointments")
 public class AppointmentsController {
 
@@ -144,42 +145,6 @@ public class AppointmentsController {
                         queryDate,
                         appointmentStatus
                 ));
-
-        List<AppointmentResource> resources = appointments.stream()
-                .map(AppointmentResourceFromAggregateAssembler::toResourceFromEntity)
-                .toList();
-
-        return ResponseEntity.ok(resources);
-    }
-
-    @GetMapping("/customer/{customerId}")
-    @PreAuthorize("hasAuthority('crm:appointments:read')")
-    @Operation(summary = "Retrieve appointment history for a customer")
-    public ResponseEntity<?> getAppointmentsByCustomer(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable UUID customerId
-    ) {
-        if (userDetails == null || userDetails.getTenantId() == null) {
-            return ErrorResponseAssembler.toErrorResponseFromApplicationError(
-                    ApplicationError.unauthorized("Authentication required"));
-        }
-
-        List<Appointment> appointments = appointmentQueryService.handle(
-                new GetAppointmentsByCustomerQuery(TenantId.of(userDetails.getTenantId()), CustomerId.of(customerId)));
-
-        List<AppointmentResource> resources = appointments.stream()
-                .map(AppointmentResourceFromAggregateAssembler::toResourceFromEntity)
-                .toList();
-
-        return ResponseEntity.ok(resources);
-    }
-
-    @GetMapping("/vehicle/{vehicleId}")
-    @PreAuthorize("hasAuthority('crm:appointments:read')")
-    @Operation(summary = "Retrieve appointment history for a vehicle")
-    public ResponseEntity<?> getAppointmentsByVehicle(@PathVariable UUID vehicleId) {
-        List<Appointment> appointments = appointmentQueryService.handle(
-                new GetAppointmentsByVehicleQuery(VehicleId.of(vehicleId)));
 
         List<AppointmentResource> resources = appointments.stream()
                 .map(AppointmentResourceFromAggregateAssembler::toResourceFromEntity)

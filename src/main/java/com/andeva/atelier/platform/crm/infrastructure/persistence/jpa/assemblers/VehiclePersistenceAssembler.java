@@ -38,6 +38,7 @@ public final class VehiclePersistenceAssembler {
                 entity.getModel(),
                 entity.getYear(),
                 entity.getEngineType(),
+                entity.getCurrentMileage(),
                 ownerships
         );
     }
@@ -59,6 +60,8 @@ public final class VehiclePersistenceAssembler {
                 domain.engineType()
         );
 
+        entity.setCurrentMileage(domain.currentMileage());
+
         if (domain.ownershipHistory() != null) {
             for (VehicleOwnership ownership : domain.ownershipHistory()) {
                 entity.addOwnership(VehicleOwnershipPersistenceAssembler.toEntity(ownership, entity));
@@ -78,6 +81,7 @@ public final class VehiclePersistenceAssembler {
         entity.setModel(domain.model());
         entity.setYear(domain.year());
         entity.setEngineType(domain.engineType());
+        entity.setCurrentMileage(domain.currentMileage());
         if (domain.ownershipHistory() != null) {
             entity.getOwnershipHistory().clear();
             for (VehicleOwnership ownership : domain.ownershipHistory()) {

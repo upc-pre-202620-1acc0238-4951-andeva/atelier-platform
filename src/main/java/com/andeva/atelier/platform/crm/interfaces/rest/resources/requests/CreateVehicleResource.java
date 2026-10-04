@@ -27,6 +27,7 @@ public record CreateVehicleResource(
         @Size(max = 50, message = "Model must not exceed 50 characters")
         String model,
 
+        @jakarta.validation.constraints.Min(value = 1950, message = "Year must be greater than or equal to 1950")
         int year,
 
         @NotNull(message = "Engine type is mandatory")
