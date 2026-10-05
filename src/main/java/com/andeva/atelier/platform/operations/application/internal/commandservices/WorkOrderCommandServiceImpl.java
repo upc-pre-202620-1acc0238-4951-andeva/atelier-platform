@@ -431,4 +431,21 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
             return Result.failure(ApplicationError.unprocessableEntity(e.getMessage()));
         }
     }
+
+    @Override
+    public Result<WorkOrder, ApplicationError> handle(CompleteWorkOrderCommand command) {
+        Optional<WorkOrder> orderOpt = workOrderRepository.findById(command.workOrderId());
+        if (orderOpt.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("WorkOrder with identifier " + command.workOrderId().value() + " was not found"));
+        }
+
+        WorkOrder order = orderOpt.get();
+        try {
+            order.completeOrder();
+            WorkOrder saved = workOrderRepository.save(order);
+            return Result.success(saved);
+        } catch (IllegalStateException e) {
+            return Result.failure(ApplicationError.unprocessableEntity(e.getMessage()));
+        }
+    }
 }

@@ -51,5 +51,7 @@ public interface WorkOrderCommandService {
 
     Result<WorkOrder, ApplicationError> handle(DeliverVehicleCommand command);
 
+    Result<WorkOrder, ApplicationError> handle(CompleteWorkOrderCommand command);
+
     Result<WorkOrder, ApplicationError> handle(CancelWorkOrderCommand command);
 }

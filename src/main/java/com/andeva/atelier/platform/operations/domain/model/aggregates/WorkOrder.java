@@ -289,6 +289,15 @@ public class WorkOrder extends AbstractDomainAggregateRoot<WorkOrder> {
         registerDomainEvent(WorkOrderPaidEvent.of(this.id, this.tenantId, this.totalAmount));
     }
 
+    public void completeOrder() {
+        if (this.status != WorkOrderStatus.IN_PROGRESS && this.status != WorkOrderStatus.DRAFT) {
+            throw new IllegalStateException("Cannot complete order in status: " + this.status);
+        }
+        this.status = WorkOrderStatus.COMPLETED;
+        releaseBay();
+        registerDomainEvent(WorkOrderCompletedEvent.of(this.id, this.tenantId, this.vehicleId, this.totalAmount));
+    }
+
     public void deliverVehicle() {
         if (this.status != WorkOrderStatus.PAID) {
             throw new IllegalStateException("Vehicle can only be delivered after order is PAID: " + this.status);
