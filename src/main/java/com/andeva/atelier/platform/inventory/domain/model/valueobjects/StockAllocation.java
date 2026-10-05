@@ -25,4 +25,8 @@ public record StockAllocation(
     public static StockAllocation of(Quantity allocatedQuantity, Money totalCostOfGoodsSold, List<BatchDeduction> deductions) {
         return new StockAllocation(UUID.randomUUID(), allocatedQuantity, totalCostOfGoodsSold, deductions);
     }
+
+    public Money totalCogs() {
+        return totalCostOfGoodsSold;
+    }
 }
