@@ -226,6 +226,10 @@ public class InventoryItem extends AbstractDomainAggregateRoot<InventoryItem> {
         this.status = InventoryItemStatus.DISCONTINUED;
     }
 
+    public boolean isLowStock() {
+        return this.totalStock.isLessThanOrEqualTo(this.minimumStock);
+    }
+
     public InventoryItemId getId() { return id; }
     public TenantId getTenantId() { return tenantId; }
     public String getName() { return name; }

@@ -103,6 +103,10 @@ public class Supplier extends AbstractDomainAggregateRoot<Supplier> {
         this.address = address;
     }
 
+    public void updateContact(String contactName, String phone, String email, String address) {
+        updateContactInfo(this.businessName, contactName, phone, email, address);
+    }
+
     public void activate() {
         this.active = true;
     }

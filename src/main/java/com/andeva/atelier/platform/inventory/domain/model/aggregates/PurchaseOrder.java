@@ -8,10 +8,12 @@ import com.andeva.atelier.platform.inventory.domain.model.enums.PurchaseOrderSta
 import com.andeva.atelier.platform.inventory.domain.model.events.PurchaseOrderCanceledEvent;
 import com.andeva.atelier.platform.inventory.domain.model.events.PurchaseOrderCreatedEvent;
 import com.andeva.atelier.platform.inventory.domain.model.events.PurchaseOrderReceivedEvent;
+import com.andeva.atelier.platform.inventory.domain.model.ids.InventoryItemId;
 import com.andeva.atelier.platform.inventory.domain.model.ids.PurchaseOrderId;
 import com.andeva.atelier.platform.inventory.domain.model.ids.PurchaseOrderItemId;
 import com.andeva.atelier.platform.inventory.domain.model.ids.SupplierId;
 import com.andeva.atelier.platform.inventory.domain.model.valueobjects.PurchaseOrderNumber;
+import com.andeva.atelier.platform.inventory.domain.model.valueobjects.Quantity;
 import com.andeva.atelier.platform.inventory.domain.model.valueobjects.StorageUrl;
 import com.andeva.atelier.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.BranchId;
@@ -167,6 +169,22 @@ public class PurchaseOrder extends AbstractDomainAggregateRoot<PurchaseOrder> {
         }
         this.status = PurchaseOrderStatus.CANCELED;
         registerDomainEvent(PurchaseOrderCanceledEvent.of(this.id, this.tenantId, reason != null ? reason : "Canceled by user"));
+    }
+
+    public void addItem(InventoryItemId itemId, Quantity quantity, Money unitCost) {
+        addItem(PurchaseOrderItem.create(this.id, itemId, quantity, unitCost));
+    }
+
+    public void issueOrder() {
+        issue();
+    }
+
+    public void receiveOrder(StorageUrl receiptImageUrl, String receiptNumber, Instant receivedAt) {
+        receive(receiptImageUrl, receiptNumber, receivedAt);
+    }
+
+    public void cancelOrder(String reason) {
+        cancel(reason);
     }
 
     private void recalculateTotalCost() {

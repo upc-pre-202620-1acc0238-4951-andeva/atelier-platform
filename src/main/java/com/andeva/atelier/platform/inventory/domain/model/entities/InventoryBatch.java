@@ -119,6 +119,10 @@ public class InventoryBatch implements Serializable {
         return remainingQuantity.isPositive();
     }
 
+    public boolean isDepleted() {
+        return !hasStock();
+    }
+
     public Quantity deduct(Quantity requested) {
         Objects.requireNonNull(requested, "requested quantity cannot be null");
         if (!hasStock() || requested.isZero()) {

@@ -21,6 +21,10 @@ import java.util.UUID;
  */
 public class FifoAllocationEngine {
 
+    public StockAllocation allocate(List<InventoryBatch> batches, Quantity requestedQuantity) {
+        return allocate(batches, requestedQuantity, Currency.PEN);
+    }
+
     public StockAllocation allocate(List<InventoryBatch> batches, Quantity requestedQuantity, Currency defaultCurrency) {
         Objects.requireNonNull(batches, "batches cannot be null");
         Objects.requireNonNull(requestedQuantity, "requestedQuantity cannot be null");
