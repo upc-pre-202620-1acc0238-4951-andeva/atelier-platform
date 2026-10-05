@@ -1,0 +1,26 @@
+package com.andeva.atelier.platform.operations.infrastructure.persistence.jpa.repositories;
+
+import com.andeva.atelier.platform.operations.domain.model.enums.WorkOrderTaskStatus;
+import com.andeva.atelier.platform.operations.infrastructure.persistence.jpa.entities.WorkOrderTaskPersistenceEntity;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+@Repository
+public interface WorkOrderTaskPersistenceRepository extends JpaRepository<WorkOrderTaskPersistenceEntity, UUID> {
+
+    List<WorkOrderTaskPersistenceEntity> findAllByWorkOrderId(UUID workOrderId);
+
+    List<WorkOrderTaskPersistenceEntity> findAllByMechanicIdAndStatus(UUID mechanicId, WorkOrderTaskStatus status);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT t FROM WorkOrderTaskPersistenceEntity t WHERE t.id = :id")
+    Optional<WorkOrderTaskPersistenceEntity> findByIdForUpdate(@Param("id") UUID id);
+}
