@@ -346,4 +346,22 @@ public class WorkOrder extends AbstractDomainAggregateRoot<WorkOrder> {
     public List<WorkOrderTask> getTasks() { return Collections.unmodifiableList(tasks); }
     public List<TaskProposal> getProposals() { return Collections.unmodifiableList(proposals); }
     public List<WorkOrderImage> getIntakeImages() { return Collections.unmodifiableList(intakeImages); }
+
+    public void addExistingTask(WorkOrderTask task) {
+        if (task != null) {
+            this.tasks.add(task);
+        }
+    }
+
+    public void addExistingProposal(TaskProposal proposal) {
+        if (proposal != null) {
+            this.proposals.add(proposal);
+        }
+    }
+
+    public void addExistingIntakeImage(WorkOrderImage image) {
+        if (image != null) {
+            this.intakeImages.add(image);
+        }
+    }
 }
