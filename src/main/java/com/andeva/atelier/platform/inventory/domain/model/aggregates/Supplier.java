@@ -67,6 +67,18 @@ public class Supplier extends AbstractDomainAggregateRoot<Supplier> {
         return supplier;
     }
 
+    public static Supplier create(
+            TenantId tenantId,
+            String businessName,
+            TaxId taxId,
+            String contactName,
+            String phone,
+            String email,
+            String address
+    ) {
+        return register(tenantId, businessName, taxId, contactName, phone, email, address);
+    }
+
     public static Supplier reconstitute(
             SupplierId id,
             TenantId tenantId,

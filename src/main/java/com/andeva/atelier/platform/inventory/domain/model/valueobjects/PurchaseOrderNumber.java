@@ -15,4 +15,9 @@ public record PurchaseOrderNumber(String value) implements Serializable {
     public static PurchaseOrderNumber of(String value) {
         return new PurchaseOrderNumber(value);
     }
+
+    public static PurchaseOrderNumber generate() {
+        int randomSuffix = (int) (Math.random() * 900000) + 100000;
+        return new PurchaseOrderNumber("PO-" + java.time.Year.now().getValue() + "-" + randomSuffix);
+    }
 }
