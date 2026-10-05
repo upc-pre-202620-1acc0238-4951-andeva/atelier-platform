@@ -19,6 +19,7 @@ import com.andeva.atelier.platform.operations.domain.repositories.WorkOrderRepos
 import com.andeva.atelier.platform.shared.application.result.ApplicationError;
 import com.andeva.atelier.platform.shared.application.result.Result;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.Money;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,6 +53,7 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
         this(workOrderRepository, workBayRepository, serviceRepository, storageGateway, null, null, null);
     }
 
+    @Autowired
     public WorkOrderCommandServiceImpl(
             WorkOrderRepository workOrderRepository,
             WorkBayRepository workBayRepository,
