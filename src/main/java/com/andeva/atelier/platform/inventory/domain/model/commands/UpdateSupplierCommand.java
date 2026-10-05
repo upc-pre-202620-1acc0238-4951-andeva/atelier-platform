@@ -19,4 +19,8 @@ public record UpdateSupplierCommand(
     public UpdateSupplierCommand {
         Objects.requireNonNull(supplierId, "supplierId cannot be null");
     }
+
+    public UpdateSupplierCommand(SupplierId supplierId, String businessName, String contactName, String phone, String email, String address) {
+        this(supplierId, businessName, null, contactName, phone, email, address, null);
+    }
 }
