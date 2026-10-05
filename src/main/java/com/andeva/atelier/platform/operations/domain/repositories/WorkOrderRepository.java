@@ -30,5 +30,7 @@ public interface WorkOrderRepository {
 
     Optional<WorkOrder> findByCurrentBayId(WorkBayId bayId);
 
+    Optional<WorkOrder> findByTaskId(com.andeva.atelier.platform.operations.domain.model.ids.WorkOrderTaskId taskId);
+
     Integer findNextInternalSequence(TenantId tenantId);
 }

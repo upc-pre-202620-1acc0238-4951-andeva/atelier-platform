@@ -154,8 +154,10 @@ public class WorkOrderTask {
         this.consumedProducts.removeIf(p -> p.getId().equals(productId));
     }
 
-    public void attachEvidenceImage(StorageUrl url, EvidenceType evidenceType, String description) {
-        this.taskImages.add(WorkOrderTaskImage.create(this.id, url, evidenceType, description));
+    public WorkOrderTaskImage attachEvidenceImage(StorageUrl url, EvidenceType evidenceType, String description) {
+        WorkOrderTaskImage image = WorkOrderTaskImage.create(this.id, url, evidenceType, description);
+        this.taskImages.add(image);
+        return image;
     }
 
     public WorkOrderTaskId getId() { return id; }

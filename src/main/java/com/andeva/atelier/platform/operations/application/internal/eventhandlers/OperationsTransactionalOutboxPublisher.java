@@ -33,49 +33,49 @@ public class OperationsTransactionalOutboxPublisher {
     }
 
     @EventListener
-    @Transactional(propagation = Propagation.MANDATORY)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(WorkOrderCreatedIntegrationEvent event) {
         persistOutbox("WorkOrder", event.workOrderId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());
     }
 
     @EventListener
-    @Transactional(propagation = Propagation.MANDATORY)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(WorkOrderBayAssignedIntegrationEvent event) {
         persistOutbox("WorkOrder", event.workOrderId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());
     }
 
     @EventListener
-    @Transactional(propagation = Propagation.MANDATORY)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(WorkOrderStartedIntegrationEvent event) {
         persistOutbox("WorkOrder", event.workOrderId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());
     }
 
     @EventListener
-    @Transactional(propagation = Propagation.MANDATORY)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(ProductStockReservationRequestedIntegrationEvent event) {
         persistOutbox("WorkOrderTask", event.taskId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());
     }
 
     @EventListener
-    @Transactional(propagation = Propagation.MANDATORY)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(ProductStockReservationCancelledIntegrationEvent event) {
         persistOutbox("WorkOrderTask", event.taskId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());
     }
 
     @EventListener
-    @Transactional(propagation = Propagation.MANDATORY)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(WorkOrderCompletedIntegrationEvent event) {
         persistOutbox("WorkOrder", event.workOrderId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());
     }
 
     @EventListener
-    @Transactional(propagation = Propagation.MANDATORY)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(WorkOrderPaidIntegrationEvent event) {
         persistOutbox("WorkOrder", event.workOrderId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());
     }
 
     @EventListener
-    @Transactional(propagation = Propagation.MANDATORY)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(WorkOrderDeliveredIntegrationEvent event) {
         persistOutbox("WorkOrder", event.workOrderId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());
     }

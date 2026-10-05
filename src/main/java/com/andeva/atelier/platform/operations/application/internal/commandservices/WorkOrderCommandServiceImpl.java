@@ -27,6 +27,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.andeva.atelier.platform.operations.application.internal.outbound.acl.CustomerFleetAclService;
+import com.andeva.atelier.platform.operations.application.internal.outbound.acl.InventoryReservationAclService;
+import com.andeva.atelier.platform.operations.application.internal.outbound.acl.TenancyAclService;
+
 @Service
 @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
 public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
@@ -35,6 +39,9 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
     private final WorkBayRepository workBayRepository;
     private final ServiceRepository serviceRepository;
     private final DirectToCloudStorageGateway storageGateway;
+    private final CustomerFleetAclService customerFleetAclService;
+    private final TenancyAclService tenancyAclService;
+    private final InventoryReservationAclService inventoryAclService;
 
     public WorkOrderCommandServiceImpl(
             WorkOrderRepository workOrderRepository,
@@ -42,10 +49,25 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
             ServiceRepository serviceRepository,
             DirectToCloudStorageGateway storageGateway
     ) {
+        this(workOrderRepository, workBayRepository, serviceRepository, storageGateway, null, null, null);
+    }
+
+    public WorkOrderCommandServiceImpl(
+            WorkOrderRepository workOrderRepository,
+            WorkBayRepository workBayRepository,
+            ServiceRepository serviceRepository,
+            DirectToCloudStorageGateway storageGateway,
+            CustomerFleetAclService customerFleetAclService,
+            TenancyAclService tenancyAclService,
+            InventoryReservationAclService inventoryAclService
+    ) {
         this.workOrderRepository = Objects.requireNonNull(workOrderRepository);
         this.workBayRepository = Objects.requireNonNull(workBayRepository);
         this.serviceRepository = Objects.requireNonNull(serviceRepository);
         this.storageGateway = Objects.requireNonNull(storageGateway);
+        this.customerFleetAclService = customerFleetAclService;
+        this.tenancyAclService = tenancyAclService;
+        this.inventoryAclService = inventoryAclService;
     }
 
     @Override
@@ -176,116 +198,180 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
 
     @Override
     public Result<WorkOrder, ApplicationError> handle(AssignTaskMechanicCommand command) {
-        Optional<WorkOrder> orderOpt = workOrderRepository.findByTenantId(null).stream()
-                .filter(w -> w.getTasks().stream().anyMatch(t -> t.getId().equals(command.taskId())))
-                .findFirst();
-
-        if (orderOpt.isEmpty()) {
-            // Find by searching all orders
-            orderOpt = workOrderRepository.findById(null); // will be found via specialized task lookup if needed
+        if (command == null || command.taskId() == null) {
+            return Result.failure(ApplicationError.badRequest("Command and taskId cannot be null"));
         }
-
-        return Result.failure(ApplicationError.unprocessableEntity("Task mechanic assignment handled via task status workflow"));
+        Optional<WorkOrder> orderOpt = workOrderRepository.findByTaskId(command.taskId());
+        if (orderOpt.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        }
+        WorkOrder order = orderOpt.get();
+        if (tenancyAclService != null && !tenancyAclService.isMechanicEligible(command.mechanicId(), order.getTenantId().value())) {
+            return Result.failure(ApplicationError.unprocessableEntity("Mechanic is not eligible or active in this tenant"));
+        }
+        try {
+            order.assignTaskMechanic(command.taskId(), command.mechanicId());
+            WorkOrder saved = workOrderRepository.save(order);
+            return Result.success(saved);
+        } catch (Exception e) {
+            return Result.failure(ApplicationError.unprocessableEntity(e.getMessage()));
+        }
     }
 
     @Override
     public Result<WorkOrder, ApplicationError> handle(StartWorkOrderTaskCommand command) {
-        for (WorkOrder order : workOrderRepository.findByTenantId(null)) {
-            boolean hasTask = order.getTasks().stream().anyMatch(t -> t.getId().equals(command.taskId()));
-            if (hasTask) {
-                order.startTask(command.taskId());
-                WorkOrder saved = workOrderRepository.save(order);
-                return Result.success(saved);
-            }
+        if (command == null || command.taskId() == null) {
+            return Result.failure(ApplicationError.badRequest("Command and taskId cannot be null"));
         }
-        return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        Optional<WorkOrder> orderOpt = workOrderRepository.findByTaskId(command.taskId());
+        if (orderOpt.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        }
+        WorkOrder order = orderOpt.get();
+        try {
+            order.startTask(command.taskId());
+            WorkOrder saved = workOrderRepository.save(order);
+            return Result.success(saved);
+        } catch (Exception e) {
+            return Result.failure(ApplicationError.unprocessableEntity(e.getMessage()));
+        }
     }
 
     @Override
     public Result<WorkOrder, ApplicationError> handle(HoldWorkOrderTaskCommand command) {
-        for (WorkOrder order : workOrderRepository.findByTenantId(null)) {
-            Optional<WorkOrderTask> taskOpt = order.getTasks().stream().filter(t -> t.getId().equals(command.taskId())).findFirst();
-            if (taskOpt.isPresent()) {
-                taskOpt.get().holdForWaitingParts(command.missingItemDescription(), command.inventoryItemId());
-                WorkOrder saved = workOrderRepository.save(order);
-                return Result.success(saved);
-            }
+        if (command == null || command.taskId() == null) {
+            return Result.failure(ApplicationError.badRequest("Command and taskId cannot be null"));
         }
-        return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        Optional<WorkOrder> orderOpt = workOrderRepository.findByTaskId(command.taskId());
+        if (orderOpt.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        }
+        WorkOrder order = orderOpt.get();
+        try {
+            order.holdTask(command.taskId(), command.missingItemDescription(), command.inventoryItemId());
+            WorkOrder saved = workOrderRepository.save(order);
+            return Result.success(saved);
+        } catch (Exception e) {
+            return Result.failure(ApplicationError.unprocessableEntity(e.getMessage()));
+        }
     }
 
     @Override
     public Result<WorkOrder, ApplicationError> handle(ResumeWorkOrderTaskCommand command) {
-        for (WorkOrder order : workOrderRepository.findByTenantId(null)) {
-            Optional<WorkOrderTask> taskOpt = order.getTasks().stream().filter(t -> t.getId().equals(command.taskId())).findFirst();
-            if (taskOpt.isPresent()) {
-                taskOpt.get().resume();
-                WorkOrder saved = workOrderRepository.save(order);
-                return Result.success(saved);
-            }
+        if (command == null || command.taskId() == null) {
+            return Result.failure(ApplicationError.badRequest("Command and taskId cannot be null"));
         }
-        return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        Optional<WorkOrder> orderOpt = workOrderRepository.findByTaskId(command.taskId());
+        if (orderOpt.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        }
+        WorkOrder order = orderOpt.get();
+        try {
+            order.resumeTask(command.taskId());
+            WorkOrder saved = workOrderRepository.save(order);
+            return Result.success(saved);
+        } catch (Exception e) {
+            return Result.failure(ApplicationError.unprocessableEntity(e.getMessage()));
+        }
     }
 
     @Override
     public Result<WorkOrder, ApplicationError> handle(CompleteWorkOrderTaskCommand command) {
-        for (WorkOrder order : workOrderRepository.findByTenantId(null)) {
-            boolean hasTask = order.getTasks().stream().anyMatch(t -> t.getId().equals(command.taskId()));
-            if (hasTask) {
-                order.completeTask(command.taskId(), LaborHours.of(command.actualHours()));
-                WorkOrder saved = workOrderRepository.save(order);
-                return Result.success(saved);
-            }
+        if (command == null || command.taskId() == null) {
+            return Result.failure(ApplicationError.badRequest("Command and taskId cannot be null"));
         }
-        return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        Optional<WorkOrder> orderOpt = workOrderRepository.findByTaskId(command.taskId());
+        if (orderOpt.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        }
+        WorkOrder order = orderOpt.get();
+        try {
+            order.completeTask(command.taskId(), LaborHours.of(command.actualHours()));
+            WorkOrder saved = workOrderRepository.save(order);
+            return Result.success(saved);
+        } catch (Exception e) {
+            return Result.failure(ApplicationError.unprocessableEntity(e.getMessage()));
+        }
     }
 
     @Override
     public Result<WorkOrder, ApplicationError> handle(ReopenWorkOrderTaskCommand command) {
-        return Result.failure(ApplicationError.unprocessableEntity("Reopening completed tasks is restricted"));
+        if (command == null || command.taskId() == null) {
+            return Result.failure(ApplicationError.badRequest("Command and taskId cannot be null"));
+        }
+        Optional<WorkOrder> orderOpt = workOrderRepository.findByTaskId(command.taskId());
+        if (orderOpt.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        }
+        WorkOrder order = orderOpt.get();
+        try {
+            order.reopenTask(command.taskId(), command.reason());
+            WorkOrder saved = workOrderRepository.save(order);
+            return Result.success(saved);
+        } catch (Exception e) {
+            return Result.failure(ApplicationError.unprocessableEntity(e.getMessage()));
+        }
     }
 
     @Override
     public Result<WorkOrder, ApplicationError> handle(AddProductToTaskCommand command) {
-        for (WorkOrder order : workOrderRepository.findByTenantId(null)) {
-            boolean hasTask = order.getTasks().stream().anyMatch(t -> t.getId().equals(command.taskId()));
-            if (hasTask) {
-                order.addProductToTask(command.taskId(), command.productId(), Quantity.of(command.quantity()), Money.soles(command.unitPrice()));
-                WorkOrder saved = workOrderRepository.save(order);
-                return Result.success(saved);
-            }
+        if (command == null || command.taskId() == null) {
+            return Result.failure(ApplicationError.badRequest("Command and taskId cannot be null"));
         }
-        return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        Optional<WorkOrder> orderOpt = workOrderRepository.findByTaskId(command.taskId());
+        if (orderOpt.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        }
+        WorkOrder order = orderOpt.get();
+        try {
+            order.addProductToTask(command.taskId(), command.productId(), Quantity.of(command.quantity()), Money.soles(command.unitPrice()));
+            WorkOrder saved = workOrderRepository.save(order);
+            return Result.success(saved);
+        } catch (Exception e) {
+            return Result.failure(ApplicationError.unprocessableEntity(e.getMessage()));
+        }
     }
 
     @Override
     public Result<WorkOrder, ApplicationError> handle(UpdateTaskProductQuantityCommand command) {
-        for (WorkOrder order : workOrderRepository.findByTenantId(null)) {
-            Optional<WorkOrderTask> taskOpt = order.getTasks().stream().filter(t -> t.getId().equals(command.taskId())).findFirst();
-            if (taskOpt.isPresent()) {
-                taskOpt.get().getConsumedProducts().stream()
-                        .filter(p -> p.getProductId().equals(command.productId()))
-                        .findFirst()
-                        .ifPresent(p -> p.updateQuantity(Quantity.of(command.newQuantity())));
-                order.recalculateTotalAmount();
-                WorkOrder saved = workOrderRepository.save(order);
-                return Result.success(saved);
-            }
+        if (command == null || command.taskId() == null) {
+            return Result.failure(ApplicationError.badRequest("Command and taskId cannot be null"));
         }
-        return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        Optional<WorkOrder> orderOpt = workOrderRepository.findByTaskId(command.taskId());
+        if (orderOpt.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        }
+        WorkOrder order = orderOpt.get();
+        Optional<WorkOrderTask> taskOpt = order.getTasks().stream().filter(t -> t.getId().equals(command.taskId())).findFirst();
+        if (taskOpt.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        }
+        taskOpt.get().getConsumedProducts().stream()
+                .filter(p -> p.getProductId().equals(command.productId()))
+                .findFirst()
+                .ifPresent(p -> p.updateQuantity(Quantity.of(command.newQuantity())));
+        order.recalculateTotalAmount();
+        WorkOrder saved = workOrderRepository.save(order);
+        return Result.success(saved);
     }
 
     @Override
     public Result<WorkOrder, ApplicationError> handle(RemoveProductFromTaskCommand command) {
-        for (WorkOrder order : workOrderRepository.findByTenantId(null)) {
-            boolean hasTask = order.getTasks().stream().anyMatch(t -> t.getId().equals(command.taskId()));
-            if (hasTask) {
-                order.removeProductFromTask(command.taskId(), command.productItemId());
-                WorkOrder saved = workOrderRepository.save(order);
-                return Result.success(saved);
-            }
+        if (command == null || command.taskId() == null) {
+            return Result.failure(ApplicationError.badRequest("Command and taskId cannot be null"));
         }
-        return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        Optional<WorkOrder> orderOpt = workOrderRepository.findByTaskId(command.taskId());
+        if (orderOpt.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        }
+        WorkOrder order = orderOpt.get();
+        try {
+            order.removeProductFromTask(command.taskId(), command.productItemId());
+            WorkOrder saved = workOrderRepository.save(order);
+            return Result.success(saved);
+        } catch (Exception e) {
+            return Result.failure(ApplicationError.unprocessableEntity(e.getMessage()));
+        }
     }
 
     @Override
@@ -303,16 +389,22 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
 
     @Override
     public Result<WorkOrderTask, ApplicationError> handle(AttachTaskEvidenceImageCommand command) {
-        for (WorkOrder order : workOrderRepository.findByTenantId(null)) {
-            Optional<WorkOrderTask> taskOpt = order.getTasks().stream().filter(t -> t.getId().equals(command.taskId())).findFirst();
-            if (taskOpt.isPresent()) {
-                WorkOrderTask task = taskOpt.get();
-                task.attachEvidenceImage(StorageUrl.of(command.imageUrl()), command.evidenceType(), command.description());
-                workOrderRepository.save(order);
-                return Result.success(task);
-            }
+        if (command == null || command.taskId() == null) {
+            return Result.failure(ApplicationError.badRequest("Command and taskId cannot be null"));
         }
-        return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        Optional<WorkOrder> orderOpt = workOrderRepository.findByTaskId(command.taskId());
+        if (orderOpt.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        }
+        WorkOrder order = orderOpt.get();
+        try {
+            order.attachTaskEvidence(command.taskId(), StorageUrl.of(command.imageUrl()), command.evidenceType(), command.description());
+            workOrderRepository.save(order);
+            WorkOrderTask task = order.getTasks().stream().filter(t -> t.getId().equals(command.taskId())).findFirst().orElseThrow();
+            return Result.success(task);
+        } catch (Exception e) {
+            return Result.failure(ApplicationError.unprocessableEntity(e.getMessage()));
+        }
     }
 
     @Override
@@ -424,6 +516,12 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
 
         WorkOrder order = orderOpt.get();
         try {
+            order.getCurrentBayId().ifPresent(bayId -> {
+                workBayRepository.findById(bayId).ifPresent(bay -> {
+                    bay.release();
+                    workBayRepository.save(bay);
+                });
+            });
             order.cancel(command.reason());
             WorkOrder saved = workOrderRepository.save(order);
             return Result.success(saved);
@@ -441,6 +539,12 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
 
         WorkOrder order = orderOpt.get();
         try {
+            order.getCurrentBayId().ifPresent(bayId -> {
+                workBayRepository.findById(bayId).ifPresent(bay -> {
+                    bay.release();
+                    workBayRepository.save(bay);
+                });
+            });
             order.completeOrder();
             WorkOrder saved = workOrderRepository.save(order);
             return Result.success(saved);

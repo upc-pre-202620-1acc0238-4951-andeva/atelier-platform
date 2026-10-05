@@ -71,9 +71,9 @@ public class WorkOrderQueryServiceImpl implements WorkOrderQueryService {
     @Override
     public Optional<WorkOrderTask> handle(GetWorkOrderTaskByIdQuery query) {
         if (query == null || query.taskId() == null) return Optional.empty();
-        return workOrderRepository.findByTenantId(null).stream()
-                .flatMap(w -> w.getTasks().stream())
-                .filter(t -> t.getId().equals(query.taskId()))
-                .findFirst();
+        return workOrderRepository.findByTaskId(query.taskId())
+                .flatMap(w -> w.getTasks().stream()
+                        .filter(t -> t.getId().equals(query.taskId()))
+                        .findFirst());
     }
 }

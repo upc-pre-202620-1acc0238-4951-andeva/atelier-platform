@@ -17,8 +17,14 @@ import com.andeva.atelier.platform.operations.domain.repositories.WorkBayReposit
 import com.andeva.atelier.platform.operations.domain.repositories.WorkOrderRepository;
 import com.andeva.atelier.platform.shared.application.result.ApplicationError;
 import com.andeva.atelier.platform.shared.application.result.Result;
+import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTask;
+import com.andeva.atelier.platform.operations.domain.model.enums.WorkOrderTaskStatus;
+import com.andeva.atelier.platform.operations.domain.model.ids.ServiceId;
+import com.andeva.atelier.platform.operations.domain.model.ids.WorkOrderTaskId;
+import com.andeva.atelier.platform.operations.domain.model.valueobjects.LaborHours;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.BranchId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.CustomerId;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.Money;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.VehicleId;
 import org.junit.jupiter.api.BeforeEach;
@@ -141,5 +147,86 @@ class WorkOrderCommandServiceTest {
 
         assertThat(result.isFailure()).isTrue();
         assertThat(result.getError().code()).contains("NOT_FOUND");
+    }
+
+    @Test
+    @DisplayName("Should assign mechanic to task via findByTaskId")
+    void shouldAssignTaskMechanicSuccessfully() {
+        WorkOrder order = WorkOrder.create(
+                tenantId,
+                branchId,
+                null,
+                vehicleId,
+                customerId,
+                WorkOrderNumber.of(1),
+                Mileage.of(10000),
+                DiagnosticSummary.of("Diagnóstico preliminar")
+        );
+        WorkOrderTask task = order.addTask(
+                ServiceId.generate(),
+                null,
+                "Cambio de pastillas de freno",
+                Money.soles(120),
+                LaborHours.of(1.5)
+        );
+        UUID mechanicId = UUID.randomUUID();
+
+        when(workOrderRepository.findByTaskId(task.getId())).thenReturn(Optional.of(order));
+        when(workOrderRepository.save(any(WorkOrder.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Result<WorkOrder, ApplicationError> result = commandService.handle(new AssignTaskMechanicCommand(task.getId(), mechanicId));
+
+        assertThat(result.isSuccess()).isTrue();
+        WorkOrder updated = result.getOrThrow();
+        WorkOrderTask updatedTask = updated.getTasks().stream()
+                .filter(t -> t.getId().equals(task.getId()))
+                .findFirst().orElseThrow();
+        assertThat(updatedTask.getMechanicId()).contains(mechanicId);
+        assertThat(updatedTask.getStatus()).isEqualTo(WorkOrderTaskStatus.ASSIGNED);
+    }
+
+    @Test
+    @DisplayName("Should handle full task lifecycle: start, hold, resume, and complete")
+    void shouldHandleFullTaskLifecycleSuccessfully() {
+        WorkOrder order = WorkOrder.create(
+                tenantId,
+                branchId,
+                null,
+                vehicleId,
+                customerId,
+                WorkOrderNumber.of(1),
+                Mileage.of(10000),
+                DiagnosticSummary.of("Diagnóstico preliminar")
+        );
+        WorkOrderTask task = order.addTask(
+                ServiceId.generate(),
+                UUID.randomUUID(),
+                "Alineación y balanceo",
+                Money.soles(80),
+                LaborHours.of(1.0)
+        );
+
+        when(workOrderRepository.findByTaskId(task.getId())).thenReturn(Optional.of(order));
+        when(workOrderRepository.save(any(WorkOrder.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // 1. Start task
+        Result<WorkOrder, ApplicationError> startResult = commandService.handle(new StartWorkOrderTaskCommand(task.getId()));
+        assertThat(startResult.isSuccess()).isTrue();
+        assertThat(task.getStatus()).isEqualTo(WorkOrderTaskStatus.IN_PROGRESS);
+
+        // 2. Hold task
+        Result<WorkOrder, ApplicationError> holdResult = commandService.handle(new HoldWorkOrderTaskCommand(task.getId(), "Falta terminal de dirección", UUID.randomUUID()));
+        assertThat(holdResult.isSuccess()).isTrue();
+        assertThat(task.getStatus()).isEqualTo(WorkOrderTaskStatus.ON_HOLD);
+
+        // 3. Resume task
+        Result<WorkOrder, ApplicationError> resumeResult = commandService.handle(new ResumeWorkOrderTaskCommand(task.getId()));
+        assertThat(resumeResult.isSuccess()).isTrue();
+        assertThat(task.getStatus()).isEqualTo(WorkOrderTaskStatus.IN_PROGRESS);
+
+        // 4. Complete task
+        Result<WorkOrder, ApplicationError> completeResult = commandService.handle(new CompleteWorkOrderTaskCommand(task.getId(), new java.math.BigDecimal("1.25"), "Labor culminada exitosamente"));
+        assertThat(completeResult.isSuccess()).isTrue();
+        assertThat(task.getStatus()).isEqualTo(WorkOrderTaskStatus.COMPLETED);
     }
 }

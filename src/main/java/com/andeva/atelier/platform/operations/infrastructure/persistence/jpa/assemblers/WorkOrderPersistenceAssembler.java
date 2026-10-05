@@ -99,5 +99,57 @@ public final class WorkOrderPersistenceAssembler {
         entity.setTax(domain.getTax().amount());
         entity.setTotalAmount(domain.getTotalAmount().amount());
         entity.setStatus(domain.getStatus());
+
+        if (domain.getTasks() != null) {
+            java.util.Map<java.util.UUID, com.andeva.atelier.platform.operations.infrastructure.persistence.jpa.entities.WorkOrderTaskPersistenceEntity> existingTaskMap =
+                    entity.getTasks().stream().collect(java.util.stream.Collectors.toMap(
+                            com.andeva.atelier.platform.operations.infrastructure.persistence.jpa.entities.WorkOrderTaskPersistenceEntity::getId,
+                            t -> t,
+                            (a, b) -> a
+                    ));
+
+            for (com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTask domainTask : domain.getTasks()) {
+                com.andeva.atelier.platform.operations.infrastructure.persistence.jpa.entities.WorkOrderTaskPersistenceEntity existingTask =
+                        existingTaskMap.get(domainTask.getId().value());
+                if (existingTask != null) {
+                    WorkOrderTaskPersistenceAssembler.updateEntity(existingTask, domainTask);
+                } else {
+                    entity.getTasks().add(WorkOrderTaskPersistenceAssembler.toEntity(domainTask, entity));
+                }
+            }
+        }
+
+        if (domain.getProposals() != null) {
+            java.util.Set<java.util.UUID> existingProposalIds = entity.getProposals().stream()
+                    .map(com.andeva.atelier.platform.operations.infrastructure.persistence.jpa.entities.TaskProposalPersistenceEntity::getId)
+                    .collect(java.util.stream.Collectors.toSet());
+
+            for (com.andeva.atelier.platform.operations.domain.model.entities.TaskProposal domainProp : domain.getProposals()) {
+                if (!existingProposalIds.contains(domainProp.getId())) {
+                    entity.getProposals().add(TaskProposalPersistenceAssembler.toEntity(domainProp, entity));
+                } else {
+                    entity.getProposals().stream()
+                            .filter(p -> p.getId().equals(domainProp.getId()))
+                            .findFirst()
+                            .ifPresent(p -> {
+                                p.setStatus(domainProp.getStatus());
+                                p.setCustomerNotes(domainProp.getCustomerNotes().orElse(null));
+                                p.setTaskId(domainProp.getTaskId().map(com.andeva.atelier.platform.operations.domain.model.ids.WorkOrderTaskId::value).orElse(null));
+                            });
+                }
+            }
+        }
+
+        if (domain.getIntakeImages() != null) {
+            java.util.Set<java.util.UUID> existingImageIds = entity.getImages().stream()
+                    .map(com.andeva.atelier.platform.operations.infrastructure.persistence.jpa.entities.WorkOrderImagePersistenceEntity::getId)
+                    .collect(java.util.stream.Collectors.toSet());
+
+            for (com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderImage domainImg : domain.getIntakeImages()) {
+                if (!existingImageIds.contains(domainImg.getId())) {
+                    entity.getImages().add(WorkOrderImagePersistenceAssembler.toEntity(domainImg, entity));
+                }
+            }
+        }
     }
 }

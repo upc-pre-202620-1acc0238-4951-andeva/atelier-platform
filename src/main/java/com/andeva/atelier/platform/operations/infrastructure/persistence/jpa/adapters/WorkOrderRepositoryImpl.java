@@ -100,6 +100,12 @@ public class WorkOrderRepositoryImpl implements WorkOrderRepository {
     }
 
     @Override
+    public Optional<WorkOrder> findByTaskId(com.andeva.atelier.platform.operations.domain.model.ids.WorkOrderTaskId taskId) {
+        return workOrderPersistenceRepository.findByTaskId(taskId.value())
+                .map(WorkOrderPersistenceAssembler::toDomain);
+    }
+
+    @Override
     public Integer findNextInternalSequence(TenantId tenantId) {
         return workOrderPersistenceRepository.findNextInternalNumber(tenantId.value());
     }

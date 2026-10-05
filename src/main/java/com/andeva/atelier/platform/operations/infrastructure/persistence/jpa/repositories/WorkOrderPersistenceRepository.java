@@ -53,4 +53,7 @@ public interface WorkOrderPersistenceRepository extends JpaRepository<WorkOrderP
         @Param("id") UUID id,
         @Param("tenantId") UUID tenantId
     );
+
+    @Query("SELECT w FROM WorkOrderPersistenceEntity w JOIN w.tasks t WHERE t.id = :taskId")
+    Optional<WorkOrderPersistenceEntity> findByTaskId(@Param("taskId") UUID taskId);
 }

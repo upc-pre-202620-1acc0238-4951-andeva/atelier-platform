@@ -7,6 +7,8 @@ import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTas
 import com.andeva.atelier.platform.operations.domain.model.enums.ProposalSeverity;
 import com.andeva.atelier.platform.operations.domain.model.enums.WorkOrderStatus;
 import com.andeva.atelier.platform.operations.domain.model.enums.WorkOrderTaskStatus;
+import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTaskImage;
+import com.andeva.atelier.platform.operations.domain.model.enums.EvidenceType;
 import com.andeva.atelier.platform.operations.domain.model.events.ProductStockReservationCancelledEvent;
 import com.andeva.atelier.platform.operations.domain.model.events.ProductStockReservationRequestedEvent;
 import com.andeva.atelier.platform.operations.domain.model.events.TaskProposalApprovedEvent;
@@ -19,7 +21,11 @@ import com.andeva.atelier.platform.operations.domain.model.events.WorkOrderCreat
 import com.andeva.atelier.platform.operations.domain.model.events.WorkOrderDeliveredEvent;
 import com.andeva.atelier.platform.operations.domain.model.events.WorkOrderIntakeImageAttachedEvent;
 import com.andeva.atelier.platform.operations.domain.model.events.WorkOrderPaidEvent;
+import com.andeva.atelier.platform.operations.domain.model.events.WorkOrderTaskAssignedEvent;
 import com.andeva.atelier.platform.operations.domain.model.events.WorkOrderTaskCompletedEvent;
+import com.andeva.atelier.platform.operations.domain.model.events.WorkOrderTaskEvidenceAttachedEvent;
+import com.andeva.atelier.platform.operations.domain.model.events.WorkOrderTaskHoldEvent;
+import com.andeva.atelier.platform.operations.domain.model.events.WorkOrderTaskResumedEvent;
 import com.andeva.atelier.platform.operations.domain.model.events.WorkOrderTaskStartedEvent;
 import com.andeva.atelier.platform.operations.domain.model.ids.ServiceId;
 import com.andeva.atelier.platform.operations.domain.model.ids.WorkBayId;
@@ -195,6 +201,40 @@ public class WorkOrder extends AbstractDomainAggregateRoot<WorkOrder> {
             this.status = WorkOrderStatus.COMPLETED;
             registerDomainEvent(WorkOrderCompletedEvent.of(this.id, this.tenantId, this.vehicleId, this.totalAmount));
         }
+    }
+
+    public void assignTaskMechanic(WorkOrderTaskId taskId, UUID mechanicId) {
+        validateMutable("Cannot assign mechanic");
+        WorkOrderTask task = findTask(taskId);
+        task.assignMechanic(mechanicId);
+        registerDomainEvent(WorkOrderTaskAssignedEvent.of(this.id, taskId, mechanicId));
+    }
+
+    public void holdTask(WorkOrderTaskId taskId, String missingDesc, UUID missingItemId) {
+        validateMutable("Cannot hold task");
+        WorkOrderTask task = findTask(taskId);
+        task.holdForWaitingParts(missingDesc, missingItemId);
+        registerDomainEvent(WorkOrderTaskHoldEvent.of(this.id, taskId, task.getMechanicId().orElse(null), missingDesc));
+    }
+
+    public void resumeTask(WorkOrderTaskId taskId) {
+        validateMutable("Cannot resume task");
+        WorkOrderTask task = findTask(taskId);
+        task.resume();
+        registerDomainEvent(WorkOrderTaskResumedEvent.of(this.id, taskId, task.getMechanicId().orElse(null)));
+    }
+
+    public void reopenTask(WorkOrderTaskId taskId, String reason) {
+        validateMutable("Cannot reopen task");
+        WorkOrderTask task = findTask(taskId);
+        task.reopen(reason);
+        this.status = WorkOrderStatus.IN_PROGRESS;
+    }
+
+    public void attachTaskEvidence(WorkOrderTaskId taskId, StorageUrl url, EvidenceType evidenceType, String description) {
+        WorkOrderTask task = findTask(taskId);
+        WorkOrderTaskImage image = task.attachEvidenceImage(url, evidenceType, description);
+        registerDomainEvent(WorkOrderTaskEvidenceAttachedEvent.of(this.id, taskId, image.getId(), url, evidenceType));
     }
 
     public TaskProposal submitProposal(UUID mechanicId, String desc, ProposalSeverity sev, StorageUrl url, ServiceId suggestedServiceId) {

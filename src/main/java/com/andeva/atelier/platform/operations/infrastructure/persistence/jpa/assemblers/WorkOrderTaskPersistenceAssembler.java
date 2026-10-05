@@ -82,4 +82,41 @@ public final class WorkOrderTaskPersistenceAssembler {
 
         return entity;
     }
+
+    public static void updateEntity(WorkOrderTaskPersistenceEntity entity, WorkOrderTask domain) {
+        if (entity == null || domain == null) return;
+        entity.setMechanicId(domain.getMechanicId().orElse(null));
+        entity.setStatus(domain.getStatus());
+        entity.setDescription(domain.getDescription());
+        entity.setPrice(domain.getPrice().amount());
+        entity.setActualHours(domain.getActualHours().map(LaborHours::value).orElse(null));
+        entity.setHoldReason(domain.getHoldReason().orElse(null));
+        entity.setMissingItemDescription(domain.getMissingItemDescription().orElse(null));
+        entity.setPausedAt(domain.getPausedAt().orElse(null));
+        entity.setTotalPausedSeconds(domain.getTotalPausedSeconds());
+        entity.setStartedAt(domain.getStartedAt().orElse(null));
+        entity.setCompletedAt(domain.getCompletedAt().orElse(null));
+
+        if (domain.getConsumedProducts() != null) {
+            java.util.Set<java.util.UUID> existingProdIds = entity.getProducts().stream()
+                    .map(com.andeva.atelier.platform.operations.infrastructure.persistence.jpa.entities.WorkOrderTaskProductPersistenceEntity::getId)
+                    .collect(java.util.stream.Collectors.toSet());
+            for (var p : domain.getConsumedProducts()) {
+                if (!existingProdIds.contains(p.getId().value())) {
+                    entity.getProducts().add(WorkOrderTaskProductPersistenceAssembler.toEntity(p, entity));
+                }
+            }
+        }
+
+        if (domain.getTaskImages() != null) {
+            java.util.Set<java.util.UUID> existingImgIds = entity.getImages().stream()
+                    .map(com.andeva.atelier.platform.operations.infrastructure.persistence.jpa.entities.WorkOrderTaskImagePersistenceEntity::getId)
+                    .collect(java.util.stream.Collectors.toSet());
+            for (var img : domain.getTaskImages()) {
+                if (!existingImgIds.contains(img.getId())) {
+                    entity.getImages().add(WorkOrderTaskImagePersistenceAssembler.toEntity(img, entity));
+                }
+            }
+        }
+    }
 }
