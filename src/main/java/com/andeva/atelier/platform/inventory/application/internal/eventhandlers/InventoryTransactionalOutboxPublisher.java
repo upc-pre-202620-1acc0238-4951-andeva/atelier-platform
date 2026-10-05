@@ -13,10 +13,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -38,43 +39,43 @@ public class InventoryTransactionalOutboxPublisher {
         this.objectMapper.findAndRegisterModules();
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(InventoryItemCreatedIntegrationEvent event) {
         persistOutbox("InventoryItem", event.itemId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(StockAllocatedIntegrationEvent event) {
         persistOutbox("InventoryItem", event.itemId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(StockReleasedIntegrationEvent event) {
         persistOutbox("InventoryItem", event.itemId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(LowStockAlertIntegrationEvent event) {
         persistOutbox("InventoryItem", event.itemId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(PurchaseOrderIssuedIntegrationEvent event) {
         persistOutbox("PurchaseOrder", event.purchaseOrderId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(PurchaseOrderReceivedIntegrationEvent event) {
         persistOutbox("PurchaseOrder", event.purchaseOrderId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(SupplierRegisteredIntegrationEvent event) {
         persistOutbox("Supplier", event.supplierId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());

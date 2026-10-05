@@ -18,4 +18,8 @@ public record GetInventoryItemsByTenantIdQuery(
     public GetInventoryItemsByTenantIdQuery(TenantId tenantId) {
         this(tenantId, null, null);
     }
+
+    public GetInventoryItemsByTenantIdQuery(TenantId tenantId, ItemCategory category) {
+        this(tenantId, category, null);
+    }
 }

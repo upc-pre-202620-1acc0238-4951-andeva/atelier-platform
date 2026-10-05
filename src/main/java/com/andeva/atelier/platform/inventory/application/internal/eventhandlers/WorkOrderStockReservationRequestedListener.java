@@ -6,6 +6,7 @@ import com.andeva.atelier.platform.inventory.domain.model.ids.InventoryItemId;
 import com.andeva.atelier.platform.inventory.domain.model.valueobjects.Quantity;
 import com.andeva.atelier.platform.inventory.domain.model.valueobjects.StockAllocation;
 import com.andeva.atelier.platform.inventory.interfaces.events.StockAllocatedIntegrationEvent;
+import com.andeva.atelier.platform.inventory.interfaces.events.StockReservationFailedIntegrationEvent;
 import com.andeva.atelier.platform.operations.interfaces.events.ProductStockReservationRequestedIntegrationEvent;
 import com.andeva.atelier.platform.shared.application.result.ApplicationError;
 import com.andeva.atelier.platform.shared.application.result.Result;
@@ -59,6 +60,15 @@ public class WorkOrderStockReservationRequestedListener {
             eventPublisher.publishEvent(allocatedEvent);
         } else {
             log.error("Failed to allocate stock for product {}: {}", event.productId(), result.getError().message());
+            StockReservationFailedIntegrationEvent failedEvent = new StockReservationFailedIntegrationEvent(
+                    event.productId(),
+                    event.workOrderId(),
+                    event.taskId(),
+                    event.quantity(),
+                    result.getError().message(),
+                    Instant.now()
+            );
+            eventPublisher.publishEvent(failedEvent);
         }
     }
 }

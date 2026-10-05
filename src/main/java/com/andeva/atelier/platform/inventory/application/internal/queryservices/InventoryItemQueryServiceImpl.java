@@ -5,6 +5,7 @@ import com.andeva.atelier.platform.inventory.domain.model.aggregates.InventoryIt
 import com.andeva.atelier.platform.inventory.domain.model.entities.InventoryBatch;
 import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryBatchesByItemIdQuery;
 import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryItemByIdQuery;
+import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryItemBySkuQuery;
 import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryItemDetailQuery;
 import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryItemsByTenantIdQuery;
 import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryItemsPagedQuery;
@@ -48,6 +49,12 @@ public class InventoryItemQueryServiceImpl implements InventoryItemQueryService 
     public Optional<InventoryItem> handle(GetInventoryItemByIdQuery query) {
         Objects.requireNonNull(query, "GetInventoryItemByIdQuery cannot be null");
         return itemRepository.findById(query.itemId());
+    }
+
+    @Override
+    public Optional<InventoryItem> handle(GetInventoryItemBySkuQuery query) {
+        Objects.requireNonNull(query, "GetInventoryItemBySkuQuery cannot be null");
+        return itemRepository.findByTenantIdAndSku(query.tenantId(), query.sku());
     }
 
     @Override

@@ -9,6 +9,7 @@ import com.andeva.atelier.platform.inventory.infrastructure.persistence.jpa.asse
 import com.andeva.atelier.platform.inventory.infrastructure.persistence.jpa.entities.InventoryItemPersistenceEntity;
 import com.andeva.atelier.platform.inventory.infrastructure.persistence.jpa.repositories.InventoryItemPersistenceRepository;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -19,9 +20,14 @@ import java.util.Optional;
 public class InventoryItemRepositoryImpl implements InventoryItemRepository {
 
     private final InventoryItemPersistenceRepository persistenceRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public InventoryItemRepositoryImpl(InventoryItemPersistenceRepository persistenceRepository) {
+    public InventoryItemRepositoryImpl(
+            InventoryItemPersistenceRepository persistenceRepository,
+            ApplicationEventPublisher eventPublisher
+    ) {
         this.persistenceRepository = Objects.requireNonNull(persistenceRepository, "persistenceRepository cannot be null");
+        this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher cannot be null");
     }
 
     @Override
@@ -82,7 +88,12 @@ public class InventoryItemRepositoryImpl implements InventoryItemRepository {
                 .orElseGet(() -> InventoryItemPersistenceAssembler.toEntity(item));
 
         InventoryItemPersistenceEntity saved = persistenceRepository.save(entity);
-        return InventoryItemPersistenceAssembler.toDomain(saved);
+        InventoryItem domain = InventoryItemPersistenceAssembler.toDomain(saved);
+
+        item.domainEvents().forEach(eventPublisher::publishEvent);
+        item.clearDomainEvents();
+
+        return domain;
     }
 
     @Override

@@ -29,7 +29,8 @@ import com.andeva.atelier.platform.inventory.domain.model.valueobjects.PurchaseO
 import com.andeva.atelier.platform.inventory.domain.model.valueobjects.Quantity;
 import com.andeva.atelier.platform.inventory.domain.model.valueobjects.Sku;
 import com.andeva.atelier.platform.inventory.domain.model.valueobjects.TaxId;
-import com.andeva.atelier.platform.inventory.domain.repositories.InventoryItemRepository;
+import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryItemByIdQuery;
+import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryItemBySkuQuery;
 import com.andeva.atelier.platform.inventory.interfaces.rest.resources.requests.CreatePartResource;
 import com.andeva.atelier.platform.inventory.interfaces.rest.resources.requests.RegisterSupplierResource;
 import com.andeva.atelier.platform.shared.application.result.Result;
@@ -66,8 +67,6 @@ class InventoryControllersTest {
     private InventoryItemCommandService inventoryItemCommandService;
     @Mock
     private InventoryItemQueryService inventoryItemQueryService;
-    @Mock
-    private InventoryItemRepository inventoryItemRepository;
 
     @Mock
     private SupplierCommandService supplierCommandService;
@@ -89,7 +88,7 @@ class InventoryControllersTest {
         @DisplayName("Should return 200 OK with list of parts")
         void shouldReturnParts() {
             PartsCatalogController controller = new PartsCatalogController(
-                    inventoryItemCommandService, inventoryItemQueryService, inventoryItemRepository
+                    inventoryItemCommandService, inventoryItemQueryService
             );
 
             InventoryItem item = InventoryItem.create(
@@ -110,7 +109,7 @@ class InventoryControllersTest {
         @DisplayName("Should return 201 Created when creating new part")
         void shouldCreatePart() {
             PartsCatalogController controller = new PartsCatalogController(
-                    inventoryItemCommandService, inventoryItemQueryService, inventoryItemRepository
+                    inventoryItemCommandService, inventoryItemQueryService
             );
 
             InventoryItem item = InventoryItem.create(
@@ -139,7 +138,7 @@ class InventoryControllersTest {
         @DisplayName("Should return 200 OK with detail when part exists")
         void shouldGetPartById() {
             PartsCatalogController controller = new PartsCatalogController(
-                    inventoryItemCommandService, inventoryItemQueryService, inventoryItemRepository
+                    inventoryItemCommandService, inventoryItemQueryService
             );
 
             InventoryItem item = InventoryItem.create(
@@ -152,6 +151,46 @@ class InventoryControllersTest {
                     .thenReturn(Optional.of(item));
 
             ResponseEntity<?> response = controller.getPartById(item.getId().value());
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        }
+
+        @Test
+        @DisplayName("Should return 200 OK when getting part by SKU")
+        void shouldGetPartBySku() {
+            PartsCatalogController controller = new PartsCatalogController(
+                    inventoryItemCommandService, inventoryItemQueryService
+            );
+
+            InventoryItem item = InventoryItem.create(
+                    tenantId, "Pastillas Freno", Sku.of("BRK-001"), ItemCategory.BRAKES,
+                    Money.of(new BigDecimal("120.00"), Currency.PEN),
+                    Quantity.of(new BigDecimal("5.00")), "SET"
+            );
+
+            when(inventoryItemQueryService.handle(any(GetInventoryItemBySkuQuery.class)))
+                    .thenReturn(Optional.of(item));
+
+            ResponseEntity<?> response = controller.getPartBySku(null, tenantId.value(), "BRK-001");
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        }
+
+        @Test
+        @DisplayName("Should return 200 OK when getting parts by category")
+        void shouldGetPartsByCategory() {
+            PartsCatalogController controller = new PartsCatalogController(
+                    inventoryItemCommandService, inventoryItemQueryService
+            );
+
+            InventoryItem item = InventoryItem.create(
+                    tenantId, "Pastillas Freno", Sku.of("BRK-001"), ItemCategory.BRAKES,
+                    Money.of(new BigDecimal("120.00"), Currency.PEN),
+                    Quantity.of(new BigDecimal("5.00")), "SET"
+            );
+
+            when(inventoryItemQueryService.handle(any(GetInventoryItemsByTenantIdQuery.class)))
+                    .thenReturn(List.of(item));
+
+            ResponseEntity<?> response = controller.getPartsByCategory(null, tenantId.value(), "BRAKES");
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         }
     }

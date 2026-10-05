@@ -9,11 +9,11 @@ import com.andeva.atelier.platform.inventory.domain.model.commands.UpdateInvento
 import com.andeva.atelier.platform.inventory.domain.model.enums.ItemCategory;
 import com.andeva.atelier.platform.inventory.domain.model.ids.InventoryItemId;
 import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryItemByIdQuery;
+import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryItemBySkuQuery;
 import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryItemDetailQuery;
 import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryItemsByTenantIdQuery;
 import com.andeva.atelier.platform.inventory.domain.model.queries.GetLowStockItemsQuery;
 import com.andeva.atelier.platform.inventory.domain.model.valueobjects.Sku;
-import com.andeva.atelier.platform.inventory.domain.repositories.InventoryItemRepository;
 import com.andeva.atelier.platform.inventory.interfaces.rest.assemblers.PartResourceAssembler;
 import com.andeva.atelier.platform.inventory.interfaces.rest.resources.requests.CreatePartResource;
 import com.andeva.atelier.platform.inventory.interfaces.rest.resources.requests.UpdatePartResource;
@@ -60,16 +60,13 @@ public class PartsCatalogController {
 
     private final InventoryItemCommandService inventoryItemCommandService;
     private final InventoryItemQueryService inventoryItemQueryService;
-    private final InventoryItemRepository inventoryItemRepository;
 
     public PartsCatalogController(
             InventoryItemCommandService inventoryItemCommandService,
-            InventoryItemQueryService inventoryItemQueryService,
-            InventoryItemRepository inventoryItemRepository
+            InventoryItemQueryService inventoryItemQueryService
     ) {
         this.inventoryItemCommandService = Objects.requireNonNull(inventoryItemCommandService, "inventoryItemCommandService cannot be null");
         this.inventoryItemQueryService = Objects.requireNonNull(inventoryItemQueryService, "inventoryItemQueryService cannot be null");
-        this.inventoryItemRepository = Objects.requireNonNull(inventoryItemRepository, "inventoryItemRepository cannot be null");
     }
 
     private TenantId resolveTenantId(CustomUserDetails userDetails, UUID tenantHeader) {
@@ -222,7 +219,7 @@ public class PartsCatalogController {
             @PathVariable String sku
     ) {
         TenantId tenantId = resolveTenantId(userDetails, tenantHeader);
-        Optional<InventoryItem> itemOpt = inventoryItemRepository.findByTenantIdAndSku(tenantId, Sku.of(sku));
+        Optional<InventoryItem> itemOpt = inventoryItemQueryService.handle(new GetInventoryItemBySkuQuery(tenantId, Sku.of(sku)));
 
         if (itemOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -246,7 +243,7 @@ public class PartsCatalogController {
 
         try {
             ItemCategory itemCategory = ItemCategory.valueOf(category.trim().toUpperCase());
-            List<InventoryItem> items = inventoryItemRepository.findByTenantIdAndCategory(tenantId, itemCategory);
+            List<InventoryItem> items = inventoryItemQueryService.handle(new GetInventoryItemsByTenantIdQuery(tenantId, itemCategory));
             List<PartResource> resources = items.stream()
                     .map(PartResourceAssembler::toResource)
                     .toList();

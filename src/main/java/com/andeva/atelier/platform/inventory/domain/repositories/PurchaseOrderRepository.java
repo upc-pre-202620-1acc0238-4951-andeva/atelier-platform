@@ -23,4 +23,6 @@ public interface PurchaseOrderRepository {
     List<PurchaseOrder> findByTenantIdAndStatus(TenantId tenantId, PurchaseOrderStatus status);
 
     PurchaseOrder save(PurchaseOrder order);
+
+    void delete(PurchaseOrder order);
 }

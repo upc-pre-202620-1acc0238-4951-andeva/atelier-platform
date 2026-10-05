@@ -8,6 +8,7 @@ import com.andeva.atelier.platform.inventory.infrastructure.persistence.jpa.asse
 import com.andeva.atelier.platform.inventory.infrastructure.persistence.jpa.entities.SupplierPersistenceEntity;
 import com.andeva.atelier.platform.inventory.infrastructure.persistence.jpa.repositories.SupplierPersistenceRepository;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -18,9 +19,14 @@ import java.util.Optional;
 public class SupplierRepositoryImpl implements SupplierRepository {
 
     private final SupplierPersistenceRepository supplierRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public SupplierRepositoryImpl(SupplierPersistenceRepository supplierRepository) {
+    public SupplierRepositoryImpl(
+            SupplierPersistenceRepository supplierRepository,
+            ApplicationEventPublisher eventPublisher
+    ) {
         this.supplierRepository = Objects.requireNonNull(supplierRepository, "supplierRepository cannot be null");
+        this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher cannot be null");
     }
 
     @Override
@@ -72,6 +78,17 @@ public class SupplierRepositoryImpl implements SupplierRepository {
                 .orElseGet(() -> SupplierPersistenceAssembler.toEntity(supplier));
 
         SupplierPersistenceEntity saved = supplierRepository.save(entity);
-        return SupplierPersistenceAssembler.toDomain(saved);
+        Supplier domain = SupplierPersistenceAssembler.toDomain(saved);
+
+        supplier.domainEvents().forEach(eventPublisher::publishEvent);
+        supplier.clearDomainEvents();
+
+        return domain;
+    }
+
+    @Override
+    public void delete(Supplier supplier) {
+        Objects.requireNonNull(supplier, "supplier cannot be null");
+        supplierRepository.deleteById(supplier.getId().value());
     }
 }

@@ -21,4 +21,6 @@ public interface SupplierRepository {
     List<Supplier> findByTenantIdAndActive(TenantId tenantId, boolean active);
 
     Supplier save(Supplier supplier);
+
+    void delete(Supplier supplier);
 }

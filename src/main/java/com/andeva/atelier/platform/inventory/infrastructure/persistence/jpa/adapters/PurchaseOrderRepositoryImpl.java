@@ -10,6 +10,7 @@ import com.andeva.atelier.platform.inventory.infrastructure.persistence.jpa.enti
 import com.andeva.atelier.platform.inventory.infrastructure.persistence.jpa.repositories.PurchaseOrderPersistenceRepository;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.BranchId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -20,9 +21,14 @@ import java.util.Optional;
 public class PurchaseOrderRepositoryImpl implements PurchaseOrderRepository {
 
     private final PurchaseOrderPersistenceRepository purchaseOrderRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public PurchaseOrderRepositoryImpl(PurchaseOrderPersistenceRepository purchaseOrderRepository) {
+    public PurchaseOrderRepositoryImpl(
+            PurchaseOrderPersistenceRepository purchaseOrderRepository,
+            ApplicationEventPublisher eventPublisher
+    ) {
         this.purchaseOrderRepository = Objects.requireNonNull(purchaseOrderRepository, "purchaseOrderRepository cannot be null");
+        this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher cannot be null");
     }
 
     @Override
@@ -77,6 +83,17 @@ public class PurchaseOrderRepositoryImpl implements PurchaseOrderRepository {
                 .orElseGet(() -> PurchaseOrderPersistenceAssembler.toEntity(order));
 
         PurchaseOrderPersistenceEntity saved = purchaseOrderRepository.save(entity);
-        return PurchaseOrderPersistenceAssembler.toDomain(saved);
+        PurchaseOrder domain = PurchaseOrderPersistenceAssembler.toDomain(saved);
+
+        order.domainEvents().forEach(eventPublisher::publishEvent);
+        order.clearDomainEvents();
+
+        return domain;
+    }
+
+    @Override
+    public void delete(PurchaseOrder order) {
+        Objects.requireNonNull(order, "order cannot be null");
+        purchaseOrderRepository.deleteById(order.getId().value());
     }
 }

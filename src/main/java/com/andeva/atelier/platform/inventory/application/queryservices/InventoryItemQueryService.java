@@ -4,6 +4,7 @@ import com.andeva.atelier.platform.inventory.domain.model.aggregates.InventoryIt
 import com.andeva.atelier.platform.inventory.domain.model.entities.InventoryBatch;
 import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryBatchesByItemIdQuery;
 import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryItemByIdQuery;
+import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryItemBySkuQuery;
 import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryItemDetailQuery;
 import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryItemsByTenantIdQuery;
 import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryItemsPagedQuery;
@@ -18,6 +19,8 @@ import java.util.Optional;
 public interface InventoryItemQueryService {
 
     Optional<InventoryItem> handle(GetInventoryItemByIdQuery query);
+
+    Optional<InventoryItem> handle(GetInventoryItemBySkuQuery query);
 
     List<InventoryItem> handle(GetInventoryItemsByTenantIdQuery query);
 
