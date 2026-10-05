@@ -14,4 +14,8 @@ public record GetInventoryItemsByTenantIdQuery(
     public GetInventoryItemsByTenantIdQuery {
         Objects.requireNonNull(tenantId, "tenantId cannot be null");
     }
+
+    public GetInventoryItemsByTenantIdQuery(TenantId tenantId) {
+        this(tenantId, null, null);
+    }
 }

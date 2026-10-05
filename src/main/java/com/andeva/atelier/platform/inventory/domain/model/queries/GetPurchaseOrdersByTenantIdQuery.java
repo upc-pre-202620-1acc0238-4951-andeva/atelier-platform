@@ -14,4 +14,8 @@ public record GetPurchaseOrdersByTenantIdQuery(
     public GetPurchaseOrdersByTenantIdQuery {
         Objects.requireNonNull(tenantId, "tenantId cannot be null");
     }
+
+    public GetPurchaseOrdersByTenantIdQuery(TenantId tenantId) {
+        this(tenantId, null, null);
+    }
 }

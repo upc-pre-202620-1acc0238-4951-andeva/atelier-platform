@@ -12,4 +12,8 @@ public record GetSuppliersByTenantIdQuery(
     public GetSuppliersByTenantIdQuery {
         Objects.requireNonNull(tenantId, "tenantId cannot be null");
     }
+
+    public GetSuppliersByTenantIdQuery(TenantId tenantId) {
+        this(tenantId, null, null);
+    }
 }
