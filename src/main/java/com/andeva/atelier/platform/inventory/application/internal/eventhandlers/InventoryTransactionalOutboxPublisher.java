@@ -6,6 +6,7 @@ import com.andeva.atelier.platform.inventory.interfaces.events.PurchaseOrderIssu
 import com.andeva.atelier.platform.inventory.interfaces.events.PurchaseOrderReceivedIntegrationEvent;
 import com.andeva.atelier.platform.inventory.interfaces.events.StockAllocatedIntegrationEvent;
 import com.andeva.atelier.platform.inventory.interfaces.events.StockReleasedIntegrationEvent;
+import com.andeva.atelier.platform.inventory.interfaces.events.StockReservationFailedIntegrationEvent;
 import com.andeva.atelier.platform.inventory.interfaces.events.SupplierRegisteredIntegrationEvent;
 import com.andeva.atelier.platform.shared.infrastructure.outbox.entities.OutboxMessagePersistenceEntity;
 import com.andeva.atelier.platform.shared.infrastructure.outbox.repositories.OutboxMessageJpaRepository;
@@ -39,43 +40,49 @@ public class InventoryTransactionalOutboxPublisher {
         this.objectMapper.findAndRegisterModules();
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(InventoryItemCreatedIntegrationEvent event) {
         persistOutbox("InventoryItem", event.itemId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(StockAllocatedIntegrationEvent event) {
         persistOutbox("InventoryItem", event.itemId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(StockReleasedIntegrationEvent event) {
         persistOutbox("InventoryItem", event.itemId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void on(StockReservationFailedIntegrationEvent event) {
+        persistOutbox("InventoryItem", event.productId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(LowStockAlertIntegrationEvent event) {
         persistOutbox("InventoryItem", event.itemId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(PurchaseOrderIssuedIntegrationEvent event) {
         persistOutbox("PurchaseOrder", event.purchaseOrderId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(PurchaseOrderReceivedIntegrationEvent event) {
         persistOutbox("PurchaseOrder", event.purchaseOrderId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(SupplierRegisteredIntegrationEvent event) {
         persistOutbox("Supplier", event.supplierId().toString(), event.getClass().getSimpleName(), event, event.occurredOn());

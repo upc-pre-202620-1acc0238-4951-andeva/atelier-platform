@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -36,6 +37,7 @@ public class WorkOrderStockReservationRequestedListener {
     }
 
     @EventListener
+    @Transactional
     public void on(ProductStockReservationRequestedIntegrationEvent event) {
         log.info("Processing stock reservation request for product {} in work order {} task {}",
                 event.productId(), event.workOrderId(), event.taskId());
