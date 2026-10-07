@@ -166,7 +166,7 @@ public class BranchesController {
             @ApiResponse(responseCode = "403", description = "Missing authority iam:branches:manage"),
             @ApiResponse(responseCode = "404", description = "Branch not found or unauthorized")
     })
-    @PutMapping("/{id}/location")
+    @PutMapping({"/{id}", "/{id}/location"})
     @PreAuthorize("hasAuthority('iam:branches:manage')")
     public ResponseEntity<?> updateBranchLocation(
             @PathVariable UUID id,

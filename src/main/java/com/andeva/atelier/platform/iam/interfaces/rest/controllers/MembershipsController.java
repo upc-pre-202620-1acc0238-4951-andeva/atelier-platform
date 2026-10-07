@@ -55,7 +55,7 @@ import java.util.UUID;
  * @author Joel Huamani Estefanero
  */
 @RestController
-@RequestMapping("/api/v1/tenants/{tenantId}/memberships")
+@RequestMapping({"/api/v1/memberships", "/api/v1/tenants/{tenantId}/memberships"})
 @Tag(name = "Memberships", description = "Endpoints for staff memberships, compensation, and role assignments")
 public class MembershipsController {
 
@@ -85,15 +85,20 @@ public class MembershipsController {
     @GetMapping
     @PreAuthorize("hasAuthority('iam:members:read')")
     public ResponseEntity<?> getMemberships(
-            @PathVariable UUID tenantId,
+            @PathVariable(value = "tenantId", required = false) UUID tenantId,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        if (!isAuthorizedForTenant(tenantId, userDetails)) {
+        UUID effectiveTenantId = resolveEffectiveTenantId(tenantId, userDetails);
+        if (effectiveTenantId == null) {
+            return ErrorResponseAssembler.toErrorResponseFromApplicationError(
+                    ApplicationError.unauthorized("Authentication required to access memberships"));
+        }
+        if (!isAuthorizedForTenant(effectiveTenantId, userDetails)) {
             return ErrorResponseAssembler.toErrorResponseFromApplicationError(
                     ApplicationError.forbidden("Access denied: Cross-tenant access prohibited"));
         }
 
-        List<TenantMembership> memberships = membershipQueryService.handle(new GetMembershipsByTenantIdQuery(TenantId.of(tenantId)));
+        List<TenantMembership> memberships = membershipQueryService.handle(new GetMembershipsByTenantIdQuery(TenantId.of(effectiveTenantId)));
 
         List<MembershipResource> resources = memberships.stream()
                 .map(this::toMembershipResource)
@@ -115,17 +120,22 @@ public class MembershipsController {
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('iam:members:read')")
     public ResponseEntity<?> getMembershipById(
-            @PathVariable UUID tenantId,
-            @PathVariable UUID id,
+            @PathVariable(value = "tenantId", required = false) UUID tenantId,
+            @PathVariable("id") UUID id,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        if (!isAuthorizedForTenant(tenantId, userDetails)) {
+        UUID effectiveTenantId = resolveEffectiveTenantId(tenantId, userDetails);
+        if (effectiveTenantId == null) {
+            return ErrorResponseAssembler.toErrorResponseFromApplicationError(
+                    ApplicationError.unauthorized("Authentication required to access membership"));
+        }
+        if (!isAuthorizedForTenant(effectiveTenantId, userDetails)) {
             return ErrorResponseAssembler.toErrorResponseFromApplicationError(
                     ApplicationError.forbidden("Access denied: Cross-tenant access prohibited"));
         }
 
         Optional<TenantMembership> membershipOptional = membershipQueryService.handle(new GetMembershipByIdQuery(TenantMembershipId.of(id)));
-        if (membershipOptional.isEmpty() || !membershipOptional.get().tenantId().value().equals(tenantId)) {
+        if (membershipOptional.isEmpty() || !membershipOptional.get().tenantId().value().equals(effectiveTenantId)) {
             return ErrorResponseAssembler.toErrorResponseFromApplicationError(
                     ApplicationError.notFound("Membership not found with ID: " + id));
         }
@@ -147,18 +157,23 @@ public class MembershipsController {
     @PutMapping("/{id}/roles")
     @PreAuthorize("hasAuthority('iam:members:manage_roles')")
     public ResponseEntity<?> assignRoles(
-            @PathVariable UUID tenantId,
-            @PathVariable UUID id,
+            @PathVariable(value = "tenantId", required = false) UUID tenantId,
+            @PathVariable("id") UUID id,
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody AssignRolesResource resource
     ) {
-        if (!isAuthorizedForTenant(tenantId, userDetails)) {
+        UUID effectiveTenantId = resolveEffectiveTenantId(tenantId, userDetails);
+        if (effectiveTenantId == null) {
+            return ErrorResponseAssembler.toErrorResponseFromApplicationError(
+                    ApplicationError.unauthorized("Authentication required to assign roles"));
+        }
+        if (!isAuthorizedForTenant(effectiveTenantId, userDetails)) {
             return ErrorResponseAssembler.toErrorResponseFromApplicationError(
                     ApplicationError.forbidden("Access denied: Cross-tenant access prohibited"));
         }
 
         Optional<TenantMembership> membershipOptional = membershipQueryService.handle(new GetMembershipByIdQuery(TenantMembershipId.of(id)));
-        if (membershipOptional.isEmpty() || !membershipOptional.get().tenantId().value().equals(tenantId)) {
+        if (membershipOptional.isEmpty() || !membershipOptional.get().tenantId().value().equals(effectiveTenantId)) {
             return ErrorResponseAssembler.toErrorResponseFromApplicationError(
                     ApplicationError.notFound("Membership not found with ID: " + id));
         }
@@ -194,18 +209,23 @@ public class MembershipsController {
     @PutMapping("/{id}/compensation")
     @PreAuthorize("hasAuthority('iam:members:compensate')")
     public ResponseEntity<?> updateCompensation(
-            @PathVariable UUID tenantId,
-            @PathVariable UUID id,
+            @PathVariable(value = "tenantId", required = false) UUID tenantId,
+            @PathVariable("id") UUID id,
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody UpdateCompensationResource resource
     ) {
-        if (!isAuthorizedForTenant(tenantId, userDetails)) {
+        UUID effectiveTenantId = resolveEffectiveTenantId(tenantId, userDetails);
+        if (effectiveTenantId == null) {
+            return ErrorResponseAssembler.toErrorResponseFromApplicationError(
+                    ApplicationError.unauthorized("Authentication required to update compensation"));
+        }
+        if (!isAuthorizedForTenant(effectiveTenantId, userDetails)) {
             return ErrorResponseAssembler.toErrorResponseFromApplicationError(
                     ApplicationError.forbidden("Access denied: Cross-tenant access prohibited"));
         }
 
         Optional<TenantMembership> membershipOptional = membershipQueryService.handle(new GetMembershipByIdQuery(TenantMembershipId.of(id)));
-        if (membershipOptional.isEmpty() || !membershipOptional.get().tenantId().value().equals(tenantId)) {
+        if (membershipOptional.isEmpty() || !membershipOptional.get().tenantId().value().equals(effectiveTenantId)) {
             return ErrorResponseAssembler.toErrorResponseFromApplicationError(
                     ApplicationError.notFound("Membership not found with ID: " + id));
         }
@@ -248,17 +268,22 @@ public class MembershipsController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('iam:members:manage_roles')")
     public ResponseEntity<?> deactivateMembership(
-            @PathVariable UUID tenantId,
-            @PathVariable UUID id,
+            @PathVariable(value = "tenantId", required = false) UUID tenantId,
+            @PathVariable("id") UUID id,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        if (!isAuthorizedForTenant(tenantId, userDetails)) {
+        UUID effectiveTenantId = resolveEffectiveTenantId(tenantId, userDetails);
+        if (effectiveTenantId == null) {
+            return ErrorResponseAssembler.toErrorResponseFromApplicationError(
+                    ApplicationError.unauthorized("Authentication required to deactivate membership"));
+        }
+        if (!isAuthorizedForTenant(effectiveTenantId, userDetails)) {
             return ErrorResponseAssembler.toErrorResponseFromApplicationError(
                     ApplicationError.forbidden("Access denied: Cross-tenant access prohibited"));
         }
 
         Optional<TenantMembership> membershipOptional = membershipQueryService.handle(new GetMembershipByIdQuery(TenantMembershipId.of(id)));
-        if (membershipOptional.isEmpty() || !membershipOptional.get().tenantId().value().equals(tenantId)) {
+        if (membershipOptional.isEmpty() || !membershipOptional.get().tenantId().value().equals(effectiveTenantId)) {
             return ErrorResponseAssembler.toErrorResponseFromApplicationError(
                     ApplicationError.notFound("Membership not found with ID: " + id));
         }
@@ -271,6 +296,13 @@ public class MembershipsController {
                 unused -> null,
                 HttpStatus.NO_CONTENT
         );
+    }
+
+    private UUID resolveEffectiveTenantId(UUID tenantId, CustomUserDetails userDetails) {
+        if (tenantId != null) {
+            return tenantId;
+        }
+        return userDetails != null ? userDetails.getTenantId() : null;
     }
 
     private boolean isAuthorizedForTenant(UUID tenantId, CustomUserDetails userDetails) {
