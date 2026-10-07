@@ -7,13 +7,11 @@ import com.andeva.atelier.platform.billing.domain.exceptions.SubscriptionNotFoun
 import com.andeva.atelier.platform.billing.domain.model.aggregates.SubscriptionPlan;
 import com.andeva.atelier.platform.billing.domain.model.aggregates.TenantSubscription;
 import com.andeva.atelier.platform.billing.domain.model.commands.CancelSubscriptionCommand;
-import com.andeva.atelier.platform.billing.domain.model.commands.ChangeSubscriptionPlanCommand;
 import com.andeva.atelier.platform.billing.domain.model.commands.InitiateCheckoutSessionCommand;
 import com.andeva.atelier.platform.billing.domain.model.ids.PlanId;
 import com.andeva.atelier.platform.billing.domain.model.queries.GetSubscriptionPlanByIdQuery;
 import com.andeva.atelier.platform.billing.domain.model.queries.GetTenantSubscriptionQuery;
 import com.andeva.atelier.platform.billing.interfaces.rest.resources.requests.CancelSubscriptionRequest;
-import com.andeva.atelier.platform.billing.interfaces.rest.resources.requests.ChangeSubscriptionPlanRequest;
 import com.andeva.atelier.platform.billing.interfaces.rest.resources.requests.CreateCheckoutSessionRequest;
 import com.andeva.atelier.platform.billing.interfaces.rest.resources.requests.CustomerPortalRequest;
 import com.andeva.atelier.platform.billing.interfaces.rest.resources.responses.CheckoutSessionResponse;
@@ -145,39 +143,6 @@ public class TenantSubscriptionsController {
         return ResponseEntity.ok(new CustomerPortalResponse(portalUrl));
     }
 
-    /**
-     * Upgrades or downgrades the commercial plan for the authenticated workshop tenant.
-     */
-    @Operation(summary = "Change subscription plan (upgrade or downgrade)")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Plan changed successfully"),
-            @ApiResponse(responseCode = "400", description = "Bad request"),
-            @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "404", description = "Plan or subscription not found"),
-            @ApiResponse(responseCode = "409", description = "Same plan conflict"),
-            @ApiResponse(responseCode = "422", description = "Downgrade blocked due to exceeding quota limits")
-    })
-    @PostMapping("/change-plan")
-    @PreAuthorize("hasAuthority('billing:subscriptions:manage_stripe') or hasAnyRole('ROLE_TENANT_ADMIN', 'ROLE_WORKSHOP_OWNER')")
-    public ResponseEntity<TenantSubscriptionResource> changeSubscriptionPlan(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @Valid @RequestBody ChangeSubscriptionPlanRequest request
-    ) {
-        TenantId tenantId = resolveTenantId(userDetails);
-        TenantSubscription current = subscriptionQueryService.handle(new GetTenantSubscriptionQuery(tenantId))
-                .orElseThrow(() -> new SubscriptionNotFoundException("No subscription found for workshop: " + tenantId.value()));
-
-        PlanId newPlanId = new PlanId(request.newPlanId());
-        boolean prorate = request.prorate() != null ? request.prorate() : true;
-        ChangeSubscriptionPlanCommand command = new ChangeSubscriptionPlanCommand(current.id(), newPlanId, prorate);
-        subscriptionCommandService.handle(command);
-
-        TenantSubscription updated = subscriptionQueryService.handle(new GetTenantSubscriptionQuery(tenantId))
-                .orElseThrow(() -> new SubscriptionNotFoundException("No subscription found after change: " + tenantId.value()));
-        Optional<SubscriptionPlan> plan = planQueryService.handle(new GetSubscriptionPlanByIdQuery(newPlanId));
-
-        return ResponseEntity.ok(subscriptionResourceAssembler.toResource(updated, plan.orElse(null)));
-    }
 
     /**
      * Cancels an active subscription immediately or schedules termination at current period end.

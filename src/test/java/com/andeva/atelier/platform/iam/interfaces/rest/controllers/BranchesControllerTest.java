@@ -211,4 +211,44 @@ class BranchesControllerTest {
 
         verify(branchCommandService).handle(any(UpdateBranchLocationCommand.class));
     }
+
+    @Test
+    @DisplayName("PUT /api/v1/branches/{id} canonical path updates coordinates and returns 200 OK")
+    void updateBranchLocationCanonicalPathSuccessfully() throws Exception {
+        UUID branchUuid = UUID.randomUUID();
+        UpdateBranchLocationResource resource = new UpdateBranchLocationResource(-12.0950, -77.0480, 200);
+
+        Branch existingBranch = new Branch(
+                BranchId.of(branchUuid),
+                TenantId.of(tenantUuid),
+                "Sede Principal",
+                "0000",
+                GeoPoint.of(-12.0931, -77.0465),
+                150,
+                true
+        );
+
+        Branch updatedBranch = new Branch(
+                BranchId.of(branchUuid),
+                TenantId.of(tenantUuid),
+                "Sede Principal",
+                "0000",
+                GeoPoint.of(-12.0950, -77.0480),
+                200,
+                true
+        );
+
+        when(branchQueryService.handle(new GetBranchByIdQuery(BranchId.of(branchUuid))))
+                .thenReturn(Optional.of(existingBranch));
+        when(branchCommandService.handle(any(UpdateBranchLocationCommand.class)))
+                .thenReturn(Result.success(updatedBranch));
+
+        mockMvc.perform(put("/api/v1/branches/" + branchUuid)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(resource)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.geofenceRadiusMeters").value(200));
+
+        verify(branchCommandService).handle(any(UpdateBranchLocationCommand.class));
+    }
 }
