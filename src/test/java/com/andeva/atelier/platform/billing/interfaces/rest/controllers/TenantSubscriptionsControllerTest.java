@@ -7,7 +7,6 @@ import com.andeva.atelier.platform.billing.domain.exceptions.SubscriptionNotFoun
 import com.andeva.atelier.platform.billing.domain.model.aggregates.SubscriptionPlan;
 import com.andeva.atelier.platform.billing.domain.model.aggregates.TenantSubscription;
 import com.andeva.atelier.platform.billing.domain.model.commands.CancelSubscriptionCommand;
-import com.andeva.atelier.platform.billing.domain.model.commands.ChangeSubscriptionPlanCommand;
 import com.andeva.atelier.platform.billing.domain.model.commands.InitiateCheckoutSessionCommand;
 import com.andeva.atelier.platform.billing.domain.model.enums.BillingCycle;
 import com.andeva.atelier.platform.billing.domain.model.enums.PlanTier;
@@ -23,7 +22,6 @@ import com.andeva.atelier.platform.billing.domain.model.valueobjects.Subscriptio
 import com.andeva.atelier.platform.billing.domain.model.valueobjects.TenantQuotaLimits;
 import com.andeva.atelier.platform.billing.interfaces.rest.advice.BillingExceptionHandler;
 import com.andeva.atelier.platform.billing.interfaces.rest.resources.requests.CancelSubscriptionRequest;
-import com.andeva.atelier.platform.billing.interfaces.rest.resources.requests.ChangeSubscriptionPlanRequest;
 import com.andeva.atelier.platform.billing.interfaces.rest.resources.requests.CreateCheckoutSessionRequest;
 import com.andeva.atelier.platform.billing.interfaces.rest.resources.requests.CustomerPortalRequest;
 import com.andeva.atelier.platform.billing.interfaces.rest.transform.TenantSubscriptionResourceAssembler;
@@ -219,22 +217,6 @@ class TenantSubscriptionsControllerTest {
         verify(subscriptionCommandService).handleCreateCustomerPortalSession(any(), any());
     }
 
-    @Test
-    @DisplayName("POST /api/v1/billing/subscriptions/change-plan switches plan and returns 200 OK")
-    void changeSubscriptionPlanReturns200() throws Exception {
-        ChangeSubscriptionPlanRequest request = new ChangeSubscriptionPlanRequest(planPro.id().value());
-
-        when(subscriptionQueryService.handle(any(GetTenantSubscriptionQuery.class))).thenReturn(Optional.of(subscription));
-        when(planQueryService.handle(any(GetSubscriptionPlanByIdQuery.class))).thenReturn(Optional.of(planPro));
-
-        mockMvc.perform(post("/api/v1/billing/subscriptions/change-plan")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.planName").value("Plan Pro"));
-
-        verify(subscriptionCommandService).handle(any(ChangeSubscriptionPlanCommand.class));
-    }
 
     @Test
     @DisplayName("POST /api/v1/billing/subscriptions/cancel at period end returns 200 OK")

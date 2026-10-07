@@ -287,4 +287,148 @@ class MembershipsControllerTest {
 
         verify(membershipCommandService).handle(any(DeactivateMembershipCommand.class));
     }
+
+    @Test
+    @DisplayName("GET /api/v1/memberships resolves tenant from security context and returns 200 OK")
+    void getMembershipsCanonicalPathSuccessfully() throws Exception {
+        UUID userUuid = UUID.randomUUID();
+
+        Role sampleRole = new Role(
+                RoleId.generate(),
+                TenantId.of(tenantUuid),
+                "MECHANIC",
+                "Mechanic",
+                "Automotive mechanic",
+                false,
+                Collections.emptySet()
+        );
+
+        TenantMembership membership = TenantMembership.create(
+                TenantId.of(tenantUuid),
+                UserId.of(userUuid),
+                SalaryType.FIXED,
+                Money.of(2500, Currency.PEN),
+                Set.of(sampleRole)
+        );
+
+        User user = User.registerWithLocalCredentials(
+                EmailAddress.of("technician@precision.pe"),
+                Password.of("$2a$12$e80yqZ67G60m8m8e8m8m8e8m8m8e8m8m8e8m8m8e8m8m8e8m8m8e8"),
+                PersonName.of("Jorge", "Benavides"),
+                PhoneNumber.of("+51999888777")
+        );
+
+        when(membershipQueryService.handle(new GetMembershipsByTenantIdQuery(TenantId.of(tenantUuid))))
+                .thenReturn(List.of(membership));
+        when(userQueryService.handle(new GetUserByIdQuery(UserId.of(userUuid))))
+                .thenReturn(Optional.of(user));
+
+        mockMvc.perform(get("/api/v1/memberships"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(membership.id().value().toString()))
+                .andExpect(jsonPath("$[0].email").value("technician@precision.pe"))
+                .andExpect(jsonPath("$[0].employeeName").value("Jorge Benavides"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/memberships/{id} resolves tenant from security context and returns 200 OK")
+    void getMembershipByIdCanonicalPathSuccessfully() throws Exception {
+        UUID membershipUuid = UUID.randomUUID();
+        UUID userUuid = UUID.randomUUID();
+
+        Role sampleRole = new Role(
+                RoleId.generate(),
+                TenantId.of(tenantUuid),
+                "MECHANIC",
+                "Mechanic",
+                "Automotive mechanic",
+                false,
+                Collections.emptySet()
+        );
+
+        TenantMembership membership = TenantMembership.create(
+                TenantId.of(tenantUuid),
+                UserId.of(userUuid),
+                SalaryType.FIXED,
+                Money.of(2500, Currency.PEN),
+                Set.of(sampleRole)
+        );
+
+        when(membershipQueryService.handle(new GetMembershipByIdQuery(TenantMembershipId.of(membershipUuid))))
+                .thenReturn(Optional.of(membership));
+        when(userQueryService.handle(new GetUserByIdQuery(UserId.of(userUuid))))
+                .thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/v1/memberships/" + membershipUuid))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(membership.id().value().toString()));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/memberships/{id}/roles resolves tenant and returns 200 OK")
+    void assignRolesCanonicalPathSuccessfully() throws Exception {
+        UUID membershipUuid = UUID.randomUUID();
+        UUID roleUuid = UUID.randomUUID();
+        AssignRolesResource resource = new AssignRolesResource(List.of(roleUuid));
+
+        Role sampleRole = new Role(
+                RoleId.generate(),
+                TenantId.of(tenantUuid),
+                "MECHANIC",
+                "Mechanic",
+                "Automotive mechanic",
+                false,
+                Collections.emptySet()
+        );
+
+        TenantMembership membership = TenantMembership.create(
+                TenantId.of(tenantUuid),
+                UserId.of(UUID.randomUUID()),
+                SalaryType.FIXED,
+                Money.of(2000, Currency.PEN),
+                Set.of(sampleRole)
+        );
+
+        when(membershipQueryService.handle(new GetMembershipByIdQuery(TenantMembershipId.of(membershipUuid))))
+                .thenReturn(Optional.of(membership));
+        when(membershipCommandService.handle(any(AssignRolesToMembershipCommand.class)))
+                .thenReturn(Result.success(membership));
+
+        mockMvc.perform(put("/api/v1/memberships/" + membershipUuid + "/roles")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(resource)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("DELETE /api/v1/memberships/{id} resolves tenant and returns 204 No Content")
+    void deactivateMembershipCanonicalPathSuccessfully() throws Exception {
+        UUID membershipUuid = UUID.randomUUID();
+
+        Role sampleRole = new Role(
+                RoleId.generate(),
+                TenantId.of(tenantUuid),
+                "MECHANIC",
+                "Mechanic",
+                "Automotive mechanic",
+                false,
+                Collections.emptySet()
+        );
+
+        TenantMembership membership = TenantMembership.create(
+                TenantId.of(tenantUuid),
+                UserId.of(UUID.randomUUID()),
+                SalaryType.FIXED,
+                Money.of(2000, Currency.PEN),
+                Set.of(sampleRole)
+        );
+
+        when(membershipQueryService.handle(new GetMembershipByIdQuery(TenantMembershipId.of(membershipUuid))))
+                .thenReturn(Optional.of(membership));
+        when(membershipCommandService.handle(any(DeactivateMembershipCommand.class)))
+                .thenReturn(Result.success(null));
+
+        mockMvc.perform(delete("/api/v1/memberships/" + membershipUuid))
+                .andExpect(status().isNoContent());
+    }
 }
