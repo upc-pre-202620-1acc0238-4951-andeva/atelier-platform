@@ -48,8 +48,8 @@ USER spring:spring
 # Default environment configuration
 ENV PORT=8080
 ENV SPRING_PROFILES_ACTIVE=prod
-# Tune JVM memory ergonomics for 512MB RAM cloud containers (Render Free Tier)
-ENV JAVA_OPTS="-XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError"
+# Tune JVM memory ergonomics strictly within 512MB RAM cloud containers (Render Free Tier)
+ENV JAVA_OPTS="-Xms128m -Xmx220m -XX:MaxMetaspaceSize=135m -Xss512k -XX:+UseSerialGC -XX:+ExitOnOutOfMemoryError"
 
 EXPOSE 8080
 
