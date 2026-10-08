@@ -10,4 +10,7 @@ public record CustomerSummaryDto(
         String phone,
         String customerType
 ) {
+    public String displayName() {
+        return fullName;
+    }
 }

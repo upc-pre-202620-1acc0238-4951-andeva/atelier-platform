@@ -55,7 +55,7 @@ import java.util.UUID;
  * @author Joel Huamani Estefanero
  */
 @RestController
-@RequestMapping({"/api/v1/memberships", "/api/v1/tenants/{tenantId}/memberships"})
+@RequestMapping("/api/v1/memberships")
 @Tag(name = "Memberships", description = "Endpoints for staff memberships, compensation, and role assignments")
 public class MembershipsController {
 

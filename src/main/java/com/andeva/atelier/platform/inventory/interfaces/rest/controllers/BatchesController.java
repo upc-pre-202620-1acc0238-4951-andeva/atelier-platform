@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 
 /**
  * REST controller managing inventory batches, physical stock traceability,
@@ -53,9 +54,10 @@ import java.util.UUID;
  * Exposes canonical endpoints 16 through 19.
  *
  * @author Adiel Sanchez Santin
+ * @author Joel Huamani Estefanero
  */
 @RestController
-@RequestMapping({"/api/v1/inventory/batches", "/api/v1/batches"})
+@RequestMapping("/api/v1/inventory/batches")
 @Tag(name = "Batches & FIFO Allocations", description = "Endpoints for batch reception, physical stock traceability, and deterministic FIFO dispatching and restoration")
 public class BatchesController {
 
@@ -70,7 +72,20 @@ public class BatchesController {
         this.inventoryItemQueryService = Objects.requireNonNull(inventoryItemQueryService, "inventoryItemQueryService cannot be null");
     }
 
-    /**
+        private TenantId resolveTenantId(CustomUserDetails userDetails, UUID tenantHeader) {
+        if (tenantHeader != null) {
+            if (userDetails != null && userDetails.getTenantId() != null && !userDetails.getTenantId().equals(tenantHeader)) {
+                throw new org.springframework.security.access.AccessDeniedException("Tenant ID in header does not match authenticated user context");
+            }
+            return TenantId.of(tenantHeader);
+        }
+        if (userDetails != null && userDetails.getTenantId() != null) {
+            return TenantId.of(userDetails.getTenantId());
+        }
+        throw new org.springframework.security.access.AccessDeniedException("Active tenant context is required");
+    }
+
+/**
      * Endpoint 16: List all active batches for an inventory item ordered by FIFO.
      */
     @GetMapping("/by-part/{partId}")

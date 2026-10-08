@@ -8,12 +8,14 @@ import com.andeva.atelier.platform.inventory.domain.model.commands.CreateInvento
 import com.andeva.atelier.platform.inventory.domain.model.commands.UpdateInventoryItemCommand;
 import com.andeva.atelier.platform.inventory.domain.model.enums.ItemCategory;
 import com.andeva.atelier.platform.inventory.domain.model.ids.InventoryItemId;
+import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryBatchesByItemIdQuery;
 import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryItemByIdQuery;
 import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryItemBySkuQuery;
 import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryItemDetailQuery;
 import com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryItemsByTenantIdQuery;
 import com.andeva.atelier.platform.inventory.domain.model.queries.GetLowStockItemsQuery;
 import com.andeva.atelier.platform.inventory.domain.model.valueobjects.Sku;
+import com.andeva.atelier.platform.inventory.interfaces.rest.assemblers.BatchResourceAssembler;
 import com.andeva.atelier.platform.inventory.interfaces.rest.assemblers.PartResourceAssembler;
 import com.andeva.atelier.platform.inventory.interfaces.rest.resources.requests.CreatePartResource;
 import com.andeva.atelier.platform.inventory.interfaces.rest.resources.requests.UpdatePartResource;
@@ -52,9 +54,10 @@ import java.util.UUID;
  * Exposes canonical endpoints 1 through 6.
  *
  * @author Adiel Sanchez Santin
+ * @author Joel Huamani Estefanero
  */
 @RestController
-@RequestMapping({"/api/v1/inventory/parts", "/api/v1/inventory/items", "/api/v1/parts", "/api/v1/items"})
+@RequestMapping("/api/v1/inventory/items")
 @Tag(name = "Parts Catalog", description = "Endpoints for managing automotive spare parts catalog, technical specifications, and physical stock thresholds")
 public class PartsCatalogController {
 
@@ -69,14 +72,25 @@ public class PartsCatalogController {
         this.inventoryItemQueryService = Objects.requireNonNull(inventoryItemQueryService, "inventoryItemQueryService cannot be null");
     }
 
+    @GetMapping("/{id}/batches")
+    @PreAuthorize("hasAuthority('inventory:batches:read') or hasAuthority('inventory:parts:read') or hasRole('MECHANIC') or hasRole('CHIEF_MECHANIC') or hasRole('INVENTORY_MANAGER') or hasRole('TENANT_ADMIN') or isAuthenticated()")
+    @Operation(summary = "List batches for an inventory item")
+    public ResponseEntity<?> getItemBatches(@PathVariable UUID id) {
+        List<com.andeva.atelier.platform.inventory.domain.model.entities.InventoryBatch> batches = inventoryItemQueryService.handle(new GetInventoryBatchesByItemIdQuery(InventoryItemId.of(id)));
+        return ResponseEntity.ok(BatchResourceAssembler.toResourceList(batches));
+    }
+
     private TenantId resolveTenantId(CustomUserDetails userDetails, UUID tenantHeader) {
         if (tenantHeader != null) {
+            if (userDetails != null && userDetails.getTenantId() != null && !userDetails.getTenantId().equals(tenantHeader)) {
+                throw new org.springframework.security.access.AccessDeniedException("Tenant ID in header does not match authenticated user context");
+            }
             return TenantId.of(tenantHeader);
         }
         if (userDetails != null && userDetails.getTenantId() != null) {
             return TenantId.of(userDetails.getTenantId());
         }
-        return TenantId.of(UUID.randomUUID());
+        throw new org.springframework.security.access.AccessDeniedException("Active tenant context is required");
     }
 
     /**
@@ -252,4 +266,39 @@ public class PartsCatalogController {
             return ResponseEntity.badRequest().body("Invalid item category: " + category);
         }
     }
+
+
+    /**
+     * Endpoint 2.5: [GET] /low-stock returning low-stock items.
+     */
+    @GetMapping("/low-stock")
+    @PreAuthorize("hasAuthority('inventory:parts:read') or hasRole('MECHANIC') or hasRole('CHIEF_MECHANIC') or hasRole('INVENTORY_MANAGER') or hasRole('TENANT_ADMIN') or isAuthenticated()")
+    @Operation(summary = "Get low-stock items")
+    public ResponseEntity<?> getLowStockItems(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestHeader(value = "X-Tenant-Id", required = false) UUID tenantHeader
+    ) {
+        TenantId tenantId = resolveTenantId(userDetails, tenantHeader);
+        List<InventoryItem> items = inventoryItemQueryService.handle(new GetLowStockItemsQuery(tenantId));
+        List<PartResource> resources = items.stream()
+                .map(PartResourceAssembler::toResource)
+                .toList();
+        return ResponseEntity.ok(resources);
+    }
+
+    /**
+     * Endpoint 2.6: [GET] /valuation returning inventory valuation.
+     */
+    @GetMapping("/valuation")
+    @PreAuthorize("hasAuthority('inventory:parts:read') or hasRole('INVENTORY_MANAGER') or hasRole('TENANT_ADMIN') or isAuthenticated()")
+    @Operation(summary = "Get inventory valuation")
+    public ResponseEntity<?> getInventoryValuation(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestHeader(value = "X-Tenant-Id", required = false) UUID tenantHeader
+    ) {
+        TenantId tenantId = resolveTenantId(userDetails, tenantHeader);
+        com.andeva.atelier.platform.shared.domain.model.valueobjects.Money valuation = inventoryItemQueryService.handle(new com.andeva.atelier.platform.inventory.domain.model.queries.GetInventoryValuationQuery(tenantId));
+        return ResponseEntity.ok(java.util.Map.of("valuation", valuation.amount()));
+    }
+
 }

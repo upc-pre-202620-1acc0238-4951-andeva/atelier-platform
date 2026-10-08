@@ -1,0 +1,9 @@
+target/
+.git
+.gitignore
+.idea/
+*.env*
+.codegraph/
+docs/
+README.md
+HELP.md

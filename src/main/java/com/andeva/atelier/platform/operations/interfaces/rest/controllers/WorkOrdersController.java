@@ -39,8 +39,13 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * REST controller for managing workshop vehicle work orders, bay allocation, and lifecycle orchestration.
+ *
+ * @author Joel Huamani Estefanero
+ */
 @RestController
-@RequestMapping({"/api/v1/work-orders", "/api/v1/operations/work-orders"})
+@RequestMapping("/api/v1/work-orders")
 @Tag(name = "Work Orders", description = "Endpoints for managing workshop vehicle work orders, bay allocation, and lifecycle orchestration")
 public class WorkOrdersController {
 
@@ -363,7 +368,7 @@ public class WorkOrdersController {
         return ResponseEntity.ok(WorkOrderResourceAssembler.toResourceFromEntity(result.getOrThrow()));
     }
 
-    @PostMapping({"/{workOrderId}/handover", "/{workOrderId}/deliver"})
+    @PostMapping("/{workOrderId}/deliver")
     @PreAuthorize("hasAuthority('operations:work-orders:write') or hasRole('SERVICE_ADVISOR')")
     @Operation(summary = "Deliver vehicle back to owner following payment confirmation")
     public ResponseEntity<?> deliverVehicle(@PathVariable UUID workOrderId) {

@@ -12,6 +12,8 @@ import java.util.UUID;
 /**
  * Open Host Service (OHS) facade for the Inventory Bounded Context,
  * consumed by Workshop Operations, Billing, and other peer contexts.
+ *
+ * @author Joel Huamani Estefanero
  */
 public interface InventoryContextFacade {
 
@@ -37,4 +39,20 @@ public interface InventoryContextFacade {
     );
 
     BigDecimal calculateInventoryValuation(UUID tenantId);
+
+    default Optional<PartSummaryDto> fetchItemSummary(UUID itemId) {
+        return getPartSummary(null, itemId);
+    }
+
+    default BigDecimal fetchItemCurrentStock(UUID itemId) {
+        return getPartCurrentStock(null, itemId).orElse(BigDecimal.ZERO);
+    }
+
+    default Result<StockAllocationDto, ApplicationError> reserveStockForWorkOrder(UUID tenantId, UUID itemId, BigDecimal quantity) {
+        return reserveStockForWorkOrder(tenantId, itemId, quantity, null, null);
+    }
+
+    default Result<Void, ApplicationError> releaseStockReservation(UUID tenantId, UUID itemId, BigDecimal quantity) {
+        return releaseStockReservation(tenantId, itemId, quantity, null);
+    }
 }

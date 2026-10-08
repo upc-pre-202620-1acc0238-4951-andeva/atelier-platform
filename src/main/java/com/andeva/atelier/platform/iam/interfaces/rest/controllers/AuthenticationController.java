@@ -56,7 +56,7 @@ import java.util.Objects;
  * @author Joel Huamani Estefanero
  */
 @RestController
-@RequestMapping({"/api/v1/auth", "/api/v1/authentication"})
+@RequestMapping("/api/v1/auth")
 @Tag(name = "Authentication & Onboarding", description = "Endpoints for user sign-in, tenant registration, password reset, and email verification")
 public class AuthenticationController {
 

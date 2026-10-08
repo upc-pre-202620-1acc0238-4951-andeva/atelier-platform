@@ -154,7 +154,7 @@ public class AppointmentsController {
     }
 
     @PostMapping("/{id}/confirm")
-    @PreAuthorize("hasAuthority('crm:appointments:update')")
+    @PreAuthorize("hasAuthority('crm:appointments:manage') or hasAuthority('crm:appointments:update')")
     @Operation(summary = "Confirm pending appointment")
     public ResponseEntity<?> confirmAppointment(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -176,7 +176,7 @@ public class AppointmentsController {
     }
 
     @PostMapping("/{id}/arrive")
-    @PreAuthorize("hasAuthority('crm:appointments:update')")
+    @PreAuthorize("hasAuthority('crm:appointments:manage') or hasAuthority('crm:appointments:update')")
     @Operation(summary = "Mark appointment as arrived at the workshop bay")
     public ResponseEntity<?> markArrived(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -198,7 +198,7 @@ public class AppointmentsController {
     }
 
     @PostMapping("/{id}/reschedule")
-    @PreAuthorize("hasAuthority('crm:appointments:update')")
+    @PreAuthorize("hasAuthority('crm:appointments:manage') or hasAuthority('crm:appointments:update')")
     @Operation(summary = "Reschedule an existing appointment to a new date and time")
     public ResponseEntity<?> rescheduleAppointment(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -222,7 +222,7 @@ public class AppointmentsController {
     }
 
     @PostMapping("/{id}/cancel")
-    @PreAuthorize("hasAuthority('crm:appointments:update')")
+    @PreAuthorize("hasAuthority('crm:appointments:manage') or hasAuthority('crm:appointments:update')")
     @Operation(summary = "Cancel an appointment recording a justification")
     public ResponseEntity<?> cancelAppointment(
             @AuthenticationPrincipal CustomUserDetails userDetails,

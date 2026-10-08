@@ -34,6 +34,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * @author Joel Huamani Estefanero
+ */
 @RestController
 @RequestMapping("/api/v1/hr/work-shifts")
 @Tag(name = "Work Shifts", description = "Endpoints for managing workshop work shifts and schedules")
@@ -51,9 +54,16 @@ public class WorkShiftsController {
     }
 
     private TenantId resolveTenantId(CustomUserDetails userDetails, UUID tenantHeader) {
-        if (tenantHeader != null) return TenantId.of(tenantHeader);
-        if (userDetails != null && userDetails.getTenantId() != null) return TenantId.of(userDetails.getTenantId());
-        return TenantId.of(UUID.randomUUID());
+        if (tenantHeader != null) {
+            if (userDetails != null && userDetails.getTenantId() != null && !userDetails.getTenantId().equals(tenantHeader)) {
+                throw new org.springframework.security.access.AccessDeniedException("Tenant ID in header does not match authenticated user context");
+            }
+            return TenantId.of(tenantHeader);
+        }
+        if (userDetails != null && userDetails.getTenantId() != null) {
+            return TenantId.of(userDetails.getTenantId());
+        }
+        throw new org.springframework.security.access.AccessDeniedException("Active tenant context is required");
     }
 
     @PostMapping

@@ -195,7 +195,7 @@ INSERT INTO plans (
 -- -----------------------------------------------------------------------------
 (
     'a0000001-0000-0000-0000-000000000001',
-    'price_go_monthly',
+    'price_1UOKeURVqZvA02cLjVnFmfMH',
     'Go',
     'GO',
     139.00,
@@ -216,7 +216,7 @@ INSERT INTO plans (
 ),
 (
     'a0000001-0000-0000-0000-000000000002',
-    'price_go_yearly',
+    'price_1UOKfDRVqZvA02cLGfK7ulMR',
     'Go',
     'GO',
     1308.00, -- Equivalente a S/ 109.00 / mes (Ahorro de S/ 360 / año)
@@ -241,7 +241,7 @@ INSERT INTO plans (
 -- -----------------------------------------------------------------------------
 (
     'b0000002-0000-0000-0000-000000000001',
-    'price_pro_monthly',
+    'price_1UOKfERVqZvA02cL6ILP96dG',
     'Pro',
     'PRO',
     269.00,
@@ -262,7 +262,7 @@ INSERT INTO plans (
 ),
 (
     'b0000002-0000-0000-0000-000000000002',
-    'price_pro_yearly',
+    'price_1UOKfERVqZvA02cLYlnsNtCb',
     'Pro',
     'PRO',
     2628.00, -- Equivalente a S/ 219.00 / mes (Ahorro de S/ 600 / año)
@@ -287,7 +287,7 @@ INSERT INTO plans (
 -- -----------------------------------------------------------------------------
 (
     'c0000003-0000-0000-0000-000000000001',
-    'price_max_monthly',
+    'price_1UOKfFRVqZvA02cLjOusqQEW',
     'Max',
     'MAX',
     489.00,
@@ -308,7 +308,7 @@ INSERT INTO plans (
 ),
 (
     'c0000003-0000-0000-0000-000000000002',
-    'price_max_yearly',
+    'price_1UOKfFRVqZvA02cLlG5sPV8j',
     'Max',
     'MAX',
     4788.00, -- Equivalente a S/ 399.00 / mes (Ahorro de S/ 1,080 / año)

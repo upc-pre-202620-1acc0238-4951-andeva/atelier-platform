@@ -39,12 +39,13 @@ import java.util.UUID;
 
 /**
  * REST controller managing corporate fleet delegations and customer membership assignments.
- * Canonical specification from 03-crm-and-fleet.md Section 5.3.1.
+ * Canonical specification from 02-crm-and-fleet.md Section 5.
  *
+ * @author Joel Huamani Estefanero
  * @author Adiel Sanchez Santin
  */
 @RestController
-@RequestMapping("/api/v1/customers/{customerId}/members")
+@RequestMapping("/api/v1/customers/{customerId}/memberships")
 @Tag(name = "Customer Memberships", description = "Endpoints for managing corporate customer fleet memberships and roles")
 public class CustomerMembershipsController {
 
@@ -60,7 +61,7 @@ public class CustomerMembershipsController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('crm:fleets:manage')")
+    @PreAuthorize("hasAuthority('crm:customers:manage') or hasAuthority('crm:fleets:manage')")
     @Operation(summary = "Invite or assign user to corporate customer fleet")
     public ResponseEntity<?> inviteMember(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -84,7 +85,7 @@ public class CustomerMembershipsController {
     }
 
     @DeleteMapping("/{userId}")
-    @PreAuthorize("hasAuthority('crm:fleets:manage')")
+    @PreAuthorize("hasAuthority('crm:customers:manage') or hasAuthority('crm:fleets:manage')")
     @Operation(summary = "Revoke corporate fleet membership from user")
     public ResponseEntity<?> revokeMember(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -111,7 +112,7 @@ public class CustomerMembershipsController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('crm:fleets:manage')")
+    @PreAuthorize("hasAuthority('crm:customers:read') or hasAuthority('crm:fleets:manage')")
     @Operation(summary = "List corporate fleet members assigned to customer")
     public ResponseEntity<?> getMembersByCustomerId(@PathVariable UUID customerId) {
         List<CustomerMembership> members = customerMembershipQueryService.handle(

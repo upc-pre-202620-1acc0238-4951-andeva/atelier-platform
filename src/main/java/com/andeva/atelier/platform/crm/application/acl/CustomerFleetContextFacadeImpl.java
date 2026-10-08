@@ -5,6 +5,7 @@ import com.andeva.atelier.platform.crm.domain.model.aggregates.Appointment;
 import com.andeva.atelier.platform.crm.domain.model.aggregates.Customer;
 import com.andeva.atelier.platform.crm.domain.model.aggregates.Vehicle;
 import com.andeva.atelier.platform.crm.domain.model.commands.MarkAppointmentArrivedCommand;
+import com.andeva.atelier.platform.crm.domain.model.commands.ScheduleAppointmentCommand;
 import com.andeva.atelier.platform.crm.domain.model.entities.CustomerMembership;
 import com.andeva.atelier.platform.crm.domain.model.entities.VehicleOwnership;
 import com.andeva.atelier.platform.crm.domain.model.enums.CustomerMembershipStatus;
@@ -22,6 +23,7 @@ import com.andeva.atelier.platform.crm.interfaces.acl.dto.CustomerMembershipAclD
 import com.andeva.atelier.platform.crm.interfaces.acl.dto.VehicleAclDto;
 import com.andeva.atelier.platform.shared.application.result.ApplicationError;
 import com.andeva.atelier.platform.shared.application.result.Result;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.BranchId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.CustomerId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.UserId;
@@ -29,6 +31,8 @@ import com.andeva.atelier.platform.shared.domain.model.valueobjects.VehicleId;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -102,7 +106,7 @@ public class CustomerFleetContextFacadeImpl implements CustomerFleetContextFacad
             LicensePlate licensePlate = LicensePlate.of(plate);
             return vehicleRepository.findByPlate(licensePlate)
                     .map(this::toAclDto);
-        } catch (IllegalArgumentException e) {
+        } catch (Exception e) {
             return Optional.empty();
         }
     }
@@ -198,6 +202,36 @@ public class CustomerFleetContextFacadeImpl implements CustomerFleetContextFacad
         }
         return customerMembershipRepository.findByCustomerIdAndUserId(CustomerId.of(customerId), UserId.of(userId))
                 .map(this::toAclDto);
+    }
+
+    @Override
+    @Transactional
+    public Optional<UUID> schedulePreventiveAppointment(UUID tenantId, UUID vehicleId, String description) {
+        if (tenantId == null || vehicleId == null) {
+            return Optional.empty();
+        }
+        Optional<UUID> ownerIdOpt = fetchCurrentOwnerId(vehicleId);
+        if (ownerIdOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        try {
+            ScheduleAppointmentCommand command = new ScheduleAppointmentCommand(
+                    TenantId.of(tenantId),
+                    BranchId.generate(),
+                    CustomerId.of(ownerIdOpt.get()),
+                    VehicleId.of(vehicleId),
+                    Instant.now().plus(Duration.ofDays(1)),
+                    60,
+                    description != null ? description : "Preventative maintenance scheduled from IoT Telemetry"
+            );
+            Result<Appointment, ApplicationError> result = appointmentCommandService.handle(command);
+            if (result.isSuccess() && result.toOptional().isPresent()) {
+                return Optional.of(result.toOptional().get().id().value());
+            }
+        } catch (Exception e) {
+            // Log and return empty
+        }
+        return Optional.empty();
     }
 
     private CustomerAclDto toAclDto(Customer customer) {

@@ -1,5 +1,6 @@
 package com.andeva.atelier.platform.operations.domain.model.enums;
 
 public enum HoldReason {
-    WAITING_PARTS
+    WAITING_PARTS,
+    WAITING_FOR_PARTS
 }

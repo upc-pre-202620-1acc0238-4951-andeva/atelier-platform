@@ -23,6 +23,10 @@ public record WorkOrderTaskCompletedEvent(
         Objects.requireNonNull(occurredOn, "occurredOn cannot be null");
     }
 
+    public static WorkOrderTaskCompletedEvent of(WorkOrderId workOrderId, WorkOrderTaskId taskId, double actualHours) {
+        return new WorkOrderTaskCompletedEvent(workOrderId, taskId, null, LaborHours.of(actualHours), Instant.now());
+    }
+
     public static WorkOrderTaskCompletedEvent of(WorkOrderId workOrderId, WorkOrderTaskId taskId, UUID mechanicId, LaborHours actualHours) {
         return new WorkOrderTaskCompletedEvent(workOrderId, taskId, mechanicId, actualHours, Instant.now());
     }

@@ -109,4 +109,14 @@ public interface CustomerFleetContextFacade {
      * @return Membership DTO if present
      */
     Optional<CustomerMembershipAclDto> fetchMembership(UUID customerId, UUID userId);
+
+    /**
+     * Schedules a preventative workshop appointment for a vehicle initiated from predictive alerts.
+     *
+     * @param tenantId    Tenant workshop identifier
+     * @param vehicleId   Target vehicle identifier
+     * @param description Contextual reason for scheduling
+     * @return Optional appointment ID if created successfully
+     */
+    Optional<UUID> schedulePreventiveAppointment(UUID tenantId, UUID vehicleId, String description);
 }
