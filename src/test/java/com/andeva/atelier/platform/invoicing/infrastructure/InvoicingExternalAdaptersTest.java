@@ -32,6 +32,8 @@ import com.andeva.atelier.platform.shared.domain.model.valueobjects.WorkOrderId;
 import com.andeva.atelier.platform.shared.infrastructure.outbox.entities.OutboxMessagePersistenceEntity;
 import com.andeva.atelier.platform.shared.infrastructure.outbox.entities.OutboxStatus;
 import com.andeva.atelier.platform.shared.infrastructure.outbox.repositories.OutboxMessageJpaRepository;
+import com.andeva.atelier.platform.crm.interfaces.acl.CustomerFleetContextFacade;
+import com.andeva.atelier.platform.crm.interfaces.acl.dto.CustomerAclDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -63,6 +65,9 @@ import static org.mockito.Mockito.when;
 class InvoicingExternalAdaptersTest {
 
     @Mock
+    private CustomerFleetContextFacade customerFleetContextFacade;
+
+    @Mock
     private OutboxMessageJpaRepository outboxRepository;
 
     @Mock
@@ -82,7 +87,7 @@ class InvoicingExternalAdaptersTest {
         nubefactAdapter = new NubefactPseFiscalAdapter("https://api.nubefact.com/api/v1", "test-token");
         firebaseAdapter = new FirebaseSunatCdrStorageAdapter("atelier-platform-cdr.appspot.com");
         resendAdapter = new ResendVoucherReceiptEmailAdapter("re_123456", "billing@atelier.com");
-        crmAdapter = new CustomerFiscalValidationAclAdapter();
+        crmAdapter = new CustomerFiscalValidationAclAdapter(customerFleetContextFacade);
         openPdfAdapter = new OpenPdfCashFlowReportAdapter();
         outboxRelay = new InvoicingOutboxMessageRelayAdapter(outboxRepository, eventPublisher);
         taxEngine = new PeruvianTaxCalculationEngine();
@@ -177,6 +182,58 @@ class InvoicingExternalAdaptersTest {
         assertThat(crmAdapter.validateTaxIdStatus(null)).isFalse();
 
         CustomerFiscalInfo info = crmAdapter.getCustomerFiscalData(UUID.randomUUID()).orElse(null);
+        assertThat(info).isNotNull();
+        assertThat(info.legalName()).isEqualTo("CLIENTES VARIOS");
+    }
+
+    @Test
+    @DisplayName("Should resolve company fiscal info with RUC when CRM facade is present")
+    void testFiscalValidationCompanyWithRuc() {
+        CustomerFleetContextFacade facade = org.mockito.Mockito.mock(CustomerFleetContextFacade.class);
+        UUID customerId = UUID.randomUUID();
+        when(facade.fetchCustomerById(customerId)).thenReturn(Optional.of(new CustomerAclDto(
+                customerId, UUID.randomUUID(), "COMPANY", "TRANSPORTES LIMA S.A.C.", "20100070970", "contacto@translima.pe", "987654321", "ACTIVE"
+        )));
+
+        var adapter = new CustomerFiscalValidationAclAdapter(facade);
+        CustomerFiscalInfo info = adapter.getCustomerFiscalData(customerId).orElse(null);
+
+        assertThat(info).isNotNull();
+        assertThat(info.documentType()).isEqualTo(DocumentType.RUC);
+        assertThat(info.legalName()).isEqualTo("TRANSPORTES LIMA S.A.C.");
+        assertThat(info.taxId()).isNotNull();
+        assertThat(info.taxId().value()).isEqualTo("20100070970");
+    }
+
+    @Test
+    @DisplayName("Should resolve individual fiscal info with DNI when CRM facade is present")
+    void testFiscalValidationIndividualWithDni() {
+        CustomerFleetContextFacade facade = org.mockito.Mockito.mock(CustomerFleetContextFacade.class);
+        UUID customerId = UUID.randomUUID();
+        when(facade.fetchCustomerById(customerId)).thenReturn(Optional.of(new CustomerAclDto(
+                customerId, UUID.randomUUID(), "INDIVIDUAL", "Carlos Ramos", "45678901", "carlos@gmail.com", "912345678", "ACTIVE"
+        )));
+
+        var adapter = new CustomerFiscalValidationAclAdapter(facade);
+        CustomerFiscalInfo info = adapter.getCustomerFiscalData(customerId).orElse(null);
+
+        assertThat(info).isNotNull();
+        assertThat(info.documentType()).isEqualTo(DocumentType.DNI);
+        assertThat(info.legalName()).isEqualTo("Carlos Ramos");
+        assertThat(info.taxId()).isNotNull();
+        assertThat(info.taxId().value()).isEqualTo("45678901");
+    }
+
+    @Test
+    @DisplayName("Should fallback to anonymous profile when CRM facade throws or customer absent")
+    void testFiscalValidationFallbackOnExceptionOrAbsent() {
+        CustomerFleetContextFacade facade = org.mockito.Mockito.mock(CustomerFleetContextFacade.class);
+        UUID customerId = UUID.randomUUID();
+        when(facade.fetchCustomerById(customerId)).thenThrow(new RuntimeException("Connection error"));
+
+        var adapter = new CustomerFiscalValidationAclAdapter(facade);
+        CustomerFiscalInfo info = adapter.getCustomerFiscalData(customerId).orElse(null);
+
         assertThat(info).isNotNull();
         assertThat(info.legalName()).isEqualTo("CLIENTES VARIOS");
     }

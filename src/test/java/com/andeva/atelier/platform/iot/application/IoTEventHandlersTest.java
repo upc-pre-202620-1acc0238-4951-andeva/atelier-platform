@@ -249,5 +249,38 @@ class IoTEventHandlersTest {
             verify(faultRepository).save(faultP0300);
             verify(faultRepository, never()).save(faultP0117);
         }
+
+        @Test
+        @DisplayName("Should auto-uninstall device when real CRM vehicle ownership is transferred")
+        void shouldAutoUninstallOnRealCrmOwnershipTransfer() {
+            var handler = new VehicleLifecycleIntegrationEventHandler(installationRepository, faultRepository);
+            DeviceInstallation installation = DeviceInstallation.install(deviceId, vehicleId, tenantId, 12000);
+            when(installationRepository.findActiveByVehicleId(vehicleId)).thenReturn(Optional.of(installation));
+
+            handler.on(new com.andeva.atelier.platform.crm.interfaces.events.VehicleOwnershipTransferredIntegrationEvent(
+                    vehicleId.value(), UUID.randomUUID(), UUID.randomUUID(), java.time.LocalDate.now(), Instant.now()
+            ));
+
+            assertThat(installation.isActive()).isFalse();
+            verify(installationRepository).save(installation);
+        }
+
+        @Test
+        @DisplayName("Should auto-resolve all active faults when real Operations work order is completed")
+        void shouldAutoResolveAllActiveFaultsOnRealOperationsWorkOrderCompleted() {
+            var handler = new VehicleLifecycleIntegrationEventHandler(installationRepository, faultRepository);
+            VehicleFault faultP0300 = VehicleFault.detect(vehicleId, tenantId, DtcCode.of("P0300"), FaultSeverity.CRITICAL, "Misfire");
+            VehicleFault faultP0117 = VehicleFault.detect(vehicleId, tenantId, DtcCode.of("P0117"), FaultSeverity.CRITICAL, "Temp");
+            when(faultRepository.findActiveByVehicleId(vehicleId)).thenReturn(List.of(faultP0300, faultP0117));
+
+            handler.on(new com.andeva.atelier.platform.operations.interfaces.events.WorkOrderCompletedIntegrationEvent(
+                    UUID.randomUUID(), tenantId.value(), vehicleId.value(), java.math.BigDecimal.valueOf(250.00), "PEN", Instant.now()
+            ));
+
+            assertThat(faultP0300.isResolved()).isTrue();
+            assertThat(faultP0117.isResolved()).isTrue();
+            verify(faultRepository).save(faultP0300);
+            verify(faultRepository).save(faultP0117);
+        }
     }
 }
