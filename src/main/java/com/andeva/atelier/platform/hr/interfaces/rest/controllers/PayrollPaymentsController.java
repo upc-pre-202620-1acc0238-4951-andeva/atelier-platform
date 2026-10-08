@@ -46,6 +46,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * @author Joel Huamani Estefanero
+ */
 @RestController
 @RequestMapping("/api/v1/hr/payrolls")
 @Tag(name = "Payroll Payments", description = "Endpoints for staff payroll settlements, deductions, bonuses and SUNAT PLAME export")
@@ -63,16 +66,23 @@ public class PayrollPaymentsController {
     }
 
     private TenantId resolveTenantId(CustomUserDetails userDetails, UUID tenantHeader) {
-        if (tenantHeader != null) return TenantId.of(tenantHeader);
-        if (userDetails != null && userDetails.getTenantId() != null) return TenantId.of(userDetails.getTenantId());
-        return TenantId.of(UUID.randomUUID());
+        if (tenantHeader != null) {
+            if (userDetails != null && userDetails.getTenantId() != null && !userDetails.getTenantId().equals(tenantHeader)) {
+                throw new org.springframework.security.access.AccessDeniedException("Tenant ID in header does not match authenticated user context");
+            }
+            return TenantId.of(tenantHeader);
+        }
+        if (userDetails != null && userDetails.getTenantId() != null) {
+            return TenantId.of(userDetails.getTenantId());
+        }
+        throw new org.springframework.security.access.AccessDeniedException("Active tenant context is required");
     }
 
     private TenantMembershipId resolveMembershipId(CustomUserDetails userDetails) {
         if (userDetails != null && userDetails.getUserId() != null) {
             return TenantMembershipId.of(userDetails.getUserId());
         }
-        return TenantMembershipId.of(UUID.randomUUID());
+        throw new org.springframework.security.access.AccessDeniedException("Authenticated user membership context is required");
     }
 
     @PostMapping("/generate")
@@ -184,7 +194,7 @@ public class PayrollPaymentsController {
         return ResponseEntity.ok(PayrollPaymentResourceAssembler.toResource(result.getOrThrow()));
     }
 
-    @PostMapping("/{payrollId}/calculate")
+    @PostMapping("/{payrollId}/approve")
     @PreAuthorize("hasAuthority('iam:members:compensate') or hasRole('WORKSHOP_ADMINISTRATOR') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
     @Operation(summary = "Calculate and formally approve payroll settlement")
     public ResponseEntity<?> calculateAndApprovePayroll(

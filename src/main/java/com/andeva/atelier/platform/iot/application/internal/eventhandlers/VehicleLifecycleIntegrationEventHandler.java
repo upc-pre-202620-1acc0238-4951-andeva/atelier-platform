@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Integration Event Handler listening to cross-bounded-context lifecycle events from CRM and MRO.
@@ -45,30 +46,21 @@ public class VehicleLifecycleIntegrationEventHandler {
     @Transactional
     public void on(VehicleDecommissionedIntegrationEvent event) {
         log.info("Handling VehicleDecommissionedIntegrationEvent for vehicleId: {}", event.vehicleId());
-        VehicleId vehicleId = VehicleId.of(event.vehicleId());
-
-        Optional<DeviceInstallation> activeInstallation = deviceInstallationRepository.findActiveByVehicleId(vehicleId);
-        activeInstallation.ifPresent(installation -> {
-            installation.uninstall(installation.getInitialOdometerKm(), event.occurredOn());
-            deviceInstallationRepository.save(installation);
-            log.info("Auto-uninstalled device {} from decommissioned vehicle {}",
-                    installation.getDeviceId(), vehicleId);
-        });
+        handleVehicleHardwareUnbind(VehicleId.of(event.vehicleId()), event.occurredOn(), "vehicle decommission");
     }
 
     @EventListener
     @Transactional
     public void on(VehicleOwnershipTransferredIntegrationEvent event) {
         log.info("Handling VehicleOwnershipTransferredIntegrationEvent for vehicleId: {}", event.vehicleId());
-        VehicleId vehicleId = VehicleId.of(event.vehicleId());
+        handleVehicleHardwareUnbind(VehicleId.of(event.vehicleId()), event.occurredOn(), "ownership transfer");
+    }
 
-        Optional<DeviceInstallation> activeInstallation = deviceInstallationRepository.findActiveByVehicleId(vehicleId);
-        activeInstallation.ifPresent(installation -> {
-            installation.uninstall(installation.getInitialOdometerKm(), event.occurredOn());
-            deviceInstallationRepository.save(installation);
-            log.info("Auto-uninstalled device {} due to ownership transfer on vehicle {}",
-                    installation.getDeviceId(), vehicleId);
-        });
+    @EventListener
+    @Transactional
+    public void on(com.andeva.atelier.platform.crm.interfaces.events.VehicleOwnershipTransferredIntegrationEvent event) {
+        log.info("Handling CRM VehicleOwnershipTransferredIntegrationEvent for vehicleId: {}", event.vehicleId());
+        handleVehicleHardwareUnbind(VehicleId.of(event.vehicleId()), event.occurredOn(), "CRM ownership transfer");
     }
 
     @EventListener
@@ -76,15 +68,38 @@ public class VehicleLifecycleIntegrationEventHandler {
     public void on(WorkOrderCompletedIntegrationEvent event) {
         log.info("Handling WorkOrderCompletedIntegrationEvent for vehicleId: {}, workOrderId: {}",
                 event.vehicleId(), event.workOrderId());
-        VehicleId vehicleId = VehicleId.of(event.vehicleId());
+        handleWorkOrderFaultResolution(VehicleId.of(event.vehicleId()), event.workOrderId(), event.resolvedDtcCodes(), event.occurredOn());
+    }
 
+    @EventListener
+    @Transactional
+    public void on(com.andeva.atelier.platform.operations.interfaces.events.WorkOrderCompletedIntegrationEvent event) {
+        log.info("Handling Operations WorkOrderCompletedIntegrationEvent for vehicleId: {}, workOrderId: {}",
+                event.vehicleId(), event.workOrderId());
+        handleWorkOrderFaultResolution(VehicleId.of(event.vehicleId()), event.workOrderId(), null, event.occurredOn());
+    }
+
+    private void handleVehicleHardwareUnbind(VehicleId vehicleId, Instant occurredOn, String triggerReason) {
+        Optional<DeviceInstallation> activeInstallation = deviceInstallationRepository.findActiveByVehicleId(vehicleId);
+        activeInstallation.ifPresent(installation -> {
+            installation.uninstall(installation.getInitialOdometerKm(), occurredOn != null ? occurredOn : Instant.now());
+            deviceInstallationRepository.save(installation);
+            log.info("Auto-uninstalled device {} due to {} on vehicle {}",
+                    installation.getDeviceId(), triggerReason, vehicleId);
+        });
+    }
+
+    private void handleWorkOrderFaultResolution(VehicleId vehicleId, UUID workOrderId, List<String> resolvedDtcCodes, Instant occurredOn) {
         List<VehicleFault> activeFaults = vehicleFaultRepository.findActiveByVehicleId(vehicleId);
+        Instant resolvedAt = occurredOn != null ? occurredOn : Instant.now();
         for (VehicleFault fault : activeFaults) {
-            if (event.resolvedDtcCodes().contains(fault.getDtcCode().value())) {
-                fault.markResolved(event.occurredOn() != null ? event.occurredOn() : Instant.now());
+            boolean shouldResolve = (resolvedDtcCodes == null || resolvedDtcCodes.isEmpty())
+                    || resolvedDtcCodes.contains(fault.getDtcCode().value());
+            if (shouldResolve) {
+                fault.markResolved(resolvedAt);
                 vehicleFaultRepository.save(fault);
-                log.info("Auto-resolved DTC fault {} on vehicle {} following completed work order",
-                        fault.getDtcCode().value(), vehicleId);
+                log.info("Auto-resolved DTC fault {} on vehicle {} following completed work order {}",
+                        fault.getDtcCode().value(), vehicleId, workOrderId);
             }
         }
     }

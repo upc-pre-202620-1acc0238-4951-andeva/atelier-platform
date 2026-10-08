@@ -15,6 +15,11 @@ import com.andeva.atelier.platform.operations.interfaces.acl.dto.WorkBaySummaryD
 import com.andeva.atelier.platform.operations.interfaces.acl.dto.WorkOrderBillingDto;
 import com.andeva.atelier.platform.operations.interfaces.acl.dto.WorkOrderConsumedProductDto;
 import com.andeva.atelier.platform.operations.interfaces.acl.dto.WorkOrderSummaryDto;
+import com.andeva.atelier.platform.operations.application.queryservices.ServiceQueryService;
+import com.andeva.atelier.platform.operations.domain.model.queries.GetServicesByTenantIdQuery;
+import com.andeva.atelier.platform.operations.interfaces.acl.dto.WorkshopServiceCatalogAclDto;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -29,14 +34,25 @@ public class WorkshopOperationsContextFacadeImpl implements WorkshopOperationsCo
     private final WorkOrderQueryService workOrderQueryService;
     private final WorkBayQueryService workBayQueryService;
     private final WorkOrderCommandService workOrderCommandService;
+    private final ServiceQueryService serviceQueryService;
 
     public WorkshopOperationsContextFacadeImpl(
             WorkOrderQueryService workOrderQueryService,
             WorkBayQueryService workBayQueryService,
             WorkOrderCommandService workOrderCommandService) {
+        this(workOrderQueryService, workBayQueryService, workOrderCommandService, null);
+    }
+
+    @Autowired
+    public WorkshopOperationsContextFacadeImpl(
+            WorkOrderQueryService workOrderQueryService,
+            WorkBayQueryService workBayQueryService,
+            WorkOrderCommandService workOrderCommandService,
+            @Autowired(required = false) ServiceQueryService serviceQueryService) {
         this.workOrderQueryService = workOrderQueryService;
         this.workBayQueryService = workBayQueryService;
         this.workOrderCommandService = workOrderCommandService;
+        this.serviceQueryService = serviceQueryService;
     }
 
     @Override
@@ -162,5 +178,25 @@ public class WorkshopOperationsContextFacadeImpl implements WorkshopOperationsCo
                         bay.getStatus() != null ? bay.getStatus().name() : null,
                         bay.getCurrentWorkOrderId().map(WorkOrderId::value).orElse(null)
                 ));
+    }
+
+    @Override
+    public List<WorkshopServiceCatalogAclDto> fetchAvailableServices(UUID tenantId) {
+        if (serviceQueryService == null || tenantId == null) {
+            return List.of();
+        }
+        try {
+            return serviceQueryService.handle(new GetServicesByTenantIdQuery(TenantId.of(tenantId)))
+                    .stream()
+                    .map(s -> new WorkshopServiceCatalogAclDto(
+                            s.getId().value(),
+                            s.getName(),
+                            s.getBasePrice() != null ? s.getBasePrice().amount() : BigDecimal.ZERO,
+                            s.getEstimatedDurationMinutes()
+                    ))
+                    .toList();
+        } catch (Exception e) {
+            return List.of();
+        }
     }
 }

@@ -55,6 +55,7 @@ import java.util.UUID;
  * Canonical specification from 03-crm-and-fleet.md Section 5.3.1.
  *
  * @author Adiel Sanchez Santin
+ * @author Joel Huamani Estefanero
  */
 @RestController
 @RequestMapping("/api/v1/customers")
@@ -120,7 +121,7 @@ public class CustomersController {
         return ResponseEntity.ok(paged);
     }
 
-    @PostMapping({"/individuals", "/individual"})
+    @PostMapping("/individuals")
     @PreAuthorize("hasAuthority('crm:customers:create')")
     @Operation(summary = "Register a natural person (individual) customer")
     public ResponseEntity<?> registerIndividualCustomer(
@@ -142,7 +143,7 @@ public class CustomersController {
         );
     }
 
-    @PostMapping({"/companies", "/company"})
+    @PostMapping("/companies")
     @PreAuthorize("hasAuthority('crm:customers:create')")
     @Operation(summary = "Register a corporate company customer")
     public ResponseEntity<?> registerCompanyCustomer(

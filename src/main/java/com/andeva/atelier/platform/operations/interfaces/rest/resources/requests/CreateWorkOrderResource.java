@@ -17,4 +17,8 @@ public record CreateWorkOrderResource(
         Integer mileageIn,
         @Size(max = 2000, message = "El diagnóstico de recepción no puede superar 2000 caracteres")
         String diagnosticSummary
-) {}
+) {
+    public CreateWorkOrderResource(UUID appointmentId, UUID vehicleId, Integer mileageIn, String diagnosticSummary) {
+        this(appointmentId, vehicleId, null, null, mileageIn, diagnosticSummary);
+    }
+}

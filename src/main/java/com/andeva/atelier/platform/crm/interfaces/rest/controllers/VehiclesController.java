@@ -49,6 +49,7 @@ import java.util.UUID;
  * Canonical specification from 03-crm-and-fleet.md Section 5.3.1.
  *
  * @author Adiel Sanchez Santin
+ * @author Joel Huamani Estefanero
  */
 @RestController
 @RequestMapping("/api/v1/vehicles")
@@ -122,7 +123,7 @@ public class VehiclesController {
         return ResponseEntity.ok(VehicleResourceFromAggregateAssembler.toResourceFromEntity(vehicleOpt.get()));
     }
 
-    @PostMapping({"/{id}/ownerships", "/{id}/transfer-ownership"})
+    @PostMapping("/{id}/ownerships")
     @PreAuthorize("hasAuthority('crm:vehicles:update')")
     @Operation(summary = "Transfer vehicle ownership creating a new custody period")
     public ResponseEntity<?> transferOwnership(
@@ -146,7 +147,7 @@ public class VehiclesController {
         );
     }
 
-    @GetMapping({"/{id}/ownerships", "/{id}/ownership-history"})
+    @GetMapping("/{id}/ownerships")
     @PreAuthorize("hasAuthority('crm:vehicles:read')")
     @Operation(summary = "Retrieve chronological ownership transfer history of a vehicle")
     public ResponseEntity<?> getOwnershipHistory(@PathVariable UUID id) {

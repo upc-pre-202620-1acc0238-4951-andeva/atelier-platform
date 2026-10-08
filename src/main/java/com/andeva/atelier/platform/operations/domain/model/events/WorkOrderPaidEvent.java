@@ -21,6 +21,10 @@ public record WorkOrderPaidEvent(
         Objects.requireNonNull(occurredOn, "occurredOn cannot be null");
     }
 
+    public static WorkOrderPaidEvent of(WorkOrderId workOrderId, TenantId tenantId) {
+        return new WorkOrderPaidEvent(workOrderId, tenantId, Money.soles(java.math.BigDecimal.ZERO), Instant.now());
+    }
+
     public static WorkOrderPaidEvent of(WorkOrderId workOrderId, TenantId tenantId, Money totalAmount) {
         return new WorkOrderPaidEvent(workOrderId, tenantId, totalAmount, Instant.now());
     }

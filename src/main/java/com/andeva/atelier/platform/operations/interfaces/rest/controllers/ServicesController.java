@@ -40,8 +40,13 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * REST controller for managing workshop service catalog, labor tariffs, and standard durations.
+ *
+ * @author Joel Huamani Estefanero
+ */
 @RestController
-@RequestMapping({"/api/v1/services", "/api/v1/operations/services"})
+@RequestMapping("/api/v1/services")
 @Tag(name = "Workshop Services", description = "Endpoints for managing workshop service catalog, labor tariffs, and standard durations")
 public class ServicesController {
 

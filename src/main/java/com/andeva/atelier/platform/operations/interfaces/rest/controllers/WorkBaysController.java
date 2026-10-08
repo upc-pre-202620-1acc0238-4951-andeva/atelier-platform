@@ -27,10 +27,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -40,8 +42,13 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * REST controller for managing workshop physical work bays, lifts, and occupancy lifecycle.
+ *
+ * @author Joel Huamani Estefanero
+ */
 @RestController
-@RequestMapping({"/api/v1/work-bays", "/api/v1/operations/bays", "/api/v1/operations/work-bays"})
+@RequestMapping("/api/v1/work-bays")
 @Tag(name = "Work Bays", description = "Endpoints for managing workshop physical work bays, lifts, and occupancy lifecycle")
 public class WorkBaysController {
 
@@ -53,17 +60,22 @@ public class WorkBaysController {
         this.workBayQueryService = Objects.requireNonNull(workBayQueryService, "workBayQueryService cannot be null");
     }
 
+    private UUID resolveTenantId(CustomUserDetails userDetails) {
+        if (userDetails != null && userDetails.getTenantId() != null) {
+            return userDetails.getTenantId();
+        }
+        throw new org.springframework.security.access.AccessDeniedException("Active tenant context is required");
+    }
+
     @PostMapping
-    @PreAuthorize("hasAuthority('operations:bays:write') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('operations:bays:manage') or hasAuthority('operations:bays:write') or hasRole('TENANT_ADMIN')")
     @Operation(summary = "Register a new physical work bay in workshop branch")
     public ResponseEntity<?> createBay(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody CreateWorkBayResource resource,
             UriComponentsBuilder ucb
     ) {
-        UUID tenantId = userDetails != null && userDetails.getTenantId() != null
-                ? userDetails.getTenantId()
-                : UUID.randomUUID();
+        UUID tenantId = resolveTenantId(userDetails);
 
         CreateWorkBayCommand command = CreateWorkBayCommandFromResourceAssembler.toCommandFromResource(tenantId, resource);
         Result<WorkBay, ApplicationError> result = workBayCommandService.handle(command);
@@ -86,9 +98,7 @@ public class WorkBaysController {
             @RequestParam(required = false) UUID branchId,
             @RequestParam(required = false, defaultValue = "false") boolean availableOnly
     ) {
-        UUID tenantId = userDetails != null && userDetails.getTenantId() != null
-                ? userDetails.getTenantId()
-                : UUID.randomUUID();
+        UUID tenantId = resolveTenantId(userDetails);
         UUID targetBranchId = branchId != null ? branchId : UUID.randomUUID();
 
         List<WorkBay> bays = availableOnly
@@ -112,8 +122,8 @@ public class WorkBaysController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @PostMapping("/{bayId}/maintenance")
-    @PreAuthorize("hasAuthority('operations:bays:write') or hasRole('TENANT_ADMIN')")
+    @PutMapping("/{bayId}/maintenance")
+    @PreAuthorize("hasAuthority('operations:bays:manage') or hasAuthority('operations:bays:write') or hasRole('TENANT_ADMIN')")
     @Operation(summary = "Place work bay under maintenance")
     public ResponseEntity<?> setMaintenance(
             @PathVariable UUID bayId,
@@ -133,8 +143,8 @@ public class WorkBaysController {
         return ResponseEntity.ok(WorkBayResourceAssembler.toResourceFromEntity(result.getOrThrow()));
     }
 
-    @PostMapping("/{bayId}/restore")
-    @PreAuthorize("hasAuthority('operations:bays:write') or hasRole('TENANT_ADMIN')")
+    @PutMapping("/{bayId}/restore")
+    @PreAuthorize("hasAuthority('operations:bays:manage') or hasAuthority('operations:bays:write') or hasRole('TENANT_ADMIN')")
     @Operation(summary = "Restore work bay to available status")
     public ResponseEntity<?> restoreAvailable(@PathVariable UUID bayId) {
         UpdateWorkBayStatusCommand command = new UpdateWorkBayStatusCommand(

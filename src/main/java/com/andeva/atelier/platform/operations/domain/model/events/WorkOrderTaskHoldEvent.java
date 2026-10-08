@@ -21,6 +21,10 @@ public record WorkOrderTaskHoldEvent(
         Objects.requireNonNull(occurredOn, "occurredOn cannot be null");
     }
 
+    public static WorkOrderTaskHoldEvent of(WorkOrderId workOrderId, WorkOrderTaskId taskId, com.andeva.atelier.platform.operations.domain.model.enums.HoldReason reason, String missingItemDescription) {
+        return new WorkOrderTaskHoldEvent(workOrderId, taskId, null, missingItemDescription, Instant.now());
+    }
+
     public static WorkOrderTaskHoldEvent of(WorkOrderId workOrderId, WorkOrderTaskId taskId, UUID mechanicId, String missingItemDescription) {
         return new WorkOrderTaskHoldEvent(workOrderId, taskId, mechanicId, missingItemDescription, Instant.now());
     }

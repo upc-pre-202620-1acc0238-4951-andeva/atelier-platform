@@ -177,6 +177,7 @@ public class WorkOrderTask {
     public Optional<Instant> getCompletedAt() { return completedAt != null ? Optional.of(completedAt) : Optional.empty(); }
     public List<WorkOrderTaskProduct> getConsumedProducts() { return Collections.unmodifiableList(consumedProducts); }
     public List<WorkOrderTaskImage> getTaskImages() { return Collections.unmodifiableList(taskImages); }
+    public List<WorkOrderTaskImage> getEvidenceImages() { return getTaskImages(); }
 
     public void addExistingImage(WorkOrderTaskImage image) {
         if (image != null) {

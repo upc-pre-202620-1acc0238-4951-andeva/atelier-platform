@@ -7,6 +7,7 @@ import com.andeva.atelier.platform.operations.domain.model.commands.*;
 import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTask;
 import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTaskProduct;
 import com.andeva.atelier.platform.operations.domain.model.ids.WorkOrderTaskId;
+import com.andeva.atelier.platform.operations.domain.model.ids.WorkOrderTaskProductId;
 import com.andeva.atelier.platform.operations.domain.model.queries.GetWorkOrderTaskByIdQuery;
 import com.andeva.atelier.platform.operations.interfaces.rest.resources.requests.*;
 import com.andeva.atelier.platform.operations.interfaces.rest.resources.responses.TaskProductResource;
@@ -30,8 +31,13 @@ import java.net.URI;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * REST controller managing technical work order tasks, mechanics assignments, consumed parts, and bay inspection evidences.
+ *
+ * @author Joel Huamani Estefanero
+ */
 @RestController
-@RequestMapping({"/api/v1/tasks", "/api/v1/operations/tasks"})
+@RequestMapping("/api/v1/tasks")
 @Tag(name = "Work Order Tasks", description = "Endpoints for managing individual technical tasks, mechanics, parts, and evidence in workshop bays")
 public class TasksController {
 
@@ -54,7 +60,7 @@ public class TasksController {
     }
 
     @PutMapping("/{taskId}")
-    @PreAuthorize("hasAuthority('operations:tasks:write') or hasRole('MECHANIC') or hasRole('SERVICE_ADVISOR')")
+    @PreAuthorize("hasAuthority('operations:tasks:update') or hasAuthority('operations:tasks:write') or hasRole('MECHANIC') or hasRole('SERVICE_ADVISOR')")
     @Operation(summary = "Update task parameters and assigned mechanic")
     public ResponseEntity<?> updateTask(
             @PathVariable UUID taskId,
@@ -75,7 +81,7 @@ public class TasksController {
     }
 
     @PutMapping("/{taskId}/mechanic")
-    @PreAuthorize("hasAuthority('operations:tasks:write') or hasRole('SERVICE_ADVISOR')")
+    @PreAuthorize("hasAuthority('operations:tasks:update') or hasAuthority('operations:tasks:write') or hasRole('SERVICE_ADVISOR')")
     @Operation(summary = "Assign or change mechanic for technical task")
     public ResponseEntity<?> assignMechanic(
             @PathVariable UUID taskId,
@@ -92,7 +98,7 @@ public class TasksController {
     }
 
     @PostMapping("/{taskId}/start")
-    @PreAuthorize("hasAuthority('operations:tasks:write') or hasRole('MECHANIC')")
+    @PreAuthorize("hasAuthority('operations:tasks:track_time') or hasAuthority('operations:tasks:write') or hasRole('MECHANIC')")
     @Operation(summary = "Start or resume execution of a technical task")
     public ResponseEntity<?> startTask(@PathVariable UUID taskId) {
         StartWorkOrderTaskCommand command = new StartWorkOrderTaskCommand(new WorkOrderTaskId(taskId));
@@ -106,7 +112,7 @@ public class TasksController {
     }
 
     @PostMapping("/{taskId}/hold")
-    @PreAuthorize("hasAuthority('operations:tasks:write') or hasRole('MECHANIC')")
+    @PreAuthorize("hasAuthority('operations:tasks:track_time') or hasAuthority('operations:tasks:write') or hasRole('MECHANIC')")
     @Operation(summary = "Put task on hold due to missing parts or technical inspection")
     public ResponseEntity<?> holdTask(
             @PathVariable UUID taskId,
@@ -123,7 +129,7 @@ public class TasksController {
     }
 
     @PostMapping("/{taskId}/resume")
-    @PreAuthorize("hasAuthority('operations:tasks:write') or hasRole('MECHANIC')")
+    @PreAuthorize("hasAuthority('operations:tasks:track_time') or hasAuthority('operations:tasks:write') or hasRole('MECHANIC')")
     @Operation(summary = "Resume paused task after parts arrival")
     public ResponseEntity<?> resumeTask(@PathVariable UUID taskId) {
         ResumeWorkOrderTaskCommand command = new ResumeWorkOrderTaskCommand(new WorkOrderTaskId(taskId));
@@ -137,7 +143,7 @@ public class TasksController {
     }
 
     @PostMapping("/{taskId}/complete")
-    @PreAuthorize("hasAuthority('operations:tasks:write') or hasRole('MECHANIC')")
+    @PreAuthorize("hasAuthority('operations:tasks:complete') or hasAuthority('operations:tasks:write') or hasRole('MECHANIC')")
     @Operation(summary = "Mark technical task as completed with actual labor hours")
     public ResponseEntity<?> completeTask(
             @PathVariable UUID taskId,
@@ -154,7 +160,7 @@ public class TasksController {
     }
 
     @PostMapping("/{taskId}/reopen")
-    @PreAuthorize("hasAuthority('operations:tasks:write') or hasRole('SERVICE_ADVISOR')")
+    @PreAuthorize("hasAuthority('operations:tasks:update') or hasAuthority('operations:tasks:write') or hasRole('SERVICE_ADVISOR')")
     @Operation(summary = "Reopen completed task for quality rework")
     public ResponseEntity<?> reopenTask(
             @PathVariable UUID taskId,
@@ -171,7 +177,7 @@ public class TasksController {
     }
 
     @PostMapping("/{taskId}/products")
-    @PreAuthorize("hasAuthority('operations:tasks:write') or hasRole('MECHANIC') or hasRole('SERVICE_ADVISOR')")
+    @PreAuthorize("hasAuthority('operations:tasks:update') or hasAuthority('operations:tasks:write') or hasRole('MECHANIC') or hasRole('SERVICE_ADVISOR')")
     @Operation(summary = "Add consumed product or spare part to technical task")
     public ResponseEntity<?> addProduct(
             @PathVariable UUID taskId,
@@ -202,7 +208,7 @@ public class TasksController {
     }
 
     @PutMapping("/{taskId}/products/{productId}")
-    @PreAuthorize("hasAuthority('operations:tasks:write') or hasRole('SERVICE_ADVISOR')")
+    @PreAuthorize("hasAuthority('operations:tasks:update') or hasAuthority('operations:tasks:write') or hasRole('SERVICE_ADVISOR') or hasRole('MECHANIC')")
     @Operation(summary = "Update quantity of consumed spare part")
     public ResponseEntity<?> updateProductQuantity(
             @PathVariable UUID taskId,
@@ -230,8 +236,26 @@ public class TasksController {
         return ResponseEntity.ok(productResource);
     }
 
-    @PostMapping("/{taskId}/evidences")
-    @PreAuthorize("hasAuthority('operations:tasks:write') or hasRole('MECHANIC')")
+    @DeleteMapping("/{taskId}/products/{productId}")
+    @PreAuthorize("hasAuthority('operations:tasks:update') or hasAuthority('operations:tasks:write') or hasRole('MECHANIC') or hasRole('SERVICE_ADVISOR')")
+    @Operation(summary = "Remove consumed product or spare part from technical task")
+    public ResponseEntity<?> removeTaskProduct(
+            @PathVariable UUID taskId,
+            @PathVariable UUID productId
+    ) {
+        RemoveProductFromTaskCommand command = new RemoveProductFromTaskCommand(
+                new WorkOrderTaskId(taskId),
+                new WorkOrderTaskProductId(productId)
+        );
+        Result<WorkOrder, ApplicationError> result = workOrderCommandService.handle(command);
+        if (result.isFailure()) {
+            return ErrorResponseAssembler.toErrorResponseFromApplicationError(result.getError());
+        }
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{taskId}/evidence-images")
+    @PreAuthorize("hasAuthority('operations:tasks:upload_photos') or hasAuthority('operations:tasks:write') or hasRole('MECHANIC')")
     @Operation(summary = "Attach photographic evidence to technical task")
     public ResponseEntity<?> attachEvidence(
             @PathVariable UUID taskId,
@@ -245,15 +269,23 @@ public class TasksController {
             return ErrorResponseAssembler.toErrorResponseFromApplicationError(result.getError());
         }
 
+        WorkOrderTask task = result.getOrThrow();
+        var imgOpt = task.getTaskImages().stream()
+                .filter(img -> img.getImageUrl().value().equals(resource.imageUrl()))
+                .reduce((first, second) -> second);
+
+        UUID imgId = imgOpt.map(com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTaskImage::getId).orElseGet(UUID::randomUUID);
+        java.time.Instant uploadedAt = imgOpt.map(com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTaskImage::getUploadedAt).orElseGet(java.time.Instant::now);
+
         WorkOrderTaskImageResource imgResource = new WorkOrderTaskImageResource(
-                UUID.randomUUID(),
+                imgId,
                 taskId,
                 resource.imageUrl(),
                 resource.description(),
-                java.time.Instant.now()
+                uploadedAt
         );
 
-        URI location = ucb.path("/api/v1/tasks/{taskId}/evidences").buildAndExpand(taskId).toUri();
+        URI location = ucb.path("/api/v1/tasks/{taskId}/evidence-images").buildAndExpand(taskId).toUri();
         return ResponseEntity.created(location).body(imgResource);
     }
 
@@ -263,6 +295,6 @@ public class TasksController {
                 .findFirst()
                 .map(task -> WorkOrderTaskResourceAssembler.toResourceFromEntity(task, "Service", null))
                 .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.ok().build());
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

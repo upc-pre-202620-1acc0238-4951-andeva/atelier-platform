@@ -11,6 +11,8 @@ public class FirebaseStorageDirectUploadGatewayImpl implements DirectToCloudStor
 
     private static final String FIREBASE_STORAGE_DOMAIN = "firebasestorage.googleapis.com";
     private static final String GCS_STORAGE_DOMAIN = "storage.googleapis.com";
+    private static final String SUPABASE_STORAGE_DOMAIN = "supabase.co";
+    private static final String CLOUDINARY_STORAGE_DOMAIN = "cloudinary.com";
 
     @Override
     public boolean validateStorageUrl(String rawUrl) {
@@ -18,7 +20,10 @@ public class FirebaseStorageDirectUploadGatewayImpl implements DirectToCloudStor
             return false;
         }
         return rawUrl.startsWith("https://") &&
-                (rawUrl.contains(FIREBASE_STORAGE_DOMAIN) || rawUrl.contains(GCS_STORAGE_DOMAIN));
+                (rawUrl.contains(FIREBASE_STORAGE_DOMAIN) ||
+                 rawUrl.contains(GCS_STORAGE_DOMAIN) ||
+                 rawUrl.contains(SUPABASE_STORAGE_DOMAIN) ||
+                 rawUrl.contains(CLOUDINARY_STORAGE_DOMAIN));
     }
 
     @Override
