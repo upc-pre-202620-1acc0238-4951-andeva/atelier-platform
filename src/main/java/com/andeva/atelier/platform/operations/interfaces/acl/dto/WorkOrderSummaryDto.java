@@ -11,4 +11,12 @@ public record WorkOrderSummaryDto(
         String status,
         BigDecimal totalAmount,
         String currency
-) {}
+) {
+    public UUID workOrderId() {
+        return id;
+    }
+
+    public Integer internalSequenceNumber() {
+        return internalNumber;
+    }
+}

@@ -13,4 +13,12 @@ public record WorkOrderBillingDto(
         BigDecimal productsSubtotal,
         BigDecimal totalAmount,
         String currency
-) {}
+) {
+    public BigDecimal laborAmount() {
+        return laborSubtotal;
+    }
+
+    public BigDecimal productsAmount() {
+        return productsSubtotal;
+    }
+}

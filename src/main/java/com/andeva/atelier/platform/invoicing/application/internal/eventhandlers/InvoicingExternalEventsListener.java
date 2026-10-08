@@ -24,12 +24,24 @@ public class InvoicingExternalEventsListener {
 
     /**
      * Handles workshop work order completion events to prepare billing regularizations.
+     * (Retained for backward-compatibility)
      *
-     * @param event the completed work order event
+     * @param event the completed work order event from IoT
      */
     @EventListener
     public void on(WorkOrderCompletedIntegrationEvent event) {
-        log.info("Received WorkOrderCompletedIntegrationEvent for work order: {} (tenant: {}, vehicle: {}). Ready for fiscal invoicing.",
+        log.info("Received legacy WorkOrderCompletedIntegrationEvent for work order: {} (tenant: {}, vehicle: {}). Ready for fiscal invoicing.",
+                event.workOrderId(), event.tenantId(), event.vehicleId());
+    }
+
+    /**
+     * Handles real operations workshop work order completion events to prepare billing regularizations.
+     *
+     * @param event the completed work order event from Operations MRO
+     */
+    @EventListener
+    public void on(com.andeva.atelier.platform.operations.interfaces.events.WorkOrderCompletedIntegrationEvent event) {
+        log.info("Received real Operations WorkOrderCompletedIntegrationEvent for work order: {} (tenant: {}, vehicle: {}). Ready for fiscal invoicing.",
                 event.workOrderId(), event.tenantId(), event.vehicleId());
     }
 }

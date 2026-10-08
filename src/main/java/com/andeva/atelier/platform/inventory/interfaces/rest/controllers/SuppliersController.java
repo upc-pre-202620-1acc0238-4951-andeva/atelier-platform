@@ -45,9 +45,10 @@ import java.util.UUID;
  * Exposes canonical endpoints 7 through 10.
  *
  * @author Adiel Sanchez Santin
+ * @author Joel Huamani Estefanero
  */
 @RestController
-@RequestMapping({"/api/v1/inventory/suppliers", "/api/v1/suppliers"})
+@RequestMapping("/api/v1/inventory/suppliers")
 @Tag(name = "Suppliers", description = "Endpoints for homologating, managing, and rating automotive parts and consumables suppliers")
 public class SuppliersController {
 
@@ -64,12 +65,15 @@ public class SuppliersController {
 
     private TenantId resolveTenantId(CustomUserDetails userDetails, UUID tenantHeader) {
         if (tenantHeader != null) {
+            if (userDetails != null && userDetails.getTenantId() != null && !userDetails.getTenantId().equals(tenantHeader)) {
+                throw new org.springframework.security.access.AccessDeniedException("Tenant ID in header does not match authenticated user context");
+            }
             return TenantId.of(tenantHeader);
         }
         if (userDetails != null && userDetails.getTenantId() != null) {
             return TenantId.of(userDetails.getTenantId());
         }
-        return TenantId.of(UUID.randomUUID());
+        throw new org.springframework.security.access.AccessDeniedException("Active tenant context is required");
     }
 
     /**

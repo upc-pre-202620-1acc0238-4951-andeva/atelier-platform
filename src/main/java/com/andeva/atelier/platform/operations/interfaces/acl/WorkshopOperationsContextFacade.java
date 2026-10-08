@@ -4,6 +4,7 @@ import com.andeva.atelier.platform.operations.interfaces.acl.dto.WorkBaySummaryD
 import com.andeva.atelier.platform.operations.interfaces.acl.dto.WorkOrderBillingDto;
 import com.andeva.atelier.platform.operations.interfaces.acl.dto.WorkOrderConsumedProductDto;
 import com.andeva.atelier.platform.operations.interfaces.acl.dto.WorkOrderSummaryDto;
+import com.andeva.atelier.platform.operations.interfaces.acl.dto.WorkshopServiceCatalogAclDto;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,4 +17,5 @@ public interface WorkshopOperationsContextFacade {
     boolean markWorkOrderAsPaid(UUID workOrderId);
     boolean isBayOccupied(UUID bayId);
     Optional<WorkBaySummaryDto> fetchBayStatus(UUID bayId);
+    List<WorkshopServiceCatalogAclDto> fetchAvailableServices(UUID tenantId);
 }

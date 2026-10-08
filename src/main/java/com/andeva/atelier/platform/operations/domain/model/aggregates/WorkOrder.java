@@ -55,6 +55,11 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Root aggregate governing automotive work orders, lifecycle transitions, task scheduling, and parts allocation.
+ *
+ * @author Joel Huamani Estefanero
+ */
 public class WorkOrder extends AbstractDomainAggregateRoot<WorkOrder> {
     private static final BigDecimal IGV_RATE = new BigDecimal("0.18");
 
@@ -281,15 +286,17 @@ public class WorkOrder extends AbstractDomainAggregateRoot<WorkOrder> {
     public void removeProductFromTask(WorkOrderTaskId taskId, WorkOrderTaskProductId productItemId) {
         validateMutable("Cannot remove product from task");
         WorkOrderTask task = findTask(taskId);
-        Optional<WorkOrderTaskProduct> found = task.getConsumedProducts().stream()
-                .filter(p -> p.getId().equals(productItemId))
-                .findFirst();
+        if (task.getStatus() == WorkOrderTaskStatus.COMPLETED) {
+            throw new IllegalStateException("Task is already completed. Cannot remove product.");
+        }
+        WorkOrderTaskProduct found = task.getConsumedProducts().stream()
+                .filter(p -> p.getId().equals(productItemId) || (productItemId != null && p.getProductId().equals(productItemId.value())))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Product not found in task: " + productItemId));
 
-        found.ifPresent(p -> {
-            task.removeProduct(productItemId);
-            recalculateTotalAmount();
-            registerDomainEvent(ProductStockReservationCancelledEvent.of(this.id, taskId, p.getProductId(), p.getQuantity()));
-        });
+        task.removeProduct(found.getId());
+        recalculateTotalAmount();
+        registerDomainEvent(ProductStockReservationCancelledEvent.of(this.id, taskId, found.getProductId(), found.getQuantity()));
     }
 
     public void attachIntakeImage(StorageUrl imageUrl, String description) {

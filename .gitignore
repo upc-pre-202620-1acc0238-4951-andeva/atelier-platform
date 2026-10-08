@@ -40,6 +40,9 @@ build/
 .env.development
 .env.production
 .env.*.local
+*service-account*.json
+*.pem
+*.key
 
 .claude/
 .agents/

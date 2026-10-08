@@ -28,6 +28,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -50,9 +51,10 @@ import java.util.UUID;
  * Exposes canonical endpoints 11 through 15.
  *
  * @author Adiel Sanchez Santin
+ * @author Joel Huamani Estefanero
  */
 @RestController
-@RequestMapping({"/api/v1/inventory/purchase-orders", "/api/v1/purchase-orders"})
+@RequestMapping("/api/v1/inventory/purchase-orders")
 @Tag(name = "Purchase Orders", description = "Endpoints for managing replenishment orders, supplier fulfillment, goods reception, and acquisition costs")
 public class PurchaseOrdersController {
 
@@ -69,12 +71,15 @@ public class PurchaseOrdersController {
 
     private TenantId resolveTenantId(CustomUserDetails userDetails, UUID tenantHeader) {
         if (tenantHeader != null) {
+            if (userDetails != null && userDetails.getTenantId() != null && !userDetails.getTenantId().equals(tenantHeader)) {
+                throw new org.springframework.security.access.AccessDeniedException("Tenant ID in header does not match authenticated user context");
+            }
             return TenantId.of(tenantHeader);
         }
         if (userDetails != null && userDetails.getTenantId() != null) {
             return TenantId.of(userDetails.getTenantId());
         }
-        return TenantId.of(UUID.randomUUID());
+        throw new org.springframework.security.access.AccessDeniedException("Active tenant context is required");
     }
 
     /**
@@ -155,7 +160,7 @@ public class PurchaseOrdersController {
     /**
      * Endpoint 14: Confirm technical goods reception, physical count, and invoice registration.
      */
-    @PostMapping("/{id}/receive")
+    @PutMapping("/{id}/receive")
     @PreAuthorize("hasAuthority('inventory:purchase_orders:receive') or hasAuthority('inventory:purchase_orders:manage') or hasRole('INVENTORY_MANAGER') or hasRole('TENANT_ADMIN')")
     @Operation(summary = "Confirm technical goods reception, physical count, and invoice registration")
     public ResponseEntity<?> receivePurchaseOrder(
@@ -198,7 +203,7 @@ public class PurchaseOrdersController {
     /**
      * Endpoint 15: Cancel pending purchase order before delivery.
      */
-    @PostMapping("/{id}/cancel")
+    @PutMapping("/{id}/cancel")
     @PreAuthorize("hasAuthority('inventory:purchase_orders:cancel') or hasAuthority('inventory:purchase_orders:manage') or hasRole('INVENTORY_MANAGER') or hasRole('TENANT_ADMIN')")
     @Operation(summary = "Cancel pending purchase order before delivery")
     public ResponseEntity<?> cancelPurchaseOrder(

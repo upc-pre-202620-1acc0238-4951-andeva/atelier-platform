@@ -19,6 +19,19 @@ import com.andeva.atelier.platform.shared.domain.model.valueobjects.VehicleId;
 import com.andeva.atelier.platform.shared.infrastructure.outbox.entities.OutboxMessagePersistenceEntity;
 import com.andeva.atelier.platform.shared.infrastructure.outbox.entities.OutboxStatus;
 import com.andeva.atelier.platform.shared.infrastructure.outbox.repositories.OutboxMessageJpaRepository;
+import com.andeva.atelier.platform.crm.application.commandservices.AppointmentCommandService;
+import com.andeva.atelier.platform.crm.interfaces.acl.CustomerFleetContextFacade;
+import com.andeva.atelier.platform.crm.interfaces.acl.dto.CustomerAclDto;
+import com.andeva.atelier.platform.crm.interfaces.acl.dto.VehicleAclDto;
+import com.andeva.atelier.platform.operations.application.queryservices.ServiceQueryService;
+import com.andeva.atelier.platform.operations.domain.model.aggregates.Service;
+import com.andeva.atelier.platform.operations.domain.model.queries.GetServicesByTenantIdQuery;
+import com.andeva.atelier.platform.crm.domain.model.commands.ScheduleAppointmentCommand;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.BranchId;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.CustomerId;
+import org.junit.jupiter.api.BeforeEach;
+import com.andeva.atelier.platform.shared.application.result.Result;
+import com.andeva.atelier.platform.crm.domain.model.aggregates.Appointment;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,6 +43,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -123,10 +137,78 @@ class IoTExternalAdaptersTest {
     }
 
     @Test
+    @DisplayName("CrmFleetAclAdapter should delegate to CustomerFleetContextFacade when present")
+    void testCrmFleetAclAdapterWithFacade() {
+        CustomerFleetContextFacade crmFacade = mock(CustomerFleetContextFacade.class);
+        UUID ownerId = UUID.randomUUID();
+        when(crmFacade.fetchVehicleById(vehicleId.value())).thenReturn(Optional.of(new VehicleAclDto(
+                vehicleId.value(), "XYZ-888", "1HGCR2F83HA999999", "Nissan", "Sentra", 2023, "GASOLINE", ownerId
+        )));
+        when(crmFacade.fetchCustomerById(ownerId)).thenReturn(Optional.of(new CustomerAclDto(
+                ownerId, tenantId.value(), "INDIVIDUAL", "John Doe", "45678901", "john@example.com", "999888777", "ACTIVE"
+        )));
+        when(crmFacade.schedulePreventiveAppointment(eq(tenantId.value()), eq(vehicleId.value()), anyString()))
+                .thenReturn(Optional.of(UUID.randomUUID()));
+
+        var adapter = new CrmFleetAclAdapter(crmFacade);
+
+        assertThat(adapter.isVehicleRegistered(vehicleId)).isTrue();
+        UUID otherVehicle = UUID.randomUUID();
+        when(crmFacade.fetchVehicleById(otherVehicle)).thenReturn(Optional.empty());
+        assertThat(adapter.isVehicleRegistered(VehicleId.of(otherVehicle))).isFalse();
+
+        var meta = adapter.getVehicleMetadata(vehicleId);
+        assertThat(meta).isPresent();
+        assertThat(meta.get().brand()).isEqualTo("Nissan");
+        assertThat(meta.get().licensePlate()).isEqualTo("XYZ-888");
+        assertThat(meta.get().ownerName()).isEqualTo("John Doe");
+
+        UUID appointmentId = adapter.convertAlertToAppointment(
+                AlertId.generate(), tenantId, vehicleId, "Engine warning", null
+        );
+        assertThat(appointmentId).isNotNull();
+        verify(crmFacade).schedulePreventiveAppointment(eq(tenantId.value()), eq(vehicleId.value()), eq("Engine warning"));
+    }
+
+    @Test
     @DisplayName("WorkshopOperationsAclAdapter should return standard MRO catalog items")
     void testWorkshopOperationsAclAdapter() {
         var adapter = new WorkshopOperationsAclAdapter();
         var services = adapter.getAvailableWorkshopServices(tenantId);
+        assertThat(services).hasSize(4);
+        assertThat(services.get(0).serviceCode()).isEqualTo("SRV-COOL-01");
+    }
+
+    @Test
+    @DisplayName("WorkshopOperationsAclAdapter should dynamically map items from WorkshopOperationsContextFacade")
+    void testWorkshopOperationsAclAdapterWithFacade() {
+        com.andeva.atelier.platform.operations.interfaces.acl.WorkshopOperationsContextFacade opsFacade =
+                mock(com.andeva.atelier.platform.operations.interfaces.acl.WorkshopOperationsContextFacade.class);
+        UUID srvId = UUID.randomUUID();
+        when(opsFacade.fetchAvailableServices(tenantId.value())).thenReturn(List.of(
+                new com.andeva.atelier.platform.operations.interfaces.acl.dto.WorkshopServiceCatalogAclDto(
+                        srvId, "Cambio de Frenos Premium", new BigDecimal("180.00"), 45
+                )
+        ));
+
+        var adapter = new WorkshopOperationsAclAdapter(opsFacade);
+        var services = adapter.getAvailableWorkshopServices(tenantId);
+
+        assertThat(services).hasSize(1);
+        assertThat(services.get(0).name()).isEqualTo("Cambio de Frenos Premium");
+        assertThat(services.get(0).serviceCode()).startsWith("SRV-");
+    }
+
+    @Test
+    @DisplayName("WorkshopOperationsAclAdapter should fallback to default catalog items when facade fails or is empty")
+    void testWorkshopOperationsAclAdapterFallback() {
+        com.andeva.atelier.platform.operations.interfaces.acl.WorkshopOperationsContextFacade opsFacade =
+                mock(com.andeva.atelier.platform.operations.interfaces.acl.WorkshopOperationsContextFacade.class);
+        when(opsFacade.fetchAvailableServices(tenantId.value())).thenThrow(new RuntimeException("MRO unavailable"));
+
+        var adapter = new WorkshopOperationsAclAdapter(opsFacade);
+        var services = adapter.getAvailableWorkshopServices(tenantId);
+
         assertThat(services).hasSize(4);
         assertThat(services.get(0).serviceCode()).isEqualTo("SRV-COOL-01");
     }

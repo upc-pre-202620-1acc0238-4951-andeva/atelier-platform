@@ -20,6 +20,10 @@ public record WorkOrderTaskResumedEvent(
         Objects.requireNonNull(occurredOn, "occurredOn cannot be null");
     }
 
+    public static WorkOrderTaskResumedEvent of(WorkOrderId workOrderId, WorkOrderTaskId taskId) {
+        return new WorkOrderTaskResumedEvent(workOrderId, taskId, null, Instant.now());
+    }
+
     public static WorkOrderTaskResumedEvent of(WorkOrderId workOrderId, WorkOrderTaskId taskId, UUID mechanicId) {
         return new WorkOrderTaskResumedEvent(workOrderId, taskId, mechanicId, Instant.now());
     }

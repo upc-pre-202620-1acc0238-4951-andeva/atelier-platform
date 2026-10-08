@@ -25,6 +25,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Component
+/**
+ * @author Joel Huamani Estefanero
+ */
 public class InventoryContextFacadeImpl implements InventoryContextFacade {
 
     private final InventoryItemCommandService itemCommandService;
@@ -40,12 +43,12 @@ public class InventoryContextFacadeImpl implements InventoryContextFacade {
 
     @Override
     public Optional<PartSummaryDto> getPartSummary(UUID tenantId, UUID partId) {
-        if (tenantId == null || partId == null) {
+        if (partId == null) {
             return Optional.empty();
         }
 
         return itemQueryService.handle(new GetInventoryItemByIdQuery(InventoryItemId.of(partId)))
-                .filter(item -> item.getTenantId().value().equals(tenantId))
+                .filter(item -> tenantId == null || item.getTenantId().value().equals(tenantId))
                 .map(item -> new PartSummaryDto(
                         item.getId().value(),
                         item.getName(),

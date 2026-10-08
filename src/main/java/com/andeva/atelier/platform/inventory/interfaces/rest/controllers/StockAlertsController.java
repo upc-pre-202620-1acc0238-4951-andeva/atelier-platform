@@ -40,9 +40,10 @@ import java.util.UUID;
  * Exposes canonical endpoints 20 through 22.
  *
  * @author Adiel Sanchez Santin
+ * @author Joel Huamani Estefanero
  */
 @RestController
-@RequestMapping({"/api/v1/inventory/alerts", "/api/v1/alerts"})
+@RequestMapping("/api/v1/inventory/alerts")
 @Tag(name = "Stock Alerts", description = "Endpoints for monitoring reorder points, low stock thresholds, and inventory replenishment alerts")
 public class StockAlertsController {
 
@@ -54,12 +55,15 @@ public class StockAlertsController {
 
     private TenantId resolveTenantId(CustomUserDetails userDetails, UUID tenantHeader) {
         if (tenantHeader != null) {
+            if (userDetails != null && userDetails.getTenantId() != null && !userDetails.getTenantId().equals(tenantHeader)) {
+                throw new org.springframework.security.access.AccessDeniedException("Tenant ID in header does not match authenticated user context");
+            }
             return TenantId.of(tenantHeader);
         }
         if (userDetails != null && userDetails.getTenantId() != null) {
             return TenantId.of(userDetails.getTenantId());
         }
-        return TenantId.of(UUID.randomUUID());
+        throw new org.springframework.security.access.AccessDeniedException("Active tenant context is required");
     }
 
     /**

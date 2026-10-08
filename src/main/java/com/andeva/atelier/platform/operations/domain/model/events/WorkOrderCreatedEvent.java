@@ -30,6 +30,10 @@ public record WorkOrderCreatedEvent(
         Objects.requireNonNull(occurredOn, "occurredOn cannot be null");
     }
 
+    public static WorkOrderCreatedEvent of(WorkOrderId id, TenantId tenantId, VehicleId vehicleId, WorkOrderNumber number) {
+        return new WorkOrderCreatedEvent(id, tenantId, BranchId.generate(), vehicleId, CustomerId.generate(), number, Instant.now());
+    }
+
     public static WorkOrderCreatedEvent of(WorkOrderId id, TenantId tenantId, BranchId branchId, VehicleId vehicleId, CustomerId customerId, WorkOrderNumber number) {
         return new WorkOrderCreatedEvent(id, tenantId, branchId, vehicleId, customerId, number, Instant.now());
     }

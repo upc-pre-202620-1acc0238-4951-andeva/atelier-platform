@@ -10,4 +10,7 @@ public record WorkOrderCreatedIntegrationEvent(
         Integer internalNumber,
         Instant occurredOn
 ) {
+    public WorkOrderCreatedIntegrationEvent(UUID workOrderId, UUID tenantId, UUID customerId, UUID vehicleId, Integer internalNumber, Instant occurredOn) {
+        this(workOrderId, tenantId, vehicleId, internalNumber, occurredOn);
+    }
 }

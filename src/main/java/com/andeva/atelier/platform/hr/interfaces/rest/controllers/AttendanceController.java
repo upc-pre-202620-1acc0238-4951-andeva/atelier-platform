@@ -39,6 +39,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * @author Joel Huamani Estefanero
+ */
 @RestController
 @RequestMapping("/api/v1/hr/attendances")
 @Tag(name = "Attendance", description = "Endpoints for physical attendance clock-in/out and geofenced verification")
@@ -56,16 +59,23 @@ public class AttendanceController {
     }
 
     private TenantId resolveTenantId(CustomUserDetails userDetails, UUID tenantHeader) {
-        if (tenantHeader != null) return TenantId.of(tenantHeader);
-        if (userDetails != null && userDetails.getTenantId() != null) return TenantId.of(userDetails.getTenantId());
-        return TenantId.of(UUID.randomUUID());
+        if (tenantHeader != null) {
+            if (userDetails != null && userDetails.getTenantId() != null && !userDetails.getTenantId().equals(tenantHeader)) {
+                throw new org.springframework.security.access.AccessDeniedException("Tenant ID in header does not match authenticated user context");
+            }
+            return TenantId.of(tenantHeader);
+        }
+        if (userDetails != null && userDetails.getTenantId() != null) {
+            return TenantId.of(userDetails.getTenantId());
+        }
+        throw new org.springframework.security.access.AccessDeniedException("Active tenant context is required");
     }
 
     private TenantMembershipId resolveMembershipId(CustomUserDetails userDetails) {
         if (userDetails != null && userDetails.getUserId() != null) {
             return TenantMembershipId.of(userDetails.getUserId());
         }
-        return TenantMembershipId.of(UUID.randomUUID());
+        throw new org.springframework.security.access.AccessDeniedException("Authenticated user membership context is required");
     }
 
     @PostMapping("/clock-in")
@@ -136,7 +146,7 @@ public class AttendanceController {
         return ResponseEntity.ok(AttendanceResourceAssembler.toResource(result.getOrThrow()));
     }
 
-    @GetMapping("/branch/{branchId}")
+    @GetMapping("/branch/{branchId}/daily")
     @PreAuthorize("hasAuthority('hr:attendance:audit_all') or hasRole('CHIEF_MECHANIC') or hasRole('WORKSHOP_ADMINISTRATOR') or isAuthenticated()")
     @Operation(summary = "List attendance records for a specific branch and date")
     public ResponseEntity<List<AttendanceResource>> getAttendanceByBranch(
@@ -169,7 +179,7 @@ public class AttendanceController {
         return ResponseEntity.ok(AttendanceResourceAssembler.toResourceList(list));
     }
 
-    @GetMapping("/employee/{membershipId}/active")
+    @GetMapping("/employee/{membershipId}/status-today")
     @PreAuthorize("hasAnyAuthority('hr:attendance:audit_all', 'hr:attendance:read_own') or isAuthenticated()")
     @Operation(summary = "Get active clock-in status for an employee today")
     public ResponseEntity<?> getActiveAttendance(
