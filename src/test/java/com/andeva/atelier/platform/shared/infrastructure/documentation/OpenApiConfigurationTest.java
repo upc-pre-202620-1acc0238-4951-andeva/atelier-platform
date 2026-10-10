@@ -33,8 +33,8 @@ class OpenApiConfigurationTest {
         assertThat(openAPI.getInfo().getLicense().getName()).isEqualTo("Proprietary - Andeva Software");
 
         assertThat(openAPI.getServers()).hasSize(2);
-        assertThat(openAPI.getServers().get(0).getUrl()).isEqualTo("/api/v1");
-        assertThat(openAPI.getServers().get(1).getUrl()).isEqualTo("https://api.atelier.andeva.pe/api/v1");
+        assertThat(openAPI.getServers().get(0).getUrl()).isEqualTo("/");
+        assertThat(openAPI.getServers().get(1).getUrl()).isEqualTo("https://atelier-platform.onrender.com");
 
         assertThat(openAPI.getComponents().getSecuritySchemes()).containsKey("bearerAuth");
         SecurityScheme scheme = openAPI.getComponents().getSecuritySchemes().get("bearerAuth");

@@ -32,7 +32,7 @@ public class UserRepositoryImpl implements UserRepository {
     public User save(User user) {
         Objects.requireNonNull(user, "User cannot be null");
         UserPersistenceEntity entity = UserPersistenceAssembler.toEntity(user);
-        UserPersistenceEntity saved = persistenceRepository.save(entity);
+        UserPersistenceEntity saved = persistenceRepository.saveAndFlush(entity);
         return UserPersistenceAssembler.toDomain(saved);
     }
 

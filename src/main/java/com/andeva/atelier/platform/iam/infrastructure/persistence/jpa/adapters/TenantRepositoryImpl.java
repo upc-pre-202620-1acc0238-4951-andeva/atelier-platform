@@ -32,7 +32,7 @@ public class TenantRepositoryImpl implements TenantRepository {
     public Tenant save(Tenant tenant) {
         Objects.requireNonNull(tenant, "Tenant cannot be null");
         TenantPersistenceEntity entity = TenantPersistenceAssembler.toEntity(tenant);
-        TenantPersistenceEntity saved = persistenceRepository.save(entity);
+        TenantPersistenceEntity saved = persistenceRepository.saveAndFlush(entity);
         return TenantPersistenceAssembler.toDomain(saved);
     }
 

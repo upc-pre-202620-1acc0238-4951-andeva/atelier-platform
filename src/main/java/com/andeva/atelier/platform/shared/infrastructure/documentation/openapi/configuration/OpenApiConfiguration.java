@@ -38,8 +38,8 @@ public class OpenApiConfiguration {
                         .contact(new Contact().name("Andeva Engineering Team").email("engineering@andeva.pe"))
                         .license(new License().name("Proprietary - Andeva Software")))
                 .servers(List.of(
-                        new Server().url("/api/v1").description("Local / Gateway Relative Context"),
-                        new Server().url("https://api.atelier.andeva.pe/api/v1").description("Production Gateway Context")
+                        new Server().url("/").description("Default Server Context"),
+                        new Server().url("https://atelier-platform.onrender.com").description("Render Production Gateway")
                 ))
                 .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
                 .components(new Components()

@@ -53,8 +53,10 @@ public class TenantMembershipRepositoryImpl implements TenantMembershipRepositor
     @Override
     public TenantMembership save(TenantMembership membership) {
         Objects.requireNonNull(membership, "TenantMembership cannot be null");
-        TenantPersistenceEntity tenant = tenantPersistenceRepository.getReferenceById(membership.tenantId().value());
-        UserPersistenceEntity user = userPersistenceRepository.getReferenceById(membership.userId().value());
+        TenantPersistenceEntity tenant = tenantPersistenceRepository.findById(membership.tenantId().value())
+                .orElseGet(() -> tenantPersistenceRepository.getReferenceById(membership.tenantId().value()));
+        UserPersistenceEntity user = userPersistenceRepository.findById(membership.userId().value())
+                .orElseGet(() -> userPersistenceRepository.getReferenceById(membership.userId().value()));
 
         List<UUID> roleUuids = membership.assignedRoles() != null
                 ? membership.assignedRoles().stream().map(r -> r.id().value()).toList()
