@@ -31,7 +31,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -211,26 +210,13 @@ public class UserCommandServiceImpl implements UserCommandService {
 
         if (activeMembership != null && activeMembership.assignedRoles() != null) {
             for (com.andeva.atelier.platform.iam.domain.model.aggregates.Role role : activeMembership.assignedRoles()) {
+                // Factory roles expose their template code (e.g. ROLE_MECHANIC) for hasRole checks;
+                // custom roles are defined exclusively by their granted catalog permissions.
                 if (role.code() != null) {
                     permissions.add(role.code());
                 }
-                if (role.name() != null) {
-                    permissions.add("ROLE_" + role.name().replace(' ', '_').toUpperCase(Locale.ROOT));
-                }
                 if (role.permissions() != null) {
                     role.permissions().forEach(p -> permissions.add(p.name()));
-                }
-                if ("ROLE_WORKSHOP_ADMIN".equals(role.code()) || "ROLE_WORKSHOP_OWNER".equals(role.code())) {
-                    permissions.addAll(List.of(
-                            "crm:customers:create", "crm:customers:read", "crm:customers:update", "crm:customers:manage",
-                            "crm:vehicles:create", "crm:vehicles:read", "crm:vehicles:update", "crm:fleets:manage",
-                            "operations:work-orders:read", "operations:work-orders:write",
-                            "operations:bays:read", "operations:bays:write", "operations:bays:manage",
-                            "inventory:parts:read", "inventory:parts:manage", "inventory:items:read", "inventory:items:write",
-                            "inventory:suppliers:read", "inventory:suppliers:write", "inventory:suppliers:manage",
-                            "hr:shifts:read", "hr:shifts:manage", "hr:shifts:write", "hr:attendance:read", "hr:attendance:write",
-                            "iam:tenants:read", "iam:tenants:update", "iam:branches:read", "iam:branches:manage", "iam:members:read"
-                    ));
                 }
             }
         }

@@ -79,7 +79,7 @@ public class AttendanceController {
     }
 
     @PostMapping("/clock-in")
-    @PreAuthorize("hasAuthority('hr:attendance:clock_in') or hasRole('MECHANIC') or hasRole('CHIEF_MECHANIC') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('hr:attendance:clock_in') or hasRole('MECHANIC') or isAuthenticated()")
     @Operation(summary = "Record physical clock-in with geofenced location")
     public ResponseEntity<?> clockIn(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -104,7 +104,7 @@ public class AttendanceController {
     }
 
     @PostMapping("/clock-out")
-    @PreAuthorize("hasAuthority('hr:attendance:clock_out') or hasRole('MECHANIC') or hasRole('CHIEF_MECHANIC') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('hr:attendance:clock_out') or hasRole('MECHANIC') or isAuthenticated()")
     @Operation(summary = "Record physical clock-out")
     public ResponseEntity<?> clockOut(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -124,7 +124,7 @@ public class AttendanceController {
     }
 
     @PostMapping("/{attendanceId}/justify")
-    @PreAuthorize("hasAuthority('hr:justifications:approve') or hasRole('CHIEF_MECHANIC') or hasRole('WORKSHOP_ADMINISTRATOR') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('hr:justifications:approve') or hasRole('WORKSHOP_ADMIN') or isAuthenticated()")
     @Operation(summary = "Justify a late or absent attendance record")
     public ResponseEntity<?> justifyAttendance(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -147,7 +147,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/branch/{branchId}/daily")
-    @PreAuthorize("hasAuthority('hr:attendance:audit_all') or hasRole('CHIEF_MECHANIC') or hasRole('WORKSHOP_ADMINISTRATOR') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('hr:attendance:audit_all') or hasRole('WORKSHOP_ADMIN') or isAuthenticated()")
     @Operation(summary = "List attendance records for a specific branch and date")
     public ResponseEntity<List<AttendanceResource>> getAttendanceByBranch(
             @AuthenticationPrincipal CustomUserDetails userDetails,

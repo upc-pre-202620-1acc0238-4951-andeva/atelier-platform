@@ -24,6 +24,11 @@ public interface RoleRepository {
 
     List<Role> findByTenantId(TenantId tenantId);
 
+    /**
+     * Factory (system) roles of every tenant, used by platform-level catalog migrations.
+     */
+    List<Role> findAllSystemRoles();
+
     boolean existsByTenantIdAndName(TenantId tenantId, String name);
 
     void delete(Role role);

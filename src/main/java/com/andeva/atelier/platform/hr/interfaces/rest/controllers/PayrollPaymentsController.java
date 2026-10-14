@@ -86,7 +86,7 @@ public class PayrollPaymentsController {
     }
 
     @PostMapping("/generate")
-    @PreAuthorize("hasAuthority('iam:members:compensate') or hasRole('WORKSHOP_ADMINISTRATOR') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('iam:members:compensate') or hasRole('WORKSHOP_ADMIN') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
     @Operation(summary = "Generate a new payroll draft settlement")
     public ResponseEntity<?> generatePayroll(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -109,7 +109,7 @@ public class PayrollPaymentsController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('iam:members:compensate') or hasRole('WORKSHOP_ADMINISTRATOR') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('iam:members:compensate') or hasRole('WORKSHOP_ADMIN') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
     @Operation(summary = "List all payroll payments with optional date and status filters")
     public ResponseEntity<Page<PayrollPaymentSummaryResource>> listPayrolls(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -133,7 +133,7 @@ public class PayrollPaymentsController {
     }
 
     @GetMapping("/{payrollId}")
-    @PreAuthorize("hasAuthority('iam:members:compensate') or hasRole('WORKSHOP_ADMINISTRATOR') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('iam:members:compensate') or hasRole('WORKSHOP_ADMIN') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
     @Operation(summary = "Get detailed payroll payment by ID")
     public ResponseEntity<?> getPayrollById(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -155,7 +155,7 @@ public class PayrollPaymentsController {
     }
 
     @PostMapping("/{payrollId}/deductions")
-    @PreAuthorize("hasAuthority('iam:members:compensate') or hasRole('WORKSHOP_ADMINISTRATOR') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('iam:members:compensate') or hasRole('WORKSHOP_ADMIN') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
     @Operation(summary = "Add deduction or withholding to payroll draft")
     public ResponseEntity<?> addPayrollDeduction(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -175,7 +175,7 @@ public class PayrollPaymentsController {
     }
 
     @PostMapping("/{payrollId}/bonuses")
-    @PreAuthorize("hasAuthority('iam:members:compensate') or hasRole('WORKSHOP_ADMINISTRATOR') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('iam:members:compensate') or hasRole('WORKSHOP_ADMIN') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
     @Operation(summary = "Add bonus or commission to payroll draft")
     public ResponseEntity<?> addPayrollBonus(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -195,7 +195,7 @@ public class PayrollPaymentsController {
     }
 
     @PostMapping("/{payrollId}/approve")
-    @PreAuthorize("hasAuthority('iam:members:compensate') or hasRole('WORKSHOP_ADMINISTRATOR') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('iam:members:compensate') or hasRole('WORKSHOP_ADMIN') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
     @Operation(summary = "Calculate and formally approve payroll settlement")
     public ResponseEntity<?> calculateAndApprovePayroll(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -215,7 +215,7 @@ public class PayrollPaymentsController {
     }
 
     @PostMapping("/{payrollId}/disburse")
-    @PreAuthorize("hasAuthority('iam:members:compensate') or hasRole('WORKSHOP_ADMINISTRATOR') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('iam:members:compensate') or hasRole('WORKSHOP_ADMIN') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
     @Operation(summary = "Mark payroll as disbursed and paid with bank reference")
     public ResponseEntity<?> disbursePayroll(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -235,7 +235,7 @@ public class PayrollPaymentsController {
     }
 
     @GetMapping("/export/sunat-rem")
-    @PreAuthorize("hasAuthority('hr:plame:export') or hasRole('WORKSHOP_ADMINISTRATOR') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('hr:plame:export') or hasRole('WORKSHOP_ADMIN') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
     @Operation(summary = "Export SUNAT PLAME structured .rem text file (Formato 0601)")
     public ResponseEntity<?> exportSunatRem(
             @AuthenticationPrincipal CustomUserDetails userDetails,

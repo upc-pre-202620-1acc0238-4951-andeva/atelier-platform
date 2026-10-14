@@ -44,14 +44,17 @@ class RoleAggregateTest {
     @Test
     @DisplayName("Should provision system factory role from template with isSystemRole=true")
     void shouldProvisionFromTemplate() {
-        Role role = Role.provisionFromTemplate(tenantId, RoleTemplate.ROLE_WORKSHOP_ADMIN, Set.of(perm1, perm2));
+        Permission adminPerm = Permission.of("iam:members:invite", "Invite staff", "IAM");
+        Permission ownerOnlyPerm = Permission.of("billing:subscriptions:manage_stripe", "Manage Stripe", "BILLING");
+        Role role = Role.provisionFromTemplate(
+                tenantId, RoleTemplate.ROLE_WORKSHOP_ADMIN, Set.of(adminPerm, ownerOnlyPerm, perm1));
 
         assertThat(role.id()).isNotNull();
         assertThat(role.tenantId()).isEqualTo(tenantId);
         assertThat(role.name()).isEqualTo("Workshop Administrator");
         assertThat(role.code()).isEqualTo("ROLE_WORKSHOP_ADMIN");
         assertThat(role.isSystemRole()).isTrue();
-        assertThat(role.permissions()).containsExactlyInAnyOrder(perm1, perm2);
+        assertThat(role.permissions()).containsExactly(adminPerm);
 
         assertThat(role.domainEvents()).hasSize(1);
         assertThat(role.domainEvents().iterator().next()).isInstanceOf(RoleCreatedEvent.class);
@@ -73,13 +76,14 @@ class RoleAggregateTest {
     @Test
     @DisplayName("Should reset system role to template defaults and register RoleUpdatedEvent")
     void shouldResetSystemRoleToTemplate() {
-        Role role = Role.provisionFromTemplate(tenantId, RoleTemplate.ROLE_MECHANIC, Set.of(perm1));
+        Permission trackTime = Permission.of("operations:tasks:track_time", "Track time", "OPERATIONS");
+        Role role = Role.provisionFromTemplate(tenantId, RoleTemplate.ROLE_MECHANIC, Set.of(trackTime));
         role.grantPermission(perm2);
         role.clearDomainEvents();
 
-        role.resetToTemplate(RoleTemplate.ROLE_MECHANIC, Set.of(perm1));
+        role.resetToTemplate(RoleTemplate.ROLE_MECHANIC, Set.of(trackTime, perm1));
         assertThat(role.name()).isEqualTo("Mechanic");
-        assertThat(role.permissions()).containsExactly(perm1);
+        assertThat(role.permissions()).containsExactly(trackTime);
 
         assertThat(role.domainEvents()).hasSize(1);
         assertThat(role.domainEvents().iterator().next()).isInstanceOf(RoleUpdatedEvent.class);

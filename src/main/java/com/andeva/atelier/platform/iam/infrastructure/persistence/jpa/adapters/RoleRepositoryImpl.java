@@ -105,6 +105,15 @@ public class RoleRepositoryImpl implements RoleRepository {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Role> findAllSystemRoles() {
+        return rolePersistenceRepository.findBySystemRoleTrue()
+                .stream()
+                .map(RolePersistenceAssembler::toDomain)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean existsByTenantIdAndName(TenantId tenantId, String name) {
         if (tenantId == null || name == null || name.isBlank()) {
             return false;

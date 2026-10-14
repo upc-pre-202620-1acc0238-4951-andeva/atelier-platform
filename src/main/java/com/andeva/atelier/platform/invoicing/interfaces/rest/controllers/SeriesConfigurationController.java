@@ -71,7 +71,7 @@ public class SeriesConfigurationController {
             @ApiResponse(responseCode = "409", description = "Series already registered")
     })
     @PostMapping
-    @PreAuthorize("hasAuthority('invoicing:fiscal_config:manage') or hasAnyRole('ROLE_WORKSHOP_OWNER', 'ROLE_TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('invoicing:fiscal_config:manage') or hasRole('WORKSHOP_OWNER')")
     public ResponseEntity<SeriesConfigurationResource> configureSeries(
             @RequestHeader(value = "X-Tenant-Id", required = false) UUID headerTenantId,
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -106,7 +106,7 @@ public class SeriesConfigurationController {
             @ApiResponse(responseCode = "403", description = "Forbidden")
     })
     @GetMapping("/branch/{branchId}")
-    @PreAuthorize("hasAnyAuthority('invoicing:fiscal_config:manage', 'invoicing:invoices:read') or hasAnyRole('ROLE_CASHIER', 'ROLE_WORKSHOP_ADMINISTRATOR', 'ROLE_WORKSHOP_OWNER')")
+    @PreAuthorize("hasAnyAuthority('invoicing:fiscal_config:manage', 'invoicing:invoices:read') or hasAnyRole('WORKSHOP_ADMIN', 'WORKSHOP_OWNER')")
     public ResponseEntity<List<SeriesConfigurationResource>> getSeriesByBranch(
             @PathVariable UUID branchId,
             @RequestHeader(value = "X-Tenant-Id", required = false) UUID headerTenantId,
@@ -126,7 +126,7 @@ public class SeriesConfigurationController {
             @ApiResponse(responseCode = "404", description = "Series not found")
     })
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasAuthority('invoicing:fiscal_config:manage') or hasAnyRole('ROLE_WORKSHOP_OWNER', 'ROLE_TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('invoicing:fiscal_config:manage') or hasRole('WORKSHOP_OWNER')")
     public ResponseEntity<Void> updateSeriesStatus(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateSeriesStatusRequest request,

@@ -68,7 +68,7 @@ public class WorkBaysController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('operations:bays:manage') or hasAuthority('operations:bays:write') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('operations:bays:manage') or hasAuthority('operations:bays:write') or hasRole('WORKSHOP_OWNER')")
     @Operation(summary = "Register a new physical work bay in workshop branch")
     public ResponseEntity<?> createBay(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -123,7 +123,7 @@ public class WorkBaysController {
     }
 
     @PutMapping("/{bayId}/maintenance")
-    @PreAuthorize("hasAuthority('operations:bays:manage') or hasAuthority('operations:bays:write') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('operations:bays:manage') or hasAuthority('operations:bays:write') or hasRole('WORKSHOP_OWNER')")
     @Operation(summary = "Place work bay under maintenance")
     public ResponseEntity<?> setMaintenance(
             @PathVariable UUID bayId,
@@ -144,7 +144,7 @@ public class WorkBaysController {
     }
 
     @PutMapping("/{bayId}/restore")
-    @PreAuthorize("hasAuthority('operations:bays:manage') or hasAuthority('operations:bays:write') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('operations:bays:manage') or hasAuthority('operations:bays:write') or hasRole('WORKSHOP_OWNER')")
     @Operation(summary = "Restore work bay to available status")
     public ResponseEntity<?> restoreAvailable(@PathVariable UUID bayId) {
         UpdateWorkBayStatusCommand command = new UpdateWorkBayStatusCommand(

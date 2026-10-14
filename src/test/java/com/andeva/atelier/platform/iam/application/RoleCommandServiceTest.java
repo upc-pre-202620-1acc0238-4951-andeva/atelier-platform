@@ -128,19 +128,20 @@ class RoleCommandServiceTest {
     @Test
     @DisplayName("Should reset system role to template defaults")
     void shouldResetSystemRoleToDefaultsSuccessfully() {
-        Permission perm = Permission.create("all:access", "Full Access", "SYSTEM");
+        Permission perm = Permission.create("iam:members:invite", "Invite staff", "IAM");
+        Permission ownerOnly = Permission.create("invoicing:fiscal_config:manage", "Fiscal config", "INVOICING");
         Role systemRole = Role.fromTemplate(tenantId, RoleTemplate.ROLE_WORKSHOP_ADMIN, Set.of());
         ResetRoleToDefaultsCommand command = new ResetRoleToDefaultsCommand(systemRole.id());
 
         when(roleRepository.findById(systemRole.id())).thenReturn(Optional.of(systemRole));
-        when(permissionRepository.findAll()).thenReturn(List.of(perm));
+        when(permissionRepository.findAll()).thenReturn(List.of(perm, ownerOnly));
         when(roleRepository.save(any(Role.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Result<Role, ApplicationError> result = roleCommandService.handle(command);
 
         assertThat(result.isSuccess()).isTrue();
         Role reset = result.getOrThrow();
-        assertThat(reset.permissions()).contains(perm);
+        assertThat(reset.permissions()).containsExactly(perm);
     }
 
     @Test

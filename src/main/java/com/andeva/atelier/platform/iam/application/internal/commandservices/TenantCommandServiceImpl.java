@@ -24,7 +24,6 @@ import com.andeva.atelier.platform.shared.domain.model.valueobjects.Money;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -100,31 +99,24 @@ public class TenantCommandServiceImpl implements TenantCommandService {
         tenant.addBranch(DEFAULT_MAIN_BRANCH_NAME, DEFAULT_SUNAT_ESTABLISHMENT_CODE, defaultLocation, DEFAULT_GEOFENCE_RADIUS_METERS);
         Tenant savedTenant = tenantRepository.save(tenant);
 
-        // 5. Provision standard canonical roles for the new tenant
-        List<Permission> allPermissions = permissionRepository.findAll();
-        Set<Permission> fullPermissionsSet = new HashSet<>(allPermissions);
+        // 5. Provision the factory roles of the new tenant, each one with its template permission subset
+        List<Permission> permissionCatalog = permissionRepository.findAll();
 
-        Role workshopAdminRole = null;
+        Role workshopOwnerRole = null;
         for (RoleTemplate template : RoleTemplate.values()) {
-            Role role = Role.fromTemplate(savedTenant.id(), template, fullPermissionsSet);
-            Role savedRole = roleRepository.save(role);
-            if (template == RoleTemplate.ROLE_WORKSHOP_ADMIN) {
-                workshopAdminRole = savedRole;
+            Role savedRole = roleRepository.save(Role.fromTemplate(savedTenant.id(), template, permissionCatalog));
+            if (template == RoleTemplate.ROLE_WORKSHOP_OWNER) {
+                workshopOwnerRole = savedRole;
             }
         }
 
-        // If template matching didn't catch, fallback to the first saved role
-        if (workshopAdminRole == null) {
-            workshopAdminRole = roleRepository.findByTenantId(savedTenant.id()).stream().findFirst().orElseThrow();
-        }
-
-        // 6. Create initial membership binding the administrator to the tenant with the admin role
+        // 6. The account that registers the workshop is its owner (billing contact and sovereign role)
         TenantMembership adminMembership = TenantMembership.create(
                 savedTenant.id(),
                 savedAdmin.id(),
                 SalaryType.FIXED,
                 Money.soles(0.00),
-                Set.of(workshopAdminRole)
+                Set.of(workshopOwnerRole)
         );
         membershipRepository.save(adminMembership);
 

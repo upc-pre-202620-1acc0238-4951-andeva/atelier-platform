@@ -1,5 +1,11 @@
 package com.andeva.atelier.platform.iam.domain.model.enums;
 
+import com.andeva.atelier.platform.iam.domain.model.valueobjects.PermissionCatalog;
+
+import java.util.Arrays;
+import java.util.Optional;
+import java.util.Set;
+
 /**
  * Standard factory role templates provisioned to automotive workshops during tenant onboarding.
  *
@@ -52,5 +58,24 @@ public enum RoleTemplate {
 
     public String description() {
         return description;
+    }
+
+    /**
+     * Resolves the factory template of a persisted system role from its canonical code.
+     */
+    public static Optional<RoleTemplate> fromCode(String code) {
+        if (code == null) {
+            return Optional.empty();
+        }
+        return Arrays.stream(values())
+                .filter(template -> template.code.equalsIgnoreCase(code.trim()))
+                .findFirst();
+    }
+
+    /**
+     * Names of the catalog permissions granted to this template by default.
+     */
+    public Set<String> defaultPermissionNames() {
+        return PermissionCatalog.defaultsFor(this);
     }
 }

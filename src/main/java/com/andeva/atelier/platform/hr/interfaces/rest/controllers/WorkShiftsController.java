@@ -67,7 +67,7 @@ public class WorkShiftsController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('hr:shifts:manage') or hasRole('WORKSHOP_ADMINISTRATOR') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('hr:shifts:manage') or hasRole('WORKSHOP_ADMIN') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
     @Operation(summary = "Create a new work shift")
     public ResponseEntity<?> createWorkShift(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -120,7 +120,7 @@ public class WorkShiftsController {
     }
 
     @PutMapping("/{shiftId}")
-    @PreAuthorize("hasAuthority('hr:shifts:manage') or hasRole('WORKSHOP_ADMINISTRATOR') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('hr:shifts:manage') or hasRole('WORKSHOP_ADMIN') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
     @Operation(summary = "Update an existing work shift")
     public ResponseEntity<?> updateWorkShift(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -139,7 +139,7 @@ public class WorkShiftsController {
     }
 
     @PatchMapping("/{shiftId}/activate")
-    @PreAuthorize("hasAuthority('hr:shifts:manage') or hasRole('WORKSHOP_ADMINISTRATOR') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('hr:shifts:manage') or hasRole('WORKSHOP_ADMIN') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
     @Operation(summary = "Activate a work shift")
     public ResponseEntity<?> activateWorkShift(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -157,7 +157,7 @@ public class WorkShiftsController {
     }
 
     @PatchMapping("/{shiftId}/deactivate")
-    @PreAuthorize("hasAuthority('hr:shifts:manage') or hasRole('WORKSHOP_ADMINISTRATOR') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('hr:shifts:manage') or hasRole('WORKSHOP_ADMIN') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
     @Operation(summary = "Deactivate a work shift")
     public ResponseEntity<?> deactivateWorkShift(
             @AuthenticationPrincipal CustomUserDetails userDetails,

@@ -60,7 +60,7 @@ public class FinancialReportsController {
             @ApiResponse(responseCode = "403", description = "Forbidden")
     })
     @GetMapping("/cash-flow")
-    @PreAuthorize("hasAuthority('invoicing:cashflow:export_pdf') or hasAnyRole('ROLE_WORKSHOP_OWNER', 'ROLE_TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('invoicing:cashflow:export_pdf') or hasRole('WORKSHOP_OWNER')")
     public ResponseEntity<CashFlowSummaryResource> getCashFlow(
             @RequestParam(name = "startDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDateParam,
             @RequestParam(name = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromParam,
@@ -91,7 +91,7 @@ public class FinancialReportsController {
             @ApiResponse(responseCode = "403", description = "Forbidden")
     })
     @GetMapping("/cash-flow/pdf")
-    @PreAuthorize("hasAuthority('invoicing:cashflow:export_pdf') or hasAnyRole('ROLE_WORKSHOP_OWNER', 'ROLE_TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('invoicing:cashflow:export_pdf') or hasRole('WORKSHOP_OWNER')")
     public ResponseEntity<byte[]> downloadCashFlowPdf(
             @RequestParam(name = "startDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDateParam,
             @RequestParam(name = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromParam,

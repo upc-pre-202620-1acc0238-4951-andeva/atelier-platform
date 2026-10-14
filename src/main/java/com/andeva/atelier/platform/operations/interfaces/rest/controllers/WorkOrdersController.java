@@ -63,7 +63,7 @@ public class WorkOrdersController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('operations:work-orders:write') or hasRole('SERVICE_ADVISOR') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('operations:work-orders:write') or hasRole('SERVICE_ADVISOR') or hasRole('WORKSHOP_OWNER')")
     @Operation(summary = "Open formal work order upon technical vehicle reception")
     public ResponseEntity<?> createWorkOrder(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -338,7 +338,7 @@ public class WorkOrdersController {
     }
 
     @PostMapping("/{workOrderId}/mark-as-paid")
-    @PreAuthorize("hasAuthority('operations:work-orders:write') or hasRole('CASHIER') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('operations:work-orders:write') or hasRole('WORKSHOP_OWNER')")
     @Operation(summary = "Mark work order as formally paid enabling vehicle exit")
     public ResponseEntity<?> markAsPaid(@PathVariable UUID workOrderId) {
         MarkWorkOrderAsPaidCommand command = new MarkWorkOrderAsPaidCommand(new WorkOrderId(workOrderId));
@@ -352,7 +352,7 @@ public class WorkOrdersController {
     }
 
     @PostMapping("/{workOrderId}/cancel")
-    @PreAuthorize("hasAuthority('operations:work-orders:write') or hasRole('SERVICE_ADVISOR') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('operations:work-orders:write') or hasRole('SERVICE_ADVISOR') or hasRole('WORKSHOP_OWNER')")
     @Operation(summary = "Cancel work order releasing occupied bay and inventory reservations")
     public ResponseEntity<?> cancelWorkOrder(
             @PathVariable UUID workOrderId,

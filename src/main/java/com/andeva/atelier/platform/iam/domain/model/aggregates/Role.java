@@ -9,10 +9,12 @@ import com.andeva.atelier.platform.iam.domain.model.ids.RoleId;
 import com.andeva.atelier.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Sovereign RBAC security role aggregate root scoped strictly to a workshop Tenant.
@@ -70,11 +72,12 @@ public class Role extends AbstractDomainAggregateRoot<Role> {
 
     /**
      * Domain factory to provision an initial factory template role during tenant onboarding.
+     * Only the catalog permissions declared as defaults of the template are granted.
      */
     public static Role provisionFromTemplate(
             TenantId tenantId,
             RoleTemplate template,
-            Set<Permission> templatePermissions) {
+            Collection<Permission> catalog) {
         Objects.requireNonNull(template, "Role template cannot be null");
         RoleId roleId = RoleId.generate();
         Role role = new Role(
@@ -84,7 +87,7 @@ public class Role extends AbstractDomainAggregateRoot<Role> {
                 template.defaultName(),
                 template.description(),
                 true,
-                templatePermissions
+                templateSubset(template, catalog)
         );
         role.registerEvent(RoleCreatedEvent.of(roleId, tenantId, template.defaultName()));
         return role;
@@ -93,8 +96,22 @@ public class Role extends AbstractDomainAggregateRoot<Role> {
     public static Role fromTemplate(
             TenantId tenantId,
             RoleTemplate template,
-            Set<Permission> templatePermissions) {
-        return provisionFromTemplate(tenantId, template, templatePermissions);
+            Collection<Permission> catalog) {
+        return provisionFromTemplate(tenantId, template, catalog);
+    }
+
+    /**
+     * Filters the given permission catalog down to the factory defaults of the template.
+     */
+    public static Set<Permission> templateSubset(RoleTemplate template, Collection<Permission> catalog) {
+        Objects.requireNonNull(template, "Role template cannot be null");
+        if (catalog == null) {
+            return new HashSet<>();
+        }
+        Set<String> defaults = template.defaultPermissionNames();
+        return catalog.stream()
+                .filter(permission -> defaults.contains(permission.name()))
+                .collect(Collectors.toCollection(HashSet::new));
     }
 
     /**
@@ -110,16 +127,16 @@ public class Role extends AbstractDomainAggregateRoot<Role> {
     /**
      * Resets a system role's permissions back to the platform factory template defaults.
      */
-    public void resetToTemplate(RoleTemplate template, Set<Permission> templatePermissions) {
+    public void resetToTemplate(RoleTemplate template, Collection<Permission> catalog) {
         if (!this.systemRole) {
             throw new IllegalStateException("Only protected system roles can be reset to template");
         }
         Objects.requireNonNull(template, "Role template cannot be null");
-        Objects.requireNonNull(templatePermissions, "Template permissions cannot be null");
+        Objects.requireNonNull(catalog, "Permission catalog cannot be null");
         this.name = template.defaultName();
         this.description = template.description();
         this.permissions.clear();
-        this.permissions.addAll(templatePermissions);
+        this.permissions.addAll(templateSubset(template, catalog));
         registerEvent(RoleUpdatedEvent.of(this.id, this.tenantId, this.name));
     }
 

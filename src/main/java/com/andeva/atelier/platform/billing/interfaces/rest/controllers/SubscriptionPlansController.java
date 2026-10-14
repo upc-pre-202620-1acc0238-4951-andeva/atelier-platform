@@ -117,7 +117,7 @@ public class SubscriptionPlansController {
             @ApiResponse(responseCode = "422", description = "Invalid plan pricing or quota limits")
     })
     @PostMapping
-    @PreAuthorize("hasAuthority('billing:plans:write') and hasRole('ROLE_SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('billing:plans:write') and hasRole('SUPER_ADMIN')")
     public ResponseEntity<SubscriptionPlanResource> createPlan(
             @Valid @RequestBody CreateSubscriptionPlanRequest request
     ) {
@@ -158,7 +158,7 @@ public class SubscriptionPlansController {
             @ApiResponse(responseCode = "422", description = "Invalid plan pricing or quota limits")
     })
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('billing:plans:write') and hasRole('ROLE_SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('billing:plans:write') and hasRole('SUPER_ADMIN')")
     public ResponseEntity<SubscriptionPlanResource> updatePlan(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateSubscriptionPlanRequest request

@@ -59,7 +59,7 @@ public class ServicesController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('operations:services:write') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('operations:services:write') or hasRole('WORKSHOP_OWNER')")
     @Operation(summary = "Register standard catalog service in workshop")
     public ResponseEntity<?> createService(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -110,7 +110,7 @@ public class ServicesController {
     }
 
     @PutMapping("/{serviceId}")
-    @PreAuthorize("hasAuthority('operations:services:write') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('operations:services:write') or hasRole('WORKSHOP_OWNER')")
     @Operation(summary = "Update standard service catalog item")
     public ResponseEntity<?> updateService(
             @PathVariable UUID serviceId,

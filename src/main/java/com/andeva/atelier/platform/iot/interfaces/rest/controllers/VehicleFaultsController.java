@@ -69,7 +69,7 @@ public class VehicleFaultsController {
             @ApiResponse(responseCode = "403", description = "Forbidden")
     })
     @PostMapping
-    @PreAuthorize("hasAuthority('iot:faults:write') or hasAnyRole('ROLE_MECHANIC', 'ROLE_HEAD_MECHANIC', 'ROLE_WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('iot:faults:write') or hasAnyRole('MECHANIC', 'WORKSHOP_OWNER')")
     public ResponseEntity<VehicleFaultResponse> registerVehicleFault(
             @Valid @RequestBody RegisterVehicleFaultRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails
@@ -103,7 +103,7 @@ public class VehicleFaultsController {
             @ApiResponse(responseCode = "403", description = "Forbidden")
     })
     @GetMapping("/vehicle/{vehicleId}/active")
-    @PreAuthorize("hasAuthority('iot:faults:read') or hasAnyRole('ROLE_SERVICE_ADVISOR', 'ROLE_MECHANIC', 'ROLE_HEAD_MECHANIC', 'ROLE_WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('iot:faults:read') or hasAnyRole('SERVICE_ADVISOR', 'MECHANIC', 'WORKSHOP_OWNER')")
     public ResponseEntity<List<VehicleFaultResponse>> getActiveFaultsByVehicle(
             @PathVariable UUID vehicleId,
             @AuthenticationPrincipal CustomUserDetails userDetails
@@ -126,7 +126,7 @@ public class VehicleFaultsController {
             @ApiResponse(responseCode = "404", description = "Vehicle fault not found")
     })
     @PostMapping("/{id}/resolve")
-    @PreAuthorize("hasAuthority('iot:faults:resolve') or hasAnyRole('ROLE_MECHANIC', 'ROLE_HEAD_MECHANIC', 'ROLE_WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('iot:faults:resolve') or hasAnyRole('MECHANIC', 'WORKSHOP_OWNER')")
     public ResponseEntity<VehicleFaultResponse> resolveVehicleFault(
             @PathVariable UUID id,
             @AuthenticationPrincipal CustomUserDetails userDetails

@@ -127,4 +127,14 @@ public class TenantMembershipRepositoryImpl implements TenantMembershipRepositor
         }
         return membershipPersistenceRepository.countByTenant_Id(tenantId.value());
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<TenantMembership> findEarliestByTenantId(TenantId tenantId) {
+        if (tenantId == null) {
+            return Optional.empty();
+        }
+        return membershipPersistenceRepository.findFirstByTenant_IdOrderByCreatedAtAsc(tenantId.value())
+                .map(TenantMembershipPersistenceAssembler::toDomain);
+    }
 }

@@ -71,7 +71,7 @@ public class DeviceInstallationsController {
             @ApiResponse(responseCode = "409", description = "Active installation conflict")
     })
     @PostMapping("/install")
-    @PreAuthorize("hasAuthority('iot:installations:manage') or hasAnyRole('ROLE_MECHANIC', 'ROLE_HEAD_MECHANIC', 'ROLE_WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('iot:installations:manage') or hasAnyRole('MECHANIC', 'WORKSHOP_OWNER')")
     public ResponseEntity<DeviceInstallationResponse> installDevice(
             @Valid @RequestBody InstallDeviceRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails
@@ -102,7 +102,7 @@ public class DeviceInstallationsController {
             @ApiResponse(responseCode = "404", description = "Installation session not found")
     })
     @PostMapping("/{id}/uninstall")
-    @PreAuthorize("hasAuthority('iot:installations:manage') or hasAnyRole('ROLE_MECHANIC', 'ROLE_HEAD_MECHANIC', 'ROLE_WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('iot:installations:manage') or hasAnyRole('MECHANIC', 'WORKSHOP_OWNER')")
     public ResponseEntity<DeviceInstallationResponse> uninstallDevice(
             @PathVariable UUID id,
             @Valid @RequestBody UninstallDeviceRequest request,
@@ -139,7 +139,7 @@ public class DeviceInstallationsController {
             @ApiResponse(responseCode = "404", description = "No active installation found")
     })
     @GetMapping("/vehicle/{vehicleId}/active")
-    @PreAuthorize("hasAuthority('iot:installations:read') or hasAnyRole('ROLE_MECHANIC', 'ROLE_SERVICE_ADVISOR', 'ROLE_HEAD_MECHANIC')")
+    @PreAuthorize("hasAuthority('iot:installations:read') or hasAnyRole('MECHANIC', 'SERVICE_ADVISOR')")
     public ResponseEntity<DeviceInstallationResponse> getActiveInstallationByVehicle(
             @PathVariable UUID vehicleId,
             @AuthenticationPrincipal CustomUserDetails userDetails

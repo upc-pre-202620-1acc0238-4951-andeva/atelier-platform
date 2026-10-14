@@ -65,7 +65,7 @@ public class SaasInvoicesController {
             @ApiResponse(responseCode = "403", description = "Forbidden")
     })
     @GetMapping
-    @PreAuthorize("hasAuthority('billing:invoices:read') or hasAnyRole('ROLE_TENANT_ADMIN', 'ROLE_WORKSHOP_OWNER', 'ROLE_ACCOUNTANT')")
+    @PreAuthorize("hasAuthority('billing:invoices:read') or hasRole('WORKSHOP_OWNER')")
     public ResponseEntity<List<SaasInvoiceSummaryResource>> getTenantInvoices(
             @RequestParam(required = false) String status,
             @AuthenticationPrincipal CustomUserDetails userDetails
@@ -99,7 +99,7 @@ public class SaasInvoicesController {
             @ApiResponse(responseCode = "404", description = "Invoice not found")
     })
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('billing:invoices:read') or hasAnyRole('ROLE_TENANT_ADMIN', 'ROLE_WORKSHOP_OWNER', 'ROLE_ACCOUNTANT')")
+    @PreAuthorize("hasAuthority('billing:invoices:read') or hasRole('WORKSHOP_OWNER')")
     public ResponseEntity<SaasInvoiceResource> getInvoiceById(
             @PathVariable UUID id,
             @AuthenticationPrincipal CustomUserDetails userDetails
@@ -132,7 +132,7 @@ public class SaasInvoicesController {
             @ApiResponse(responseCode = "404", description = "Invoice or PDF not found")
     })
     @GetMapping("/{id}/pdf")
-    @PreAuthorize("hasAuthority('billing:invoices:read') or hasAnyRole('ROLE_TENANT_ADMIN', 'ROLE_WORKSHOP_OWNER', 'ROLE_ACCOUNTANT')")
+    @PreAuthorize("hasAuthority('billing:invoices:read') or hasRole('WORKSHOP_OWNER')")
     public ResponseEntity<Void> redirectToInvoicePdf(
             @PathVariable UUID id,
             @AuthenticationPrincipal CustomUserDetails userDetails
