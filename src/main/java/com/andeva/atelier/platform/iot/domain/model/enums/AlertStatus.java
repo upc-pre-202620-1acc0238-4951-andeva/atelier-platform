@@ -9,5 +9,12 @@ public enum AlertStatus {
     DISPATCHED,
     ACKNOWLEDGED,
     RESOLVED,
-    DISMISSED
+    DISMISSED;
+
+    /**
+     * An alert is open while it still awaits resolution (neither resolved nor dismissed).
+     */
+    public boolean isOpen() {
+        return this == DISPATCHED || this == ACKNOWLEDGED;
+    }
 }

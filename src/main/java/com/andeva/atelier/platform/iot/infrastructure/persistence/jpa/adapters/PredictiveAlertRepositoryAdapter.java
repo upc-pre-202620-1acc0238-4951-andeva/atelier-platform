@@ -2,6 +2,7 @@ package com.andeva.atelier.platform.iot.infrastructure.persistence.jpa.adapters;
 
 import com.andeva.atelier.platform.iot.domain.model.aggregates.PredictiveAlert;
 import com.andeva.atelier.platform.iot.domain.model.enums.AlertStatus;
+import com.andeva.atelier.platform.iot.domain.model.enums.AlertType;
 import com.andeva.atelier.platform.iot.domain.model.ids.AlertId;
 import com.andeva.atelier.platform.iot.domain.repositories.PredictiveAlertRepository;
 import com.andeva.atelier.platform.iot.infrastructure.persistence.jpa.assemblers.PredictiveAlertPersistenceAssembler;
@@ -10,6 +11,7 @@ import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.VehicleId;
 import org.springframework.stereotype.Repository;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -21,6 +23,10 @@ import java.util.Optional;
  */
 @Repository
 public class PredictiveAlertRepositoryAdapter implements PredictiveAlertRepository {
+
+    private static final List<AlertStatus> OPEN_STATUSES = Arrays.stream(AlertStatus.values())
+            .filter(AlertStatus::isOpen)
+            .toList();
 
     private final PredictiveAlertPersistenceRepository persistenceRepository;
     private final PredictiveAlertPersistenceAssembler assembler;
@@ -67,5 +73,12 @@ public class PredictiveAlertRepositoryAdapter implements PredictiveAlertReposito
         return persistenceRepository.findAllByTenantId(tenantId.value()).stream()
                 .map(assembler::toDomain)
                 .toList();
+    }
+
+    @Override
+    public boolean existsOpenAlert(VehicleId vehicleId, AlertType alertType) {
+        Objects.requireNonNull(vehicleId, "vehicleId cannot be null");
+        Objects.requireNonNull(alertType, "alertType cannot be null");
+        return persistenceRepository.existsByVehicleIdAndAlertTypeAndStatusIn(vehicleId.value(), alertType, OPEN_STATUSES);
     }
 }
