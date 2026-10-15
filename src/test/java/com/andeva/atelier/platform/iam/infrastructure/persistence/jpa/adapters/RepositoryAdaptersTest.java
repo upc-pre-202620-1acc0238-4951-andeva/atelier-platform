@@ -81,7 +81,7 @@ class RepositoryAdaptersTest {
         Tenant tenant = Tenant.create("AutoFix", "AutoFix SAC", TaxId.of("20100070970"));
         TenantPersistenceEntity entity = TenantPersistenceAssembler.toEntity(tenant);
 
-        when(repo.save(any(TenantPersistenceEntity.class))).thenReturn(entity);
+        when(repo.saveAndFlush(any(TenantPersistenceEntity.class))).thenReturn(entity);
         when(repo.findById(tenant.id().value())).thenReturn(Optional.of(entity));
         when(repo.findByTaxId("20100070970")).thenReturn(Optional.of(entity));
         when(repo.existsByTaxId("20100070970")).thenReturn(true);
@@ -134,7 +134,7 @@ class RepositoryAdaptersTest {
         );
         UserPersistenceEntity entity = UserPersistenceAssembler.toEntity(user);
 
-        when(userRepo.save(any(UserPersistenceEntity.class))).thenReturn(entity);
+        when(userRepo.saveAndFlush(any(UserPersistenceEntity.class))).thenReturn(entity);
         when(userRepo.findById(user.id().value())).thenReturn(Optional.of(entity));
         when(userRepo.findByEmail("user@workshop.pe")).thenReturn(Optional.of(entity));
         when(userRepo.existsByEmail("user@workshop.pe")).thenReturn(true);

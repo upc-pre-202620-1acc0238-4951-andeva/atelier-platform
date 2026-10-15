@@ -10,6 +10,8 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -28,13 +30,16 @@ public class ResendEmailAdapter implements ResendEmailService {
 
     private final String apiKey;
     private final String fromEmail;
+    private final String frontendBaseUrl;
     private final RestClient restClient;
 
     public ResendEmailAdapter(
             @Value("${resend.api-key:resend_key_placeholder}") String apiKey,
-            @Value("${resend.from-email:notifications@atelier.andeva.com}") String fromEmail) {
+            @Value("${resend.from-email:Atelier <notificaciones@andeva.tech>}") String fromEmail,
+            @Value("${app.frontend.base-url:https://atelier.andeva.tech}") String frontendBaseUrl) {
         this.apiKey = apiKey;
         this.fromEmail = fromEmail;
+        this.frontendBaseUrl = Objects.requireNonNull(frontendBaseUrl, "Frontend base URL cannot be null").replaceAll("/+$", "");
         this.restClient = RestClient.builder().build();
     }
 
@@ -63,7 +68,7 @@ public class ResendEmailAdapter implements ResendEmailService {
         Objects.requireNonNull(recipient, "Recipient email cannot be null");
         Objects.requireNonNull(resetToken, "Reset token cannot be null");
 
-        String resetUrl = "https://app.atelier.pe/auth/reset-password?token=" + resetToken;
+        String resetUrl = frontendBaseUrl + "/auth/reset-password?token=" + URLEncoder.encode(resetToken, StandardCharsets.UTF_8);
         String subject = "Reset your Atelier Platform Password";
         String html = """
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -86,7 +91,7 @@ public class ResendEmailAdapter implements ResendEmailService {
         Objects.requireNonNull(tenantName, "Tenant name cannot be null");
         Objects.requireNonNull(inviteToken, "Invite token cannot be null");
 
-        String inviteUrl = "https://app.atelier.pe/auth/accept-invitation?token=" + inviteToken;
+        String inviteUrl = frontendBaseUrl + "/auth/accept-invitation?token=" + URLEncoder.encode(inviteToken, StandardCharsets.UTF_8);
         String subject = "You've been invited to join " + tenantName + " on Atelier";
         String html = """
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">

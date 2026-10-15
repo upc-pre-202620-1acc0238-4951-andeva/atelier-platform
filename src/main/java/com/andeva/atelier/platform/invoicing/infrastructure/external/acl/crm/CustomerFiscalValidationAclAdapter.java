@@ -89,4 +89,19 @@ public class CustomerFiscalValidationAclAdapter implements CustomerFiscalValidat
         // 8 digits is DNI
         return cleaned.matches("^\\d{8}$");
     }
+
+    @Override
+    public Optional<String> getCustomerEmail(UUID customerId) {
+        if (customerId == null || customerFleetContextFacade == null) {
+            return Optional.empty();
+        }
+        try {
+            return customerFleetContextFacade.fetchCustomerById(customerId)
+                    .map(CustomerAclDto::email)
+                    .filter(email -> !email.isBlank());
+        } catch (Exception e) {
+            log.warn("Failed to resolve email for customer {} from CRM facade: {}", customerId, e.getMessage());
+            return Optional.empty();
+        }
+    }
 }

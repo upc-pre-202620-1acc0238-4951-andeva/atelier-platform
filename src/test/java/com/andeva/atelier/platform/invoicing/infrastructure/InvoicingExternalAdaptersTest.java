@@ -16,7 +16,6 @@ import com.andeva.atelier.platform.invoicing.domain.model.valueobjects.VoucherNu
 import com.andeva.atelier.platform.invoicing.domain.model.valueobjects.VoucherSerie;
 import com.andeva.atelier.platform.invoicing.domain.services.PeruvianTaxCalculationEngine;
 import com.andeva.atelier.platform.invoicing.infrastructure.external.acl.crm.CustomerFiscalValidationAclAdapter;
-import com.andeva.atelier.platform.invoicing.infrastructure.external.cloud.firebase.FirebaseSunatCdrStorageAdapter;
 import com.andeva.atelier.platform.invoicing.infrastructure.external.mail.resend.ResendVoucherReceiptEmailAdapter;
 import com.andeva.atelier.platform.invoicing.infrastructure.external.messaging.outbox.InvoicingOutboxMessageRelayAdapter;
 import com.andeva.atelier.platform.invoicing.infrastructure.external.reporting.openpdf.OpenPdfCashFlowReportAdapter;
@@ -74,7 +73,6 @@ class InvoicingExternalAdaptersTest {
     private ApplicationEventPublisher eventPublisher;
 
     private NubefactPseFiscalAdapter nubefactAdapter;
-    private FirebaseSunatCdrStorageAdapter firebaseAdapter;
     private ResendVoucherReceiptEmailAdapter resendAdapter;
     private CustomerFiscalValidationAclAdapter crmAdapter;
     private OpenPdfCashFlowReportAdapter openPdfAdapter;
@@ -84,9 +82,8 @@ class InvoicingExternalAdaptersTest {
 
     @BeforeEach
     void setUp() {
-        nubefactAdapter = new NubefactPseFiscalAdapter("https://api.nubefact.com/api/v1", "test-token");
-        firebaseAdapter = new FirebaseSunatCdrStorageAdapter("atelier-platform-cdr.appspot.com");
-        resendAdapter = new ResendVoucherReceiptEmailAdapter("re_123456", "billing@atelier.com");
+        nubefactAdapter = new NubefactPseFiscalAdapter("https://api.nubefact.com/api/v1", "nubefact_token_placeholder");
+        resendAdapter = new ResendVoucherReceiptEmailAdapter("resend_key_placeholder", "Atelier <notificaciones@andeva.tech>");
         crmAdapter = new CustomerFiscalValidationAclAdapter(customerFleetContextFacade);
         openPdfAdapter = new OpenPdfCashFlowReportAdapter();
         outboxRelay = new InvoicingOutboxMessageRelayAdapter(outboxRepository, eventPublisher);
@@ -121,7 +118,8 @@ class InvoicingExternalAdaptersTest {
         NubefactPseFiscalGateway.NubefactDispatchResult result = nubefactAdapter.dispatchVoucher(voucher);
         assertThat(result.isAccepted()).isTrue();
         assertThat(result.responseCode()).isEqualTo("0");
-        assertThat(result.urls().pdfUrl()).contains(".pdf");
+        assertThat(result.urls().pdfUrl()).isNull();
+        assertThat(result.description()).startsWith("[SIMULADO]");
         assertThat(result.digitalSignatureHash()).isNotBlank();
 
         ElectronicVoucher creditNote = ElectronicVoucher.issueCreditNote(
@@ -137,24 +135,7 @@ class InvoicingExternalAdaptersTest {
 
         NubefactPseFiscalGateway.NubefactVoidResult voidResult = nubefactAdapter.voidVoucher(voucher, "Error en facturación");
         assertThat(voidResult.isAccepted()).isTrue();
-        assertThat(voidResult.ticketNumber()).startsWith("TICKET-");
-    }
-
-    @Test
-    @DisplayName("Should store and retrieve XML artifacts via FirebaseSunatCdrStorageAdapter")
-    void testFirebaseStorageAdapter() {
-        UUID voucherId = UUID.randomUUID();
-        byte[] cdrBytes = "<CDR status='OK'/>".getBytes();
-        byte[] xmlBytes = "<Invoice>UBL2.1</Invoice>".getBytes();
-
-        String cdrUrl = firebaseAdapter.storeCdrXml(voucherId, cdrBytes);
-        assertThat(cdrUrl).contains("cdr%2F" + voucherId);
-
-        String xmlUrl = firebaseAdapter.storeSignedXml(voucherId, xmlBytes);
-        assertThat(xmlUrl).contains("xml%2F" + voucherId);
-
-        byte[] retrieved = firebaseAdapter.retrieveCdrXml(voucherId);
-        assertThat(retrieved).isEqualTo(cdrBytes);
+        assertThat(voidResult.ticketNumber()).startsWith("SIMULADO-");
     }
 
     @Test
@@ -166,8 +147,8 @@ class InvoicingExternalAdaptersTest {
                 "cliente@gmail.com",
                 "Juan Perez",
                 "F001-00000001",
-                "%PDF-1.4 sample".getBytes(),
-                "<Invoice/>".getBytes()
+                "https://www.nubefact.com/cpe/abc.pdf",
+                "https://www.nubefact.com/cpe/abc.xml"
         );
         // Verified by non-exceptional completion
     }

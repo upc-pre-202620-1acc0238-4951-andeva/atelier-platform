@@ -24,11 +24,11 @@ public interface CustomerPersistenceRepository extends JpaRepository<CustomerPer
            "WHERE c.tenantId = :tenantId " +
            "AND (:type IS NULL OR c.type = :type) " +
            "AND (:status IS NULL OR c.status = :status) " +
-           "AND (:searchTerm IS NULL OR " +
-           "     LOWER(c.firstName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-           "     LOWER(c.lastName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-           "     LOWER(c.companyName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-           "     c.taxId LIKE CONCAT('%', :searchTerm, '%')) " +
+           "AND (CAST(:searchTerm AS String) IS NULL OR " +
+           "     LOWER(c.firstName) LIKE LOWER(CONCAT('%', CAST(:searchTerm AS String), '%')) OR " +
+           "     LOWER(c.lastName) LIKE LOWER(CONCAT('%', CAST(:searchTerm AS String), '%')) OR " +
+           "     LOWER(c.companyName) LIKE LOWER(CONCAT('%', CAST(:searchTerm AS String), '%')) OR " +
+           "     c.taxId LIKE CONCAT('%', CAST(:searchTerm AS String), '%')) " +
            "ORDER BY c.createdAt DESC")
     List<CustomerPersistenceEntity> searchCustomers(
             @Param("tenantId") UUID tenantId,

@@ -90,7 +90,7 @@ class InvoicingRepositoryAdaptersTest {
         voucherAssembler = new ElectronicVoucherPersistenceAssembler(paymentAssembler);
         taxEngine = new PeruvianTaxCalculationEngine();
 
-        voucherRepo = new ElectronicVoucherRepositoryImpl(voucherJpaRepo, voucherAssembler);
+        voucherRepo = new ElectronicVoucherRepositoryImpl(voucherJpaRepo, voucherAssembler, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         paymentRepo = new VoucherPaymentRepositoryImpl(paymentJpaRepo, voucherJpaRepo, paymentAssembler);
         seriesRepo = new SeriesConfigurationRepositoryImpl(seriesJpaRepo, seriesAssembler);
     }

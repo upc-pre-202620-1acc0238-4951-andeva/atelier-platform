@@ -69,7 +69,7 @@ class ResponseAssemblersTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody().code()).isEqualTo("BAD_REQUEST");
-            assertThat(response.getBody().message()).isEqualTo("Invalid request parameters or payload.");
+            assertThat(response.getBody().message()).isEqualTo("Invalid request parameters or payload: Invalid input");
         }
 
         @Test

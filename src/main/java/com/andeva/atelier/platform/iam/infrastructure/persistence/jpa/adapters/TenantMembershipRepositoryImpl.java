@@ -14,6 +14,8 @@ import com.andeva.atelier.platform.iam.infrastructure.persistence.jpa.repositori
 import com.andeva.atelier.platform.iam.infrastructure.persistence.jpa.repositories.UserPersistenceRepository;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.UserId;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +40,13 @@ public class TenantMembershipRepositoryImpl implements TenantMembershipRepositor
     private final TenantPersistenceRepository tenantPersistenceRepository;
     private final UserPersistenceRepository userPersistenceRepository;
     private final RolePersistenceRepository rolePersistenceRepository;
+
+    private ApplicationEventPublisher eventPublisher = event -> { };
+
+    @Autowired
+    void setEventPublisher(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
 
     public TenantMembershipRepositoryImpl(
             TenantMembershipPersistenceRepository membershipPersistenceRepository,
@@ -72,6 +81,8 @@ public class TenantMembershipRepositoryImpl implements TenantMembershipRepositor
                 roles
         );
         TenantMembershipPersistenceEntity saved = membershipPersistenceRepository.save(entity);
+        membership.domainEvents().forEach(eventPublisher::publishEvent);
+        membership.clearDomainEvents();
         return TenantMembershipPersistenceAssembler.toDomain(saved);
     }
 

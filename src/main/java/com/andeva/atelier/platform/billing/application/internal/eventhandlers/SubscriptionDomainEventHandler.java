@@ -15,6 +15,7 @@ import com.andeva.atelier.platform.billing.domain.repositories.SubscriptionPlanR
 import com.andeva.atelier.platform.billing.domain.repositories.TenantSubscriptionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -37,19 +38,23 @@ public class SubscriptionDomainEventHandler {
     private final StripeGatewayPort stripeGatewayPort;
     private final SubscriptionPlanRepository planRepository;
     private final TenantSubscriptionRepository subscriptionRepository;
+    private final String billingReturnUrl;
 
     public SubscriptionDomainEventHandler(
             BillingCachePort billingCachePort,
             TenantBillingNotificationGatewayPort notificationGatewayPort,
             StripeGatewayPort stripeGatewayPort,
             SubscriptionPlanRepository planRepository,
-            TenantSubscriptionRepository subscriptionRepository
+            TenantSubscriptionRepository subscriptionRepository,
+            @Value("${app.frontend.base-url:https://atelier.andeva.tech}") String frontendBaseUrl
     ) {
         this.billingCachePort = Objects.requireNonNull(billingCachePort, "BillingCachePort cannot be null");
         this.notificationGatewayPort = Objects.requireNonNull(notificationGatewayPort, "TenantBillingNotificationGatewayPort cannot be null");
         this.stripeGatewayPort = Objects.requireNonNull(stripeGatewayPort, "StripeGatewayPort cannot be null");
         this.planRepository = Objects.requireNonNull(planRepository, "SubscriptionPlanRepository cannot be null");
         this.subscriptionRepository = Objects.requireNonNull(subscriptionRepository, "TenantSubscriptionRepository cannot be null");
+        this.billingReturnUrl = Objects.requireNonNull(frontendBaseUrl, "Frontend base URL cannot be null")
+                .replaceAll("/+$", "") + "/app/billing";
     }
 
     @EventListener
@@ -93,8 +98,8 @@ public class SubscriptionDomainEventHandler {
 
         Optional<TenantSubscription> subOpt = subscriptionRepository.findById(event.subscriptionId());
         String portalUrl = subOpt
-                .map(s -> stripeGatewayPort.createCustomerPortalSession(s.stripeCustomerId(), "https://atelier.andeva.com/dashboard/billing"))
-                .orElse("https://atelier.andeva.com/dashboard/billing");
+                .map(s -> stripeGatewayPort.createCustomerPortalSession(s.stripeCustomerId(), billingReturnUrl))
+                .orElse(billingReturnUrl);
 
         notificationGatewayPort.sendPaymentFailedNotification(
                 event.tenantId(),

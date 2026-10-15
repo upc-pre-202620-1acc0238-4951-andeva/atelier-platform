@@ -5,8 +5,12 @@ import com.andeva.atelier.platform.iam.application.queryservices.MembershipQuery
 import com.andeva.atelier.platform.iam.application.queryservices.TenantQueryService;
 import com.andeva.atelier.platform.iam.application.queryservices.UserQueryService;
 import com.andeva.atelier.platform.iam.domain.model.enums.MembershipStatus;
+import com.andeva.atelier.platform.iam.domain.model.enums.RoleTemplate;
 import com.andeva.atelier.platform.iam.domain.model.queries.GetBranchByIdQuery;
+import com.andeva.atelier.platform.iam.domain.model.ids.TenantMembershipId;
+import com.andeva.atelier.platform.iam.domain.model.queries.GetMembershipByIdQuery;
 import com.andeva.atelier.platform.iam.domain.model.queries.GetMembershipByTenantAndUserQuery;
+import com.andeva.atelier.platform.iam.domain.model.queries.GetMembershipsByTenantIdQuery;
 import com.andeva.atelier.platform.iam.domain.model.queries.GetTenantByIdQuery;
 import com.andeva.atelier.platform.iam.domain.model.queries.GetUserByIdQuery;
 import com.andeva.atelier.platform.iam.interfaces.acl.TenancyContextFacade;
@@ -92,6 +96,40 @@ public class TenancyContextFacadeImpl implements TenancyContextFacade {
                         user.profile().getFullName(),
                         user.status().name()
                 ));
+    }
+
+    @Override
+    public Optional<UserAclDto> fetchTenantOwner(UUID tenantId) {
+        if (tenantId == null) {
+            return Optional.empty();
+        }
+        return membershipQueryService.handle(new GetMembershipsByTenantIdQuery(TenantId.of(tenantId))).stream()
+                .filter(membership -> membership.status() == MembershipStatus.ACTIVE)
+                .filter(membership -> membership.assignedRoles().stream()
+                        .anyMatch(role -> RoleTemplate.ROLE_WORKSHOP_OWNER.code().equals(role.code())))
+                .findFirst()
+                .flatMap(membership -> fetchUserById(membership.userId().value()));
+    }
+
+    @Override
+    public Optional<String> fetchUserDeviceToken(UUID userId) {
+        if (userId == null) {
+            return Optional.empty();
+        }
+        return userQueryService.handle(new GetUserByIdQuery(UserId.of(userId)))
+                .map(user -> user.fcmToken())
+                .filter(token -> !token.isBlank());
+    }
+
+    @Override
+    public boolean isActiveMembershipOfTenant(UUID membershipId, UUID tenantId) {
+        if (membershipId == null || tenantId == null) {
+            return false;
+        }
+        return membershipQueryService.handle(new GetMembershipByIdQuery(TenantMembershipId.of(membershipId)))
+                .map(membership -> membership.tenantId().value().equals(tenantId)
+                        && membership.status() == MembershipStatus.ACTIVE)
+                .orElse(false);
     }
 
     @Override

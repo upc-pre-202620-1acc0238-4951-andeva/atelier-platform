@@ -31,7 +31,14 @@ public class CustomerMembershipRepositoryImpl implements CustomerMembershipRepos
 
     @Override
     public CustomerMembership save(CustomerMembership membership) {
-        CustomerMembershipPersistenceEntity entity = CustomerMembershipPersistenceAssembler.toEntity(membership);
+        // Update the managed row when it exists; a freshly assembled entity is always flagged as new
+        CustomerMembershipPersistenceEntity entity = membershipPersistenceRepository.findById(membership.getId().value())
+                .map(existing -> {
+                    existing.setRole(membership.getRole());
+                    existing.setStatus(membership.getStatus());
+                    return existing;
+                })
+                .orElseGet(() -> CustomerMembershipPersistenceAssembler.toEntity(membership));
         CustomerMembershipPersistenceEntity saved = membershipPersistenceRepository.save(entity);
         return CustomerMembershipPersistenceAssembler.toDomain(saved);
     }

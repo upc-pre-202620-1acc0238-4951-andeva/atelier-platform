@@ -83,9 +83,16 @@ public final class VehiclePersistenceAssembler {
         entity.setEngineType(domain.engineType());
         entity.setCurrentMileage(domain.currentMileage());
         if (domain.ownershipHistory() != null) {
-            entity.getOwnershipHistory().clear();
+            // Merge by id: update managed rows (e.g. the closed ownership) and only add new ones,
+            // so Hibernate never deletes and re-inserts the same primary key
             for (VehicleOwnership ownership : domain.ownershipHistory()) {
-                entity.addOwnership(VehicleOwnershipPersistenceAssembler.toEntity(ownership, entity));
+                entity.getOwnershipHistory().stream()
+                        .filter(existing -> existing.getId().equals(ownership.getId().value()))
+                        .findFirst()
+                        .ifPresentOrElse(
+                                existing -> existing.setEndDate(ownership.getEndDate()),
+                                () -> entity.addOwnership(VehicleOwnershipPersistenceAssembler.toEntity(ownership, entity))
+                        );
             }
         }
     }

@@ -10,6 +10,7 @@ import com.andeva.atelier.platform.invoicing.infrastructure.persistence.jpa.enti
 import com.andeva.atelier.platform.invoicing.infrastructure.persistence.jpa.repositories.ElectronicVoucherPersistenceRepository;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.WorkOrderId;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,13 +33,16 @@ public class ElectronicVoucherRepositoryImpl implements ElectronicVoucherReposit
 
     private final ElectronicVoucherPersistenceRepository jpaRepository;
     private final ElectronicVoucherPersistenceAssembler assembler;
+    private final ApplicationEventPublisher eventPublisher;
 
     public ElectronicVoucherRepositoryImpl(
             ElectronicVoucherPersistenceRepository jpaRepository,
-            ElectronicVoucherPersistenceAssembler assembler
+            ElectronicVoucherPersistenceAssembler assembler,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.jpaRepository = Objects.requireNonNull(jpaRepository, "JPA repository cannot be null");
         this.assembler = Objects.requireNonNull(assembler, "Assembler cannot be null");
+        this.eventPublisher = Objects.requireNonNull(eventPublisher, "Event publisher cannot be null");
     }
 
     @Override
@@ -46,7 +50,12 @@ public class ElectronicVoucherRepositoryImpl implements ElectronicVoucherReposit
         Objects.requireNonNull(voucher, "ElectronicVoucher cannot be null");
         ElectronicVoucherPersistenceEntity entity = assembler.toEntity(voucher);
         ElectronicVoucherPersistenceEntity saved = jpaRepository.save(entity);
-        return assembler.toDomain(saved);
+        ElectronicVoucher domain = assembler.toDomain(saved);
+
+        voucher.domainEvents().forEach(eventPublisher::publishEvent);
+        voucher.clearDomainEvents();
+
+        return domain;
     }
 
     @Override

@@ -72,6 +72,26 @@ class DomainEventsHandlersTest {
     }
 
     @Test
+    @DisplayName("UserDomainEventsHandler: should send password reset email when a reset token is issued")
+    void shouldSendPasswordResetEmailOnResetTokenIssued() {
+        UserDomainEventsHandler handler = new UserDomainEventsHandler(resendEmailService, userRepository);
+
+        UserId userId = UserId.generate();
+        EmailAddress email = EmailAddress.of("user@atelier.pe");
+        User user = User.registerWithLocalCredentials(
+                email,
+                Password.of("$2a$12$abcdefghijklmnopqrstuvwxABCDEFGHIJKLMNOPQRSTUVWXYZ012"),
+                PersonName.of("Carlos", "García"),
+                null
+        );
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        handler.on(VerificationTokenIssuedEvent.of(userId, "reset-token-abc", TokenType.PASSWORD_RESET, Instant.now().plusSeconds(7200)));
+
+        verify(resendEmailService).sendPasswordResetEmail(email, "reset-token-abc");
+    }
+
+    @Test
     @DisplayName("UserDomainEventsHandler: should send password reset email on reset requested")
     void shouldSendPasswordResetEmail() {
         UserDomainEventsHandler handler = new UserDomainEventsHandler(resendEmailService, userRepository);

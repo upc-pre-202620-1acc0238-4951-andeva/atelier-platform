@@ -22,4 +22,9 @@ public interface CustomerFiscalValidationAclService {
      * Validates active and registered tax document status against SUNAT.
      */
     boolean validateTaxIdStatus(String taxId);
+
+    /**
+     * Retrieves the customer's contact email from CRM for delivering electronic receipts.
+     */
+    Optional<String> getCustomerEmail(UUID customerId);
 }

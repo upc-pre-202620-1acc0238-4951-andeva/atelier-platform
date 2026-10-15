@@ -92,6 +92,14 @@ public interface CustomerFleetContextFacade {
     List<CustomerMembershipAclDto> fetchActiveMembershipsByUserId(UUID userId);
 
     /**
+     * Query active memberships (linked user accounts) of a customer or fleet.
+     *
+     * @param customerId Customer identifier
+     * @return List of active membership DTOs
+     */
+    List<CustomerMembershipAclDto> fetchActiveMembershipsByCustomerId(UUID customerId);
+
+    /**
      * Verify whether a user holds a specific corporate role in a fleet.
      *
      * @param customerId   Corporate customer identifier

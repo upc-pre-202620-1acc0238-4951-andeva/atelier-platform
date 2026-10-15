@@ -35,7 +35,7 @@ public interface InventoryItemPersistenceRepository extends JpaRepository<Invent
 
     @Query("SELECT i FROM InventoryItemPersistenceEntity i WHERE i.tenantId = :tenantId " +
             "AND (:category IS NULL OR i.category = :category) " +
-            "AND (:search IS NULL OR LOWER(i.name) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(i.sku) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+            "AND (CAST(:search AS String) IS NULL OR LOWER(i.name) LIKE LOWER(CONCAT('%', CAST(:search AS String), '%')) OR LOWER(i.sku) LIKE LOWER(CONCAT('%', CAST(:search AS String), '%'))) " +
             "AND i.deletedAt IS NULL")
     Page<InventoryItemPersistenceEntity> findPaged(@Param("tenantId") UUID tenantId,
                                                    @Param("category") ItemCategory category,

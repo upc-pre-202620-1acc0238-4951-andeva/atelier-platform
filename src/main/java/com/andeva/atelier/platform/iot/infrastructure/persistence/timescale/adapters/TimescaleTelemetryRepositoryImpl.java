@@ -53,6 +53,7 @@ public class TimescaleTelemetryRepositoryImpl implements TelemetryLogRepository,
                     timestamp, vehicle_id, tenant_id, latitude, longitude,
                     speed, engine_temp_c, engine_rpm, fuel_level_pct, battery_voltage
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT ("timestamp", vehicle_id) DO NOTHING
                 """;
 
         jdbcTemplate.batchUpdate(sql, records, records.size(), (PreparedStatement ps, TelemetryRecord record) -> {

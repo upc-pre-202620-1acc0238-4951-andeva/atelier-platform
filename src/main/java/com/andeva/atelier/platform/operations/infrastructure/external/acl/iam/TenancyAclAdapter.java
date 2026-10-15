@@ -50,7 +50,7 @@ public class TenancyAclAdapter implements TenancyAclService {
             return true;
         }
         if (tenantId != null) {
-            return tenancyContextFacade.isUserStaffMemberOfTenant(mechanicMembershipId, tenantId);
+            return tenancyContextFacade.isActiveMembershipOfTenant(mechanicMembershipId, tenantId);
         }
         return tenancyContextFacade.fetchUserById(mechanicMembershipId).isPresent();
     }

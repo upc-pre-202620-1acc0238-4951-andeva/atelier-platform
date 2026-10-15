@@ -4,6 +4,7 @@ import com.andeva.atelier.platform.iam.application.internal.dto.AuthenticatedUse
 import com.andeva.atelier.platform.iam.domain.model.aggregates.User;
 import com.andeva.atelier.platform.iam.domain.model.commands.AuthenticateUserCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.AuthenticateWithGoogleCommand;
+import com.andeva.atelier.platform.iam.domain.model.commands.RegisterDeviceTokenCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.RegisterUserCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.RequestPasswordResetCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.ResetPasswordCommand;
@@ -32,4 +33,6 @@ public interface UserCommandService {
     Result<Void, ApplicationError> handle(ResetPasswordCommand command);
 
     Result<User, ApplicationError> handle(UpdateUserProfileCommand command);
+
+    Result<Void, ApplicationError> handle(RegisterDeviceTokenCommand command);
 }

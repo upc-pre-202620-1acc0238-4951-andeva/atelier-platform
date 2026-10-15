@@ -11,6 +11,8 @@ import com.andeva.atelier.platform.iam.infrastructure.persistence.jpa.repositori
 import com.andeva.atelier.platform.iam.infrastructure.persistence.jpa.repositories.RolePersistenceRepository;
 import com.andeva.atelier.platform.iam.infrastructure.persistence.jpa.repositories.TenantPersistenceRepository;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,13 @@ public class RoleRepositoryImpl implements RoleRepository {
     private final TenantPersistenceRepository tenantPersistenceRepository;
     private final PermissionPersistenceRepository permissionPersistenceRepository;
 
+    private ApplicationEventPublisher eventPublisher = event -> { };
+
+    @Autowired
+    void setEventPublisher(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
+
     public RoleRepositoryImpl(
             RolePersistenceRepository rolePersistenceRepository,
             TenantPersistenceRepository tenantPersistenceRepository,
@@ -58,6 +67,8 @@ public class RoleRepositoryImpl implements RoleRepository {
 
         RolePersistenceEntity entity = RolePersistenceAssembler.toEntity(role, tenant, permissions);
         RolePersistenceEntity saved = rolePersistenceRepository.save(entity);
+        role.domainEvents().forEach(eventPublisher::publishEvent);
+        role.clearDomainEvents();
         return RolePersistenceAssembler.toDomain(saved);
     }
 

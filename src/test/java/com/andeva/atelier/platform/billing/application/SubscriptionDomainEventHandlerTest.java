@@ -63,7 +63,8 @@ class SubscriptionDomainEventHandlerTest {
                 notificationGatewayPort,
                 stripeGatewayPort,
                 planRepository,
-                subscriptionRepository
+                subscriptionRepository,
+                "https://atelier.andeva.tech"
         );
     }
 

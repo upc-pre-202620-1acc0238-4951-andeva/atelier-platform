@@ -10,6 +10,8 @@ import com.andeva.atelier.platform.iam.infrastructure.persistence.jpa.repositori
 import com.andeva.atelier.platform.iam.infrastructure.persistence.jpa.repositories.TenantPersistenceRepository;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.EmailAddress;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +32,13 @@ public class InvitationRepositoryImpl implements InvitationRepository {
     private final InvitationPersistenceRepository invitationPersistenceRepository;
     private final TenantPersistenceRepository tenantPersistenceRepository;
 
+    private ApplicationEventPublisher eventPublisher = event -> { };
+
+    @Autowired
+    void setEventPublisher(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
+
     public InvitationRepositoryImpl(
             InvitationPersistenceRepository invitationPersistenceRepository,
             TenantPersistenceRepository tenantPersistenceRepository) {
@@ -43,6 +52,8 @@ public class InvitationRepositoryImpl implements InvitationRepository {
         TenantPersistenceEntity tenant = tenantPersistenceRepository.getReferenceById(invitation.tenantId().value());
         InvitationPersistenceEntity entity = InvitationPersistenceAssembler.toEntity(invitation, tenant);
         InvitationPersistenceEntity saved = invitationPersistenceRepository.save(entity);
+        invitation.domainEvents().forEach(eventPublisher::publishEvent);
+        invitation.clearDomainEvents();
         return InvitationPersistenceAssembler.toDomain(saved);
     }
 

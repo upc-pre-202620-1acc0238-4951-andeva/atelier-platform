@@ -176,6 +176,19 @@ public class CustomerFleetContextFacadeImpl implements CustomerFleetContextFacad
 
     @Override
     @Transactional(readOnly = true)
+    public List<CustomerMembershipAclDto> fetchActiveMembershipsByCustomerId(UUID customerId) {
+        if (customerId == null) {
+            return List.of();
+        }
+        return customerMembershipRepository.findByCustomerId(CustomerId.of(customerId))
+                .stream()
+                .filter(membership -> membership.status() == CustomerMembershipStatus.ACTIVE)
+                .map(this::toAclDto)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean hasFleetRole(UUID customerId, UUID userId, String requiredRole) {
         if (customerId == null || userId == null || requiredRole == null) {
             return false;

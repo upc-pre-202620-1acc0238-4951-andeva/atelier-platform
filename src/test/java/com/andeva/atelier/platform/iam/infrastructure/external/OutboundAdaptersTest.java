@@ -25,7 +25,7 @@ class OutboundAdaptersTest {
     @Test
     @DisplayName("ResendEmailAdapter executes dispatch without error under test configuration")
     void testResendEmailAdapter() {
-        ResendEmailAdapter adapter = new ResendEmailAdapter("placeholder-key", "notifications@atelier.pe");
+        ResendEmailAdapter adapter = new ResendEmailAdapter("placeholder-key", "notifications@atelier.pe", "https://atelier.andeva.tech");
         EmailAddress recipient = EmailAddress.of("user@workshop.pe");
 
         assertThatCode(() -> adapter.sendVerificationEmail(recipient, "123456"))

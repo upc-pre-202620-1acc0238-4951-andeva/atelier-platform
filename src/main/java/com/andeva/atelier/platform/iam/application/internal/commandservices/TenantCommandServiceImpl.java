@@ -104,27 +104,27 @@ public class TenantCommandServiceImpl implements TenantCommandService {
         List<Permission> allPermissions = permissionRepository.findAll();
         Set<Permission> fullPermissionsSet = new HashSet<>(allPermissions);
 
-        Role workshopAdminRole = null;
+        Role workshopOwnerRole = null;
         for (RoleTemplate template : RoleTemplate.values()) {
             Role role = Role.fromTemplate(savedTenant.id(), template, fullPermissionsSet);
             Role savedRole = roleRepository.save(role);
-            if (template == RoleTemplate.ROLE_WORKSHOP_ADMIN) {
-                workshopAdminRole = savedRole;
+            if (template == RoleTemplate.ROLE_WORKSHOP_OWNER) {
+                workshopOwnerRole = savedRole;
             }
         }
 
         // If template matching didn't catch, fallback to the first saved role
-        if (workshopAdminRole == null) {
-            workshopAdminRole = roleRepository.findByTenantId(savedTenant.id()).stream().findFirst().orElseThrow();
+        if (workshopOwnerRole == null) {
+            workshopOwnerRole = roleRepository.findByTenantId(savedTenant.id()).stream().findFirst().orElseThrow();
         }
 
-        // 6. Create initial membership binding the administrator to the tenant with the admin role
+        // 6. The account that registers the workshop is its owner (billing contact and sovereign role)
         TenantMembership adminMembership = TenantMembership.create(
                 savedTenant.id(),
                 savedAdmin.id(),
                 SalaryType.FIXED,
                 Money.soles(0.00),
-                Set.of(workshopAdminRole)
+                Set.of(workshopOwnerRole)
         );
         membershipRepository.save(adminMembership);
 

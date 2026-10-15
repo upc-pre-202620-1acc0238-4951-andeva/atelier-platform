@@ -18,6 +18,7 @@ import com.andeva.atelier.platform.iam.domain.model.entities.Permission;
 import com.andeva.atelier.platform.iam.domain.model.enums.MembershipStatus;
 import com.andeva.atelier.platform.iam.domain.model.enums.TokenType;
 import com.andeva.atelier.platform.iam.domain.model.enums.UserStatus;
+import com.andeva.atelier.platform.iam.domain.model.valueobjects.WorkshopOwnerPermissions;
 import com.andeva.atelier.platform.iam.domain.model.valueobjects.PersonName;
 import com.andeva.atelier.platform.iam.domain.repositories.TenantMembershipRepository;
 import com.andeva.atelier.platform.iam.domain.repositories.UserRepository;
@@ -220,6 +221,9 @@ public class UserCommandServiceImpl implements UserCommandService {
                 if (role.permissions() != null) {
                     role.permissions().forEach(p -> permissions.add(p.name()));
                 }
+                if ("ROLE_WORKSHOP_OWNER".equals(role.code())) {
+                    permissions.addAll(WorkshopOwnerPermissions.ALL);
+                }
                 if ("ROLE_WORKSHOP_ADMIN".equals(role.code()) || "ROLE_WORKSHOP_OWNER".equals(role.code())) {
                     permissions.addAll(List.of(
                             "crm:customers:create", "crm:customers:read", "crm:customers:update", "crm:customers:manage",
@@ -254,5 +258,21 @@ public class UserCommandServiceImpl implements UserCommandService {
 
         User savedUser = userRepository.save(user);
         return Result.success(savedUser);
+    }
+
+    @Override
+    @Transactional
+    public Result<Void, ApplicationError> handle(com.andeva.atelier.platform.iam.domain.model.commands.RegisterDeviceTokenCommand command) {
+        Objects.requireNonNull(command, "Command cannot be null");
+
+        Optional<User> userOptional = userRepository.findById(command.userId());
+        if (userOptional.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("User account not found with ID: " + command.userId().value()));
+        }
+
+        User user = userOptional.get();
+        user.updateFcmToken(command.fcmToken());
+        userRepository.save(user);
+        return Result.success(null);
     }
 }
