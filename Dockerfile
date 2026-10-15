@@ -37,8 +37,11 @@ COPY --from=builder --chown=spring:spring /app/app.jar /app/app.jar
 USER spring:spring
 
 ENV SPRING_PROFILES_ACTIVE=prod
-# JVM memory tuned for a 512MB container
-ENV JAVA_OPTS="-Xms64m -Xmx160m -XX:MaxMetaspaceSize=220m -XX:ReservedCodeCacheSize=48m -Xss256k -XX:+UseSerialGC -XX:+ExitOnOutOfMemoryError"
+# Memory tuned for a 512MB container (measured peak RSS ~445MB under a full E2E workload):
+# - MALLOC_ARENA_MAX=2 stops glibc from reserving one malloc arena per thread
+# - C1-only JIT (TieredStopAtLevel=1) and a smaller code cache cut native JIT memory
+ENV MALLOC_ARENA_MAX=2
+ENV JAVA_OPTS="-Xms64m -Xmx160m -XX:MaxMetaspaceSize=220m -XX:ReservedCodeCacheSize=32m -XX:TieredStopAtLevel=1 -XX:MaxDirectMemorySize=32m -Xss256k -XX:+UseSerialGC -XX:+ExitOnOutOfMemoryError"
 
 # Render injects PORT at runtime (server.port=${PORT:8080})
 EXPOSE 8080
