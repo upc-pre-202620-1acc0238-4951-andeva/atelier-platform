@@ -251,16 +251,16 @@ class IamValueObjectsTest {
         @Test
         @DisplayName("RoleTemplate should contain standard factory templates with metadata")
         void shouldContainRoleTemplates() {
-            assertThat(RoleTemplate.values()).hasSize(5);
+            assertThat(RoleTemplate.values()).hasSize(8);
 
             RoleTemplate owner = RoleTemplate.ROLE_WORKSHOP_OWNER;
             assertThat(owner.code()).isEqualTo("ROLE_WORKSHOP_OWNER");
-            assertThat(owner.defaultName()).isEqualTo("Workshop Owner");
+            assertThat(owner.defaultName()).isEqualTo("Dueño de Taller");
             assertThat(owner.description()).isNotEmpty();
 
             RoleTemplate mechanic = RoleTemplate.ROLE_MECHANIC;
             assertThat(mechanic.code()).isEqualTo("ROLE_MECHANIC");
-            assertThat(mechanic.defaultName()).isEqualTo("Mechanic");
+            assertThat(mechanic.defaultName()).isEqualTo("Técnico Mecánico");
         }
     }
 }

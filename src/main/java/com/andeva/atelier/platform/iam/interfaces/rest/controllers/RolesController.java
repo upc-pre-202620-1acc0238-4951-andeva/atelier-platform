@@ -142,11 +142,11 @@ public class RolesController {
             @ApiResponse(responseCode = "200", description = "Role permissions updated successfully"),
             @ApiResponse(responseCode = "400", description = "Empty permission list"),
             @ApiResponse(responseCode = "401", description = "Authentication required"),
-            @ApiResponse(responseCode = "403", description = "Missing authority iam:roles:create"),
+            @ApiResponse(responseCode = "403", description = "Missing authority iam:roles:manage"),
             @ApiResponse(responseCode = "404", description = "Role or permission not found")
     })
     @PutMapping("/api/v1/tenants/{tenantId}/roles/{roleId}/permissions")
-    @PreAuthorize("hasAuthority('iam:roles:create')")
+    @PreAuthorize("hasAuthority('iam:roles:manage')")
     public ResponseEntity<?> updateRolePermissions(
             @PathVariable UUID tenantId,
             @PathVariable UUID roleId,
@@ -189,11 +189,11 @@ public class RolesController {
             @ApiResponse(responseCode = "200", description = "Role reset to defaults successfully"),
             @ApiResponse(responseCode = "400", description = "Role is not a factory system role"),
             @ApiResponse(responseCode = "401", description = "Authentication required"),
-            @ApiResponse(responseCode = "403", description = "Missing authority iam:roles:create"),
+            @ApiResponse(responseCode = "403", description = "Missing authority iam:roles:manage"),
             @ApiResponse(responseCode = "404", description = "Role not found")
     })
     @PostMapping("/api/v1/tenants/{tenantId}/roles/{roleId}/reset-defaults")
-    @PreAuthorize("hasAuthority('iam:roles:create')")
+    @PreAuthorize("hasAuthority('iam:roles:manage')")
     public ResponseEntity<?> resetRoleToDefaults(
             @PathVariable UUID tenantId,
             @PathVariable UUID roleId,
@@ -227,12 +227,12 @@ public class RolesController {
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Custom role deleted successfully"),
             @ApiResponse(responseCode = "401", description = "Authentication required"),
-            @ApiResponse(responseCode = "403", description = "Missing authority iam:roles:create"),
+            @ApiResponse(responseCode = "403", description = "Missing authority iam:roles:manage"),
             @ApiResponse(responseCode = "404", description = "Role not found"),
             @ApiResponse(responseCode = "409", description = "Cannot delete system factory role or role in active use")
     })
     @DeleteMapping("/api/v1/tenants/{tenantId}/roles/{roleId}")
-    @PreAuthorize("hasAuthority('iam:roles:create')")
+    @PreAuthorize("hasAuthority('iam:roles:manage')")
     public ResponseEntity<?> deleteRole(
             @PathVariable UUID tenantId,
             @PathVariable UUID roleId,

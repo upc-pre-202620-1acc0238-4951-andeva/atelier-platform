@@ -1,35 +1,57 @@
 package com.andeva.atelier.platform.iam.domain.model.enums;
 
+import com.andeva.atelier.platform.iam.domain.model.valueobjects.PermissionCatalog;
+
+import java.util.Arrays;
+import java.util.Optional;
+import java.util.Set;
+
 /**
- * Standard factory role templates provisioned to automotive workshops during tenant onboarding.
+ * The eight factory role templates provisioned to every automotive workshop during tenant onboarding
+ * (see {@code docs/backend-documentation/atelier-roles.md}, section 2).
  *
  * @author Joel Huamani Estefanero
  */
 public enum RoleTemplate {
     ROLE_WORKSHOP_OWNER(
             "ROLE_WORKSHOP_OWNER",
-            "Workshop Owner",
-            "Sovereign owner with unconstrained administrative and operational privileges across the entire workshop tenant."
+            "Dueño de Taller",
+            "Titular legal y comercial de la cuenta SaaS en Atelier Platform."
     ),
-    ROLE_WORKSHOP_ADMIN(
-            "ROLE_WORKSHOP_ADMIN",
-            "Workshop Administrator",
-            "Executive manager responsible for operations, staff management, and branch supervision."
+    ROLE_WORKSHOP_ADMINISTRATOR(
+            "ROLE_WORKSHOP_ADMINISTRATOR",
+            "Administrador de Taller",
+            "Gerencia operativa diaria del taller mecánico."
+    ),
+    ROLE_CHIEF_MECHANIC(
+            "ROLE_CHIEF_MECHANIC",
+            "Mecánico Jefe",
+            "Liderazgo técnico, distribución de carga laboral y aseguramiento de la calidad en patio."
     ),
     ROLE_SERVICE_ADVISOR(
             "ROLE_SERVICE_ADVISOR",
-            "Service Advisor",
-            "Front-desk specialist managing customer check-ins, diagnostic quotes, and service appointments."
+            "Asesor de Servicio",
+            "Enlace técnico-comercial directo entre el cliente y el equipo operativo de taller."
+    ),
+    ROLE_RECEPTIONIST(
+            "ROLE_RECEPTIONIST",
+            "Recepcionista",
+            "Atención de counter de entrada, bienvenida al cliente y gestión de agenda de visitas."
     ),
     ROLE_MECHANIC(
             "ROLE_MECHANIC",
-            "Mechanic",
-            "Technical specialist executing multi-point inspections, maintenance work orders, and labor logs."
+            "Técnico Mecánico",
+            "Ejecución directa de labores mecánicas, eléctricas y de diagnóstico en bahía o foso."
     ),
     ROLE_INVENTORY_MANAGER(
             "ROLE_INVENTORY_MANAGER",
-            "Inventory Manager",
-            "Warehouse supervisor controlling spare parts catalog, stock replenishments, and physical counts."
+            "Encargado de Inventario",
+            "Custodia física, catalogación y valoración contable de repuestos, lubricantes e insumos."
+    ),
+    ROLE_CASHIER(
+            "ROLE_CASHIER",
+            "Cajero",
+            "Recaudación económica, cobranza y liquidación tributaria de servicios."
     );
 
     private final String code;
@@ -52,5 +74,24 @@ public enum RoleTemplate {
 
     public String description() {
         return description;
+    }
+
+    /**
+     * Resolves the factory template of a persisted system role from its canonical code.
+     */
+    public static Optional<RoleTemplate> fromCode(String code) {
+        if (code == null) {
+            return Optional.empty();
+        }
+        return Arrays.stream(values())
+                .filter(template -> template.code.equalsIgnoreCase(code.trim()))
+                .findFirst();
+    }
+
+    /**
+     * Names of the catalog permissions granted to this template by default.
+     */
+    public Set<String> defaultPermissionNames() {
+        return PermissionCatalog.defaultsFor(this);
     }
 }

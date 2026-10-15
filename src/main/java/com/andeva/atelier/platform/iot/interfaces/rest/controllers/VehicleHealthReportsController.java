@@ -76,7 +76,7 @@ public class VehicleHealthReportsController {
             @ApiResponse(responseCode = "502", description = "AI inference service unavailable")
     })
     @PostMapping("/generate")
-    @PreAuthorize("hasAuthority('iot:health_reports:generate') or hasAnyRole('ROLE_SERVICE_ADVISOR', 'ROLE_HEAD_MECHANIC', 'ROLE_WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('iot:health_reports:generate')")
     public ResponseEntity<HealthReportCreatedResponse> generateHealthReport(
             @RequestParam UUID vehicleId,
             @Valid @RequestBody(required = false) GenerateHealthReportRequest request,
@@ -113,7 +113,7 @@ public class VehicleHealthReportsController {
             @ApiResponse(responseCode = "403", description = "Quota exceeded or forbidden")
     })
     @PostMapping("/generate-async")
-    @PreAuthorize("hasAuthority('iot:health_reports:generate') or hasAnyRole('ROLE_HEAD_MECHANIC', 'ROLE_WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('iot:health_reports:generate')")
     public ResponseEntity<AsyncJobResponse> generateHealthReportAsync(
             @RequestParam UUID vehicleId,
             @Valid @RequestBody(required = false) GenerateHealthReportRequest request,
@@ -142,7 +142,7 @@ public class VehicleHealthReportsController {
             @ApiResponse(responseCode = "404", description = "No previous health report found for vehicle")
     })
     @GetMapping("/latest")
-    @PreAuthorize("hasAuthority('iot:health_reports:read') or hasAnyRole('ROLE_MECHANIC', 'ROLE_SERVICE_ADVISOR', 'ROLE_HEAD_MECHANIC', 'ROLE_WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('iot:health_reports:read')")
     public ResponseEntity<HealthReportCreatedResponse> getLatestHealthReport(
             @RequestParam UUID vehicleId,
             @AuthenticationPrincipal CustomUserDetails userDetails
@@ -167,7 +167,7 @@ public class VehicleHealthReportsController {
             @ApiResponse(responseCode = "404", description = "Report not found")
     })
     @GetMapping("/{reportId}/pdf")
-    @PreAuthorize("hasAuthority('iot:health_reports:read') or hasAnyRole('ROLE_SERVICE_ADVISOR', 'ROLE_MECHANIC', 'ROLE_HEAD_MECHANIC', 'ROLE_WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('iot:health_reports:read')")
     public ResponseEntity<byte[]> downloadHealthReportPdf(
             @PathVariable UUID reportId,
             @RequestParam(required = false) UUID vehicleId,

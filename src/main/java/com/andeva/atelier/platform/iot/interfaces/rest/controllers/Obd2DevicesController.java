@@ -74,7 +74,7 @@ public class Obd2DevicesController {
             @ApiResponse(responseCode = "409", description = "Device identifier already exists or quota exceeded")
     })
     @PostMapping
-    @PreAuthorize("hasAuthority('iot:devices:register') or hasAnyRole('ROLE_WORKSHOP_OWNER', 'ROLE_TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('iot:devices:register')")
     public ResponseEntity<Obd2DeviceResponse> registerDevice(
             @Valid @RequestBody RegisterDeviceRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails
@@ -108,7 +108,7 @@ public class Obd2DevicesController {
             @ApiResponse(responseCode = "404", description = "Device not found")
     })
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('iot:devices:read') or hasAnyRole('ROLE_HEAD_MECHANIC', 'ROLE_TENANT_ADMIN', 'ROLE_WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('iot:devices:read')")
     public ResponseEntity<Obd2DeviceResponse> getDeviceById(
             @PathVariable UUID id,
             @AuthenticationPrincipal CustomUserDetails userDetails
@@ -133,7 +133,7 @@ public class Obd2DevicesController {
             @ApiResponse(responseCode = "403", description = "Forbidden")
     })
     @GetMapping
-    @PreAuthorize("hasAuthority('iot:devices:read') or hasAnyRole('ROLE_HEAD_MECHANIC', 'ROLE_TENANT_ADMIN', 'ROLE_WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('iot:devices:read')")
     public ResponseEntity<List<Obd2DeviceResponse>> listDevices(
             @RequestParam(required = false) String status,
             @AuthenticationPrincipal CustomUserDetails userDetails
@@ -159,7 +159,7 @@ public class Obd2DevicesController {
             @ApiResponse(responseCode = "409", description = "Device currently installed conflict")
     })
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAuthority('iot:devices:manage') or hasAnyRole('ROLE_HEAD_MECHANIC', 'ROLE_TENANT_ADMIN', 'ROLE_WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('iot:devices:register')")
     public ResponseEntity<Obd2DeviceResponse> updateDeviceStatus(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateDeviceStatusRequest request,

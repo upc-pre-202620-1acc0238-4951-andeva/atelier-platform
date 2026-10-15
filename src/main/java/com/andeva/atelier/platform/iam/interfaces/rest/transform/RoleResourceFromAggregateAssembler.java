@@ -32,6 +32,7 @@ public final class RoleResourceFromAggregateAssembler {
 
         return new RoleResource(
                 role.id().value(),
+                role.code(),
                 role.name(),
                 role.description(),
                 role.isSystemRole(),

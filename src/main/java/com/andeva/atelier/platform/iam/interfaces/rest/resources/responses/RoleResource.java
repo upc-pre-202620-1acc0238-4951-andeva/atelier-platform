@@ -10,11 +10,13 @@ import java.util.UUID;
  * @param name         Formal role name
  * @param description  Operational description of the role's scope
  * @param isSystemRole Flag indicating whether this is a platform factory template role
+ * @param code         Factory template code (e.g. ROLE_MECHANIC); null for custom roles
  * @param permissions  Canonical permission code names granted to the role
  * @author Joel Huamani Estefanero
  */
 public record RoleResource(
         UUID id,
+        String code,
         String name,
         String description,
         boolean isSystemRole,

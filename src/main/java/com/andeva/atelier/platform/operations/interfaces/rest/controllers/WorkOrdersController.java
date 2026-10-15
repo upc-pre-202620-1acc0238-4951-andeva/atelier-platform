@@ -63,7 +63,7 @@ public class WorkOrdersController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('operations:work-orders:write') or hasRole('SERVICE_ADVISOR') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('operations:work_orders:create')")
     @Operation(summary = "Open formal work order upon technical vehicle reception")
     public ResponseEntity<?> createWorkOrder(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -88,7 +88,7 @@ public class WorkOrdersController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('operations:work-orders:read') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('operations:work_orders:read')")
     @Operation(summary = "List and search work orders by branch or tenant")
     public ResponseEntity<?> getWorkOrders(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -116,7 +116,7 @@ public class WorkOrdersController {
     }
 
     @GetMapping("/{workOrderId}")
-    @PreAuthorize("hasAuthority('operations:work-orders:read') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('operations:work_orders:read')")
     @Operation(summary = "Get exhaustive work order details with tasks, proposals, and images")
     public ResponseEntity<?> getWorkOrderById(@PathVariable UUID workOrderId) {
         return workOrderQueryService.handle(new GetWorkOrderByIdQuery(new WorkOrderId(workOrderId)))
@@ -141,7 +141,7 @@ public class WorkOrdersController {
     }
 
     @PutMapping("/{workOrderId}")
-    @PreAuthorize("hasAuthority('operations:work-orders:write') or hasRole('SERVICE_ADVISOR')")
+    @PreAuthorize("hasAuthority('operations:work_orders:update')")
     @Operation(summary = "Update verified mileage or diagnostic summary")
     public ResponseEntity<?> updateWorkOrder(
             @PathVariable UUID workOrderId,
@@ -159,7 +159,7 @@ public class WorkOrdersController {
     }
 
     @PutMapping("/{workOrderId}/bay")
-    @PreAuthorize("hasAuthority('operations:work-orders:write') or hasRole('SERVICE_ADVISOR')")
+    @PreAuthorize("hasAuthority('operations:bays:reassign')")
     @Operation(summary = "Assign or relocate vehicle to physical work bay")
     public ResponseEntity<?> assignBay(
             @PathVariable UUID workOrderId,
@@ -176,7 +176,7 @@ public class WorkOrdersController {
     }
 
     @DeleteMapping("/{workOrderId}/bay")
-    @PreAuthorize("hasAuthority('operations:work-orders:write') or hasRole('SERVICE_ADVISOR')")
+    @PreAuthorize("hasAuthority('operations:bays:reassign')")
     @Operation(summary = "Release and deallocate current work bay")
     public ResponseEntity<?> releaseBay(@PathVariable UUID workOrderId) {
         ReleaseWorkBayCommand command = new ReleaseWorkBayCommand(new WorkOrderId(workOrderId));
@@ -190,7 +190,7 @@ public class WorkOrdersController {
     }
 
     @PostMapping("/{workOrderId}/tasks")
-    @PreAuthorize("hasAuthority('operations:work-orders:write') or hasRole('SERVICE_ADVISOR')")
+    @PreAuthorize("hasAuthority('operations:work_orders:create')")
     @Operation(summary = "Add authorized technical task to work order")
     public ResponseEntity<?> createTask(
             @PathVariable UUID workOrderId,
@@ -213,7 +213,7 @@ public class WorkOrdersController {
     }
 
     @PostMapping("/{workOrderId}/proposals")
-    @PreAuthorize("hasAuthority('operations:work-orders:write') or hasRole('MECHANIC')")
+    @PreAuthorize("hasAuthority('operations:proposals:create')")
     @Operation(summary = "Submit defect proposal or hidden flaw discovered during bay inspection")
     public ResponseEntity<?> submitProposal(
             @PathVariable UUID workOrderId,
@@ -235,7 +235,7 @@ public class WorkOrdersController {
     }
 
     @GetMapping("/{workOrderId}/proposals")
-    @PreAuthorize("hasAuthority('operations:work-orders:read') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('operations:work_orders:read')")
     @Operation(summary = "List technical defect proposals for work order")
     public ResponseEntity<?> getProposals(@PathVariable UUID workOrderId) {
         List<TaskProposal> proposals = workOrderQueryService.handle(new GetTaskProposalsByWorkOrderIdQuery(new WorkOrderId(workOrderId)));
@@ -247,7 +247,7 @@ public class WorkOrdersController {
     }
 
     @PostMapping("/{workOrderId}/proposals/{proposalId}/approve")
-    @PreAuthorize("hasAuthority('operations:work-orders:write') or hasRole('SERVICE_ADVISOR')")
+    @PreAuthorize("hasAuthority('operations:proposals:resolve')")
     @Operation(summary = "Approve proposal converting it to formal authorized task")
     public ResponseEntity<?> approveProposal(
             @PathVariable UUID workOrderId,
@@ -265,7 +265,7 @@ public class WorkOrdersController {
     }
 
     @PostMapping("/{workOrderId}/proposals/{proposalId}/reject")
-    @PreAuthorize("hasAuthority('operations:work-orders:write') or hasRole('SERVICE_ADVISOR')")
+    @PreAuthorize("hasAuthority('operations:proposals:resolve')")
     @Operation(summary = "Reject proposal per customer decision")
     public ResponseEntity<?> rejectProposal(
             @PathVariable UUID workOrderId,
@@ -283,7 +283,7 @@ public class WorkOrdersController {
     }
 
     @PostMapping("/{workOrderId}/intake-images")
-    @PreAuthorize("hasAuthority('operations:work-orders:write') or hasRole('SERVICE_ADVISOR')")
+    @PreAuthorize("hasAuthority('operations:inspections:upload_photos')")
     @Operation(summary = "Attach reception intake photograph metadata from Firebase Storage")
     public ResponseEntity<?> attachIntakeImage(
             @PathVariable UUID workOrderId,
@@ -310,7 +310,7 @@ public class WorkOrdersController {
     }
 
     @PostMapping("/{workOrderId}/start")
-    @PreAuthorize("hasAuthority('operations:work-orders:write') or hasRole('SERVICE_ADVISOR') or hasRole('MECHANIC')")
+    @PreAuthorize("hasAuthority('operations:work_orders:update')")
     @Operation(summary = "Transition work order into active execution (IN_PROGRESS)")
     public ResponseEntity<?> startWorkOrder(@PathVariable UUID workOrderId) {
         StartWorkOrderCommand command = new StartWorkOrderCommand(new WorkOrderId(workOrderId));
@@ -324,7 +324,7 @@ public class WorkOrdersController {
     }
 
     @PostMapping("/{workOrderId}/complete")
-    @PreAuthorize("hasAuthority('operations:work-orders:write') or hasRole('SERVICE_ADVISOR')")
+    @PreAuthorize("hasAuthority('operations:work_orders:update')")
     @Operation(summary = "Complete work order closing all technical bay operations")
     public ResponseEntity<?> completeWorkOrder(@PathVariable UUID workOrderId) {
         CompleteWorkOrderCommand command = new CompleteWorkOrderCommand(new WorkOrderId(workOrderId));
@@ -338,7 +338,7 @@ public class WorkOrdersController {
     }
 
     @PostMapping("/{workOrderId}/mark-as-paid")
-    @PreAuthorize("hasAuthority('operations:work-orders:write') or hasRole('CASHIER') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('invoicing:payments:create')")
     @Operation(summary = "Mark work order as formally paid enabling vehicle exit")
     public ResponseEntity<?> markAsPaid(@PathVariable UUID workOrderId) {
         MarkWorkOrderAsPaidCommand command = new MarkWorkOrderAsPaidCommand(new WorkOrderId(workOrderId));
@@ -352,7 +352,7 @@ public class WorkOrdersController {
     }
 
     @PostMapping("/{workOrderId}/cancel")
-    @PreAuthorize("hasAuthority('operations:work-orders:write') or hasRole('SERVICE_ADVISOR') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('operations:work_orders:cancel')")
     @Operation(summary = "Cancel work order releasing occupied bay and inventory reservations")
     public ResponseEntity<?> cancelWorkOrder(
             @PathVariable UUID workOrderId,
@@ -369,7 +369,7 @@ public class WorkOrdersController {
     }
 
     @PostMapping("/{workOrderId}/deliver")
-    @PreAuthorize("hasAuthority('operations:work-orders:write') or hasRole('SERVICE_ADVISOR')")
+    @PreAuthorize("hasAuthority('operations:vehicle_handover:execute')")
     @Operation(summary = "Deliver vehicle back to owner following payment confirmation")
     public ResponseEntity<?> deliverVehicle(@PathVariable UUID workOrderId) {
         DeliverVehicleCommand command = new DeliverVehicleCommand(new WorkOrderId(workOrderId));

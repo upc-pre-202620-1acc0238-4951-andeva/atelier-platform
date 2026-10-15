@@ -89,7 +89,7 @@ public class BatchesController {
      * Endpoint 16: List all active batches for an inventory item ordered by FIFO.
      */
     @GetMapping("/by-part/{partId}")
-    @PreAuthorize("hasAuthority('inventory:batches:read') or hasRole('CHIEF_MECHANIC') or hasRole('INVENTORY_MANAGER') or hasRole('TENANT_ADMIN') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('inventory:batches:read')")
     @Operation(summary = "List all active batches for an inventory item ordered by FIFO")
     public ResponseEntity<?> getBatchesByPart(@PathVariable UUID partId) {
         List<InventoryBatch> batches = inventoryItemQueryService.handle(new GetInventoryBatchesByItemIdQuery(InventoryItemId.of(partId)));
@@ -101,7 +101,7 @@ public class BatchesController {
      * Endpoint 17: Direct physical batch reception into inventory item.
      */
     @PostMapping("/receive")
-    @PreAuthorize("hasAuthority('inventory:batches:receive') or hasRole('INVENTORY_MANAGER') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('inventory:batches:receive')")
     @Operation(summary = "Direct physical batch reception into inventory item")
     public ResponseEntity<?> receiveDirectBatch(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -135,7 +135,7 @@ public class BatchesController {
      * Endpoint 18: Dispatch stock using strict First-In, First-Out (FIFO) algorithm.
      */
     @PostMapping("/dispatch")
-    @PreAuthorize("hasAuthority('inventory:batches:dispatch_fifo') or hasAuthority('inventory:batches:manage') or hasRole('MECHANIC') or hasRole('CHIEF_MECHANIC') or hasRole('INVENTORY_MANAGER') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('inventory:batches:dispatch_fifo')")
     @Operation(summary = "Dispatch stock using strict First-In, First-Out (FIFO) algorithm")
     public ResponseEntity<?> dispatchFifoStock(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -163,7 +163,7 @@ public class BatchesController {
      * Endpoint 19: Restore unused allocated stock back to its originating batch.
      */
     @PostMapping("/restore")
-    @PreAuthorize("hasAuthority('inventory:batches:restore') or hasAuthority('inventory:batches:manage') or hasRole('CHIEF_MECHANIC') or hasRole('INVENTORY_MANAGER') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('inventory:batches:restore')")
     @Operation(summary = "Restore unused allocated stock back to its originating batch")
     public ResponseEntity<?> restoreStock(
             @AuthenticationPrincipal CustomUserDetails userDetails,
