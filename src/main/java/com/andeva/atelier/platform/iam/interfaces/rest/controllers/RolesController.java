@@ -18,6 +18,7 @@ import com.andeva.atelier.platform.iam.interfaces.rest.resources.requests.Create
 import com.andeva.atelier.platform.iam.interfaces.rest.resources.requests.UpdateRolePermissionsResource;
 import com.andeva.atelier.platform.iam.interfaces.rest.resources.responses.PermissionResource;
 import com.andeva.atelier.platform.iam.interfaces.rest.resources.responses.RoleResource;
+import com.andeva.atelier.platform.iam.interfaces.rest.transform.PermissionResourceFromEntityAssembler;
 import com.andeva.atelier.platform.iam.interfaces.rest.transform.RoleResourceFromAggregateAssembler;
 import com.andeva.atelier.platform.shared.application.result.ApplicationError;
 import com.andeva.atelier.platform.shared.application.result.Result;
@@ -277,7 +278,7 @@ public class RolesController {
     public ResponseEntity<?> getAllPermissions() {
         List<Permission> permissions = roleQueryService.handle(new GetAllPermissionsQuery());
         List<PermissionResource> resources = permissions.stream()
-                .map(p -> new PermissionResource(p.id().value(), p.name(), p.description(), p.category()))
+                .map(PermissionResourceFromEntityAssembler::toResourceFromEntity)
                 .toList();
 
         return ResponseEntity.ok(resources);

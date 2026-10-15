@@ -8,7 +8,7 @@ import java.util.UUID;
  * @param id          Universal unique identifier of the permission
  * @param name        Canonical permission code name (e.g., iam:tenants:read)
  * @param description Detailed technical description of the granted privilege
- * @param category    Functional module category (iam, crm, operations, inventory, hr, etc.)
+ * @param category    Bounded context prefix of the name, in lower case (iam, crm, operations, inventory, hr, etc.)
  * @author Joel Huamani Estefanero
  */
 public record PermissionResource(
