@@ -201,9 +201,109 @@ class TelemetryIngestionCommandServiceTest {
         assertThat(events).anyMatch(e -> e instanceof TelemetryBatchIngestedEvent);
     }
 
+    @Test
+    @DisplayName("Should raise alert for an anomaly in the middle of an offline batch even when the latest reading is normal")
+    void shouldRaiseAlertForMidBatchSpike() {
+        DeviceInstallation installation = DeviceInstallation.install(deviceId, vehicleId, tenantId, 10000);
+        when(deviceInstallationRepository.findActiveByVehicleId(vehicleId)).thenReturn(Optional.of(installation));
+        when(operationsAclPort.getAvailableWorkshopServices(tenantId)).thenReturn(List.of());
+
+        Instant base = Instant.parse("2026-10-15T10:00:00Z");
+        IngestTelemetryBatchCommand command = new IngestTelemetryBatchCommand(
+                vehicleId,
+                tenantId,
+                List.of(
+                        createRecord(base, 90.0, 14.0, 2200, 70.0),
+                        createRecord(base.plusSeconds(10), 112.0, 14.0, 2400, 72.0),
+                        createRecord(base.plusSeconds(20), 92.0, 14.0, 2300, 71.0)
+                )
+        );
+
+        service.handle(command);
+
+        ArgumentCaptor<PredictiveAlert> alertCaptor = ArgumentCaptor.forClass(PredictiveAlert.class);
+        verify(predictiveAlertRepository).save(alertCaptor.capture());
+        assertThat(alertCaptor.getValue().getAlertType()).isEqualTo(AlertType.ENGINE_OVERHEATING_RISK);
+        verify(fcmNotificationAclPort).sendHighPriorityNotification(eq(vehicleId), anyString(), anyString(), anyMap());
+
+        ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher, atLeast(2)).publishEvent(eventCaptor.capture());
+        TelemetryBatchIngestedEvent ingested = eventCaptor.getAllValues().stream()
+                .filter(TelemetryBatchIngestedEvent.class::isInstance)
+                .map(TelemetryBatchIngestedEvent.class::cast)
+                .findFirst()
+                .orElseThrow();
+        assertThat(ingested.recordsCount()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("Should raise a single alert per anomaly type per batch, keeping the highest confidence reading")
+    void shouldRaiseSingleAlertPerTypeKeepingHighestConfidence() {
+        DeviceInstallation installation = DeviceInstallation.install(deviceId, vehicleId, tenantId, 10000);
+        when(deviceInstallationRepository.findActiveByVehicleId(vehicleId)).thenReturn(Optional.of(installation));
+        when(operationsAclPort.getAvailableWorkshopServices(tenantId)).thenReturn(List.of());
+
+        Instant base = Instant.parse("2026-10-15T10:00:00Z");
+        IngestTelemetryBatchCommand command = new IngestTelemetryBatchCommand(
+                vehicleId,
+                tenantId,
+                List.of(
+                        createRecord(base, 108.0, 14.0, 2200, 70.0),
+                        createRecord(base.plusSeconds(10), 118.0, 14.0, 2400, 72.0),
+                        createRecord(base.plusSeconds(20), 110.0, 14.0, 2300, 71.0),
+                        createRecord(base.plusSeconds(30), 90.0, 11.2, 800, 0.0),
+                        createRecord(base.plusSeconds(40), 90.0, 11.0, 800, 0.0)
+                )
+        );
+
+        service.handle(command);
+
+        ArgumentCaptor<PredictiveAlert> alertCaptor = ArgumentCaptor.forClass(PredictiveAlert.class);
+        verify(predictiveAlertRepository, times(2)).save(alertCaptor.capture());
+        verify(fcmNotificationAclPort, times(2)).sendHighPriorityNotification(eq(vehicleId), anyString(), anyString(), anyMap());
+
+        List<PredictiveAlert> alerts = alertCaptor.getAllValues();
+        assertThat(alerts).extracting(PredictiveAlert::getAlertType)
+                .containsExactlyInAnyOrder(AlertType.ENGINE_OVERHEATING_RISK, AlertType.BATTERY_FAILURE_RISK);
+        PredictiveAlert overheating = alerts.stream()
+                .filter(a -> a.getAlertType() == AlertType.ENGINE_OVERHEATING_RISK)
+                .findFirst()
+                .orElseThrow();
+        assertThat(overheating.getConfidenceScore().value()).isEqualByComparingTo("98.50");
+        assertThat(overheating.getMessage()).contains("118");
+    }
+
+    @Test
+    @DisplayName("Should not repeat an alert when one of the same type is still open for the vehicle")
+    void shouldNotRepeatAlertWhileSameTypeIsStillOpen() {
+        DeviceInstallation installation = DeviceInstallation.install(deviceId, vehicleId, tenantId, 10000);
+        when(deviceInstallationRepository.findActiveByVehicleId(vehicleId)).thenReturn(Optional.of(installation));
+        when(predictiveAlertRepository.existsOpenAlert(vehicleId, AlertType.ENGINE_OVERHEATING_RISK)).thenReturn(true);
+
+        IngestTelemetryBatchCommand command = new IngestTelemetryBatchCommand(
+                vehicleId,
+                tenantId,
+                List.of(createRecord(118.0, 13.8, 3000, 80.0))
+        );
+
+        service.handle(command);
+
+        verify(predictiveAlertRepository, never()).save(any());
+        verifyNoInteractions(fcmNotificationAclPort);
+        verifyNoInteractions(operationsAclPort);
+
+        ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher, times(1)).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue()).isInstanceOf(TelemetryBatchIngestedEvent.class);
+    }
+
     private TelemetryRecord createRecord(double tempCelsius, double batteryVolts, int rpm, double speedKmh) {
+        return createRecord(Instant.now(), tempCelsius, batteryVolts, rpm, speedKmh);
+    }
+
+    private TelemetryRecord createRecord(Instant timestamp, double tempCelsius, double batteryVolts, int rpm, double speedKmh) {
         return TelemetryRecord.of(
-                Instant.now(),
+                timestamp,
                 vehicleId,
                 tenantId,
                 null,

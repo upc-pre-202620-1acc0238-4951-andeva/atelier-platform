@@ -2,6 +2,7 @@ package com.andeva.atelier.platform.iot.domain.repositories;
 
 import com.andeva.atelier.platform.iot.domain.model.aggregates.PredictiveAlert;
 import com.andeva.atelier.platform.iot.domain.model.enums.AlertStatus;
+import com.andeva.atelier.platform.iot.domain.model.enums.AlertType;
 import com.andeva.atelier.platform.iot.domain.model.ids.AlertId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.VehicleId;
@@ -25,4 +26,9 @@ public interface PredictiveAlertRepository {
     List<PredictiveAlert> findAllByTenantIdAndStatus(TenantId tenantId, AlertStatus status);
 
     List<PredictiveAlert> findAllByTenantId(TenantId tenantId);
+
+    /**
+     * Whether the vehicle already has an open (dispatched or acknowledged) alert of the given type.
+     */
+    boolean existsOpenAlert(VehicleId vehicleId, AlertType alertType);
 }

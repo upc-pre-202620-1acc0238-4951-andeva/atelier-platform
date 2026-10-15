@@ -8,18 +8,21 @@ import com.andeva.atelier.platform.iot.domain.exceptions.InstallationNotFoundExc
 import com.andeva.atelier.platform.iot.domain.model.aggregates.PredictiveAlert;
 import com.andeva.atelier.platform.iot.domain.model.aggregates.TelemetryRecord;
 import com.andeva.atelier.platform.iot.domain.model.commands.IngestTelemetryBatchCommand;
+import com.andeva.atelier.platform.iot.domain.model.enums.AlertType;
 import com.andeva.atelier.platform.iot.domain.model.events.CriticalEngineAnomalyDetectedEvent;
 import com.andeva.atelier.platform.iot.domain.model.events.TelemetryBatchIngestedEvent;
 import com.andeva.atelier.platform.iot.domain.repositories.DeviceInstallationRepository;
 import com.andeva.atelier.platform.iot.domain.repositories.PredictiveAlertRepository;
 import com.andeva.atelier.platform.iot.domain.repositories.TelemetryLogRepository;
+import com.andeva.atelier.platform.iot.domain.services.AnomalyEvaluationResult;
 import com.andeva.atelier.platform.iot.domain.services.PredictiveAnomalyDetectionEngine;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.ServiceId;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Comparator;
+import java.time.Instant;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -86,16 +89,28 @@ public class TelemetryIngestionCommandServiceImpl implements TelemetryIngestionC
         // 2. High-speed bulk JDBC persistence into TimescaleDB hypertable
         timescaleBatchJdbcClientPort.executeBatchInsert(command.readings());
 
-        // 3. Real-time inference on the latest sensory record
-        TelemetryRecord latestReading = command.readings().stream()
-                .max(Comparator.comparing(TelemetryRecord::timestamp))
-                .orElse(command.readings().get(0));
+        // 3. Real-time inference on every reading: offline batches can hide a spike before the latest record.
+        //    Keep only the strongest finding per anomaly type so a batch never floods alerts or pushes.
+        Map<AlertType, AnomalyEvaluationResult> strongestByType = new EnumMap<>(AlertType.class);
+        Instant latestTimestamp = command.readings().get(0).timestamp();
+        for (TelemetryRecord reading : command.readings()) {
+            if (reading.timestamp().isAfter(latestTimestamp)) {
+                latestTimestamp = reading.timestamp();
+            }
+            predictiveAnomalyDetectionEngine.evaluateTelemetryRecord(reading).ifPresent(evaluation ->
+                    strongestByType.merge(evaluation.alertType(), evaluation, (current, candidate) ->
+                            candidate.confidenceScore().value().compareTo(current.confidenceScore().value()) > 0
+                                    ? candidate
+                                    : current));
+        }
 
-        var evaluationOpt = predictiveAnomalyDetectionEngine.evaluateTelemetryRecord(latestReading);
+        // 4. Predictive alert generation & push notification dispatch, skipping anomaly types
+        //    that already have an open alert for this vehicle (also covers re-sent offline batches)
+        List<AnomalyEvaluationResult> newAnomalies = strongestByType.values().stream()
+                .filter(evaluation -> !predictiveAlertRepository.existsOpenAlert(command.vehicleId(), evaluation.alertType()))
+                .toList();
 
-        // 4. Predictive alert generation & push notification dispatch
-        if (evaluationOpt.isPresent()) {
-            var evaluation = evaluationOpt.get();
+        if (!newAnomalies.isEmpty()) {
             Optional<ServiceId> recommendedServiceId = Optional.empty();
             List<OperationsAclPort.WorkshopServiceCatalogItemDto> services =
                     operationsAclPort.getAvailableWorkshopServices(command.tenantId());
@@ -103,41 +118,9 @@ public class TelemetryIngestionCommandServiceImpl implements TelemetryIngestionC
                 recommendedServiceId = Optional.of(ServiceId.of(services.get(0).serviceId()));
             }
 
-            PredictiveAlert alert = PredictiveAlert.create(
-                    command.vehicleId(),
-                    command.tenantId(),
-                    recommendedServiceId,
-                    evaluation.alertType(),
-                    evaluation.confidenceScore(),
-                    evaluation.diagnosticMessage()
-            );
-
-            String fcmMessageId = fcmNotificationAclPort.sendHighPriorityNotification(
-                    command.vehicleId(),
-                    "Critical Telemetry Anomaly Detected",
-                    evaluation.diagnosticMessage(),
-                    Map.of(
-                            "alertType", evaluation.alertType().name(),
-                            "severity", "CRITICAL",
-                            "score", String.valueOf(evaluation.confidenceScore().percentage())
-                    )
-            );
-
-            if (fcmMessageId != null) {
-                alert.recordDispatch(fcmMessageId);
+            for (AnomalyEvaluationResult evaluation : newAnomalies) {
+                raisePredictiveAlert(command, evaluation, recommendedServiceId);
             }
-
-            predictiveAlertRepository.save(alert);
-
-            eventPublisher.publishEvent(CriticalEngineAnomalyDetectedEvent.of(
-                    command.vehicleId(),
-                    command.tenantId(),
-                    evaluation.alertType(),
-                    evaluation.confidenceScore(),
-                    evaluation.diagnosticMessage()
-            ));
-
-            alert.domainEvents().forEach(eventPublisher::publishEvent);
         }
 
         // 5. Ingestion completed domain event
@@ -145,7 +128,49 @@ public class TelemetryIngestionCommandServiceImpl implements TelemetryIngestionC
                 command.vehicleId(),
                 command.tenantId(),
                 command.readings().size(),
-                latestReading.timestamp()
+                latestTimestamp
         ));
+    }
+
+    private void raisePredictiveAlert(
+            IngestTelemetryBatchCommand command,
+            AnomalyEvaluationResult evaluation,
+            Optional<ServiceId> recommendedServiceId
+    ) {
+        PredictiveAlert alert = PredictiveAlert.create(
+                command.vehicleId(),
+                command.tenantId(),
+                recommendedServiceId,
+                evaluation.alertType(),
+                evaluation.confidenceScore(),
+                evaluation.diagnosticMessage()
+        );
+
+        String fcmMessageId = fcmNotificationAclPort.sendHighPriorityNotification(
+                command.vehicleId(),
+                "Critical Telemetry Anomaly Detected",
+                evaluation.diagnosticMessage(),
+                Map.of(
+                        "alertType", evaluation.alertType().name(),
+                        "severity", "CRITICAL",
+                        "score", String.valueOf(evaluation.confidenceScore().percentage())
+                )
+        );
+
+        if (fcmMessageId != null) {
+            alert.recordDispatch(fcmMessageId);
+        }
+
+        predictiveAlertRepository.save(alert);
+
+        eventPublisher.publishEvent(CriticalEngineAnomalyDetectedEvent.of(
+                command.vehicleId(),
+                command.tenantId(),
+                evaluation.alertType(),
+                evaluation.confidenceScore(),
+                evaluation.diagnosticMessage()
+        ));
+
+        alert.domainEvents().forEach(eventPublisher::publishEvent);
     }
 }
