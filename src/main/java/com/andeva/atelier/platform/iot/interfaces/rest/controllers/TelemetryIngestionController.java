@@ -79,7 +79,7 @@ public class TelemetryIngestionController {
             @ApiResponse(responseCode = "500", description = "TimescaleDB ingestion error")
     })
     @PostMapping("/batch")
-    @PreAuthorize("hasAuthority('iot:telemetry:ingest') or hasAnyRole('MECHANIC', 'WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('iot:telemetry:ingest')")
     public ResponseEntity<TelemetryIngestionAckResponse> ingestTelemetryBatch(
             @Valid @RequestBody TelemetryBatchRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails
@@ -131,7 +131,7 @@ public class TelemetryIngestionController {
             @ApiResponse(responseCode = "404", description = "No telemetry readings found for vehicle")
     })
     @GetMapping("/vehicle/{vehicleId}/latest")
-    @PreAuthorize("hasAuthority('iot:telemetry:read') or hasAnyRole('MECHANIC', 'SERVICE_ADVISOR', 'WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('iot:telemetry:read')")
     public ResponseEntity<VehicleLatestTelemetryResponse> getLatestTelemetry(
             @PathVariable UUID vehicleId,
             @AuthenticationPrincipal CustomUserDetails userDetails
@@ -157,7 +157,7 @@ public class TelemetryIngestionController {
             @ApiResponse(responseCode = "403", description = "Forbidden")
     })
     @GetMapping("/vehicle/{vehicleId}/history")
-    @PreAuthorize("hasAuthority('iot:telemetry:read') or hasAnyRole('SERVICE_ADVISOR', 'MECHANIC', 'WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('iot:telemetry:read')")
     public ResponseEntity<List<TelemetryHistoryBucketResponse>> getTelemetryHistory(
             @PathVariable UUID vehicleId,
             @RequestParam(required = false) Instant from,

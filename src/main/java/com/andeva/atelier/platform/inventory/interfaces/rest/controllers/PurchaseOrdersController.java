@@ -86,7 +86,7 @@ public class PurchaseOrdersController {
      * Endpoint 11: List purchase orders filtered by status or supplier.
      */
     @GetMapping
-    @PreAuthorize("hasAuthority('inventory:purchase_orders:read') or hasRole('INVENTORY_MANAGER') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('inventory:purchase_orders:read')")
     @Operation(summary = "List purchase orders filtered by status or supplier")
     public ResponseEntity<?> getPurchaseOrders(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -118,7 +118,7 @@ public class PurchaseOrdersController {
      * Endpoint 12: Draft new multi-item purchase order to supplier.
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('inventory:purchase_orders:create') or hasAuthority('inventory:purchase_orders:manage') or hasRole('INVENTORY_MANAGER') or hasRole('WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('inventory:purchase_orders:create')")
     @Operation(summary = "Draft new multi-item purchase order to supplier")
     public ResponseEntity<?> createPurchaseOrder(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -145,7 +145,7 @@ public class PurchaseOrdersController {
      * Endpoint 13: Get detailed purchase order with lines and reception status.
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('inventory:purchase_orders:read') or hasRole('INVENTORY_MANAGER') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('inventory:purchase_orders:read')")
     @Operation(summary = "Get detailed purchase order with lines and reception status")
     public ResponseEntity<?> getPurchaseOrderById(@PathVariable UUID id) {
         Optional<PurchaseOrder> orderOpt = purchaseOrderQueryService.handle(new GetPurchaseOrderDetailQuery(PurchaseOrderId.of(id)));
@@ -161,7 +161,7 @@ public class PurchaseOrdersController {
      * Endpoint 14: Confirm technical goods reception, physical count, and invoice registration.
      */
     @PutMapping("/{id}/receive")
-    @PreAuthorize("hasAuthority('inventory:purchase_orders:receive') or hasAuthority('inventory:purchase_orders:manage') or hasRole('INVENTORY_MANAGER') or hasRole('WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('inventory:batches:receive')")
     @Operation(summary = "Confirm technical goods reception, physical count, and invoice registration")
     public ResponseEntity<?> receivePurchaseOrder(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -204,7 +204,7 @@ public class PurchaseOrdersController {
      * Endpoint 15: Cancel pending purchase order before delivery.
      */
     @PutMapping("/{id}/cancel")
-    @PreAuthorize("hasAuthority('inventory:purchase_orders:cancel') or hasAuthority('inventory:purchase_orders:manage') or hasRole('INVENTORY_MANAGER') or hasRole('WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('inventory:purchase_orders:create')")
     @Operation(summary = "Cancel pending purchase order before delivery")
     public ResponseEntity<?> cancelPurchaseOrder(
             @AuthenticationPrincipal CustomUserDetails userDetails,

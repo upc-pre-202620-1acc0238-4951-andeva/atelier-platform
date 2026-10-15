@@ -59,7 +59,7 @@ public class ServicesController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('operations:services:write') or hasRole('WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('operations:services:manage')")
     @Operation(summary = "Register standard catalog service in workshop")
     public ResponseEntity<?> createService(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -84,7 +84,7 @@ public class ServicesController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('operations:services:read') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('operations:services:read')")
     @Operation(summary = "List all standard catalog services for tenant")
     public ResponseEntity<?> getServices(@AuthenticationPrincipal CustomUserDetails userDetails) {
         UUID tenantId = userDetails != null && userDetails.getTenantId() != null
@@ -100,7 +100,7 @@ public class ServicesController {
     }
 
     @GetMapping("/{serviceId}")
-    @PreAuthorize("hasAuthority('operations:services:read') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('operations:services:read')")
     @Operation(summary = "Get standard service catalog item by id")
     public ResponseEntity<?> getServiceById(@PathVariable UUID serviceId) {
         return serviceQueryService.handle(new GetServiceByIdQuery(new ServiceId(serviceId)))
@@ -110,7 +110,7 @@ public class ServicesController {
     }
 
     @PutMapping("/{serviceId}")
-    @PreAuthorize("hasAuthority('operations:services:write') or hasRole('WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('operations:services:manage')")
     @Operation(summary = "Update standard service catalog item")
     public ResponseEntity<?> updateService(
             @PathVariable UUID serviceId,

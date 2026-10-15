@@ -68,7 +68,7 @@ public class WorkBaysController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('operations:bays:manage') or hasAuthority('operations:bays:write') or hasRole('WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('operations:bays:manage')")
     @Operation(summary = "Register a new physical work bay in workshop branch")
     public ResponseEntity<?> createBay(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -91,7 +91,7 @@ public class WorkBaysController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('operations:bays:read') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('operations:bays:read')")
     @Operation(summary = "List work bays by branch with availability filtering")
     public ResponseEntity<?> getBays(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -113,7 +113,7 @@ public class WorkBaysController {
     }
 
     @GetMapping("/{bayId}")
-    @PreAuthorize("hasAuthority('operations:bays:read') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('operations:bays:read')")
     @Operation(summary = "Get physical work bay details by id")
     public ResponseEntity<?> getBayById(@PathVariable UUID bayId) {
         return workBayQueryService.getById(new WorkBayId(bayId))
@@ -123,7 +123,7 @@ public class WorkBaysController {
     }
 
     @PutMapping("/{bayId}/maintenance")
-    @PreAuthorize("hasAuthority('operations:bays:manage') or hasAuthority('operations:bays:write') or hasRole('WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('operations:bays:manage')")
     @Operation(summary = "Place work bay under maintenance")
     public ResponseEntity<?> setMaintenance(
             @PathVariable UUID bayId,
@@ -144,7 +144,7 @@ public class WorkBaysController {
     }
 
     @PutMapping("/{bayId}/restore")
-    @PreAuthorize("hasAuthority('operations:bays:manage') or hasAuthority('operations:bays:write') or hasRole('WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('operations:bays:manage')")
     @Operation(summary = "Restore work bay to available status")
     public ResponseEntity<?> restoreAvailable(@PathVariable UUID bayId) {
         UpdateWorkBayStatusCommand command = new UpdateWorkBayStatusCommand(

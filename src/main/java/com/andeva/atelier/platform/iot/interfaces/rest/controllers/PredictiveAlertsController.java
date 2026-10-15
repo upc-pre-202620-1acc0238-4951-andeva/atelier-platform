@@ -70,7 +70,7 @@ public class PredictiveAlertsController {
             @ApiResponse(responseCode = "403", description = "Forbidden")
     })
     @GetMapping("/tenant")
-    @PreAuthorize("hasAuthority('iot:alerts:read') or hasAnyRole('SERVICE_ADVISOR', 'WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('iot:alerts:read')")
     public ResponseEntity<List<PredictiveAlertResponse>> getActiveAlertsForTenant(
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
@@ -86,7 +86,7 @@ public class PredictiveAlertsController {
             @ApiResponse(responseCode = "403", description = "Forbidden")
     })
     @GetMapping("/vehicle/{vehicleId}")
-    @PreAuthorize("hasAuthority('iot:alerts:read') or hasAnyRole('SERVICE_ADVISOR', 'WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('iot:alerts:read')")
     public ResponseEntity<List<PredictiveAlertResponse>> getAlertsByVehicle(
             @PathVariable UUID vehicleId,
             @AuthenticationPrincipal CustomUserDetails userDetails
@@ -109,7 +109,7 @@ public class PredictiveAlertsController {
             @ApiResponse(responseCode = "404", description = "Predictive alert not found")
     })
     @PatchMapping("/{id}/acknowledge")
-    @PreAuthorize("hasAuthority('iot:alerts:acknowledge') or hasAnyRole('SERVICE_ADVISOR', 'WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('iot:alerts:acknowledge')")
     public ResponseEntity<PredictiveAlertResponse> acknowledgeAlert(
             @PathVariable UUID id,
             @Valid @RequestBody(required = false) AcknowledgeAlertRequest request,
@@ -141,7 +141,7 @@ public class PredictiveAlertsController {
             @ApiResponse(responseCode = "404", description = "Predictive alert not found")
     })
     @PostMapping("/{id}/convert-to-appointment")
-    @PreAuthorize("hasAuthority('iot:alerts:convert') or hasAnyRole('SERVICE_ADVISOR', 'WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('crm:appointments:create')")
     public ResponseEntity<AppointmentResponse> convertAlertToAppointment(
             @PathVariable UUID id,
             @AuthenticationPrincipal CustomUserDetails userDetails

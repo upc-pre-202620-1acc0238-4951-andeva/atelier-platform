@@ -266,7 +266,7 @@ public class MembershipsController {
             @ApiResponse(responseCode = "409", description = "Cannot deactivate last workshop owner")
     })
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('iam:members:manage_roles')")
+    @PreAuthorize("hasAuthority('iam:members:deactivate')")
     public ResponseEntity<?> deactivateMembership(
             @PathVariable(value = "tenantId", required = false) UUID tenantId,
             @PathVariable("id") UUID id,

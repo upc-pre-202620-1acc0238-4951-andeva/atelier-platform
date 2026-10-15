@@ -11,11 +11,17 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.ClassUtils;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
@@ -25,154 +31,140 @@ import java.util.stream.Collectors;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Keeps the RBAC catalog, the factory template matrix and the {@code @PreAuthorize} expressions in sync.
+ * Keeps the RBAC catalog, the factory role matrix and the {@code @PreAuthorize} expressions in sync with
+ * {@code docs/backend-documentation/atelier-roles.md}, the source of truth for roles and permissions.
  *
  * @author Joel Huamani Estefanero
  */
 @DisplayName("Permission Catalog Tests")
 class PermissionCatalogTest {
 
+    private static final Path ROLES_DOC = Path.of("docs", "backend-documentation", "atelier-roles.md");
+
     /**
-     * Authorities reserved to platform operators; they are never grantable to workshop roles.
+     * Authority reserved to platform operators; it is never grantable to workshop roles.
      */
-    private static final Set<String> PLATFORM_ONLY_PERMISSIONS = Set.of("billing:plans:write");
-    private static final Set<String> PLATFORM_ONLY_ROLES = Set.of("SUPER_ADMIN");
+    private static final String PLATFORM_ONLY_PERMISSION = "billing:plans:write";
+    /**
+     * Customer self-service endpoint scoped to the caller, the only one that just requires authentication.
+     */
+    private static final String SELF_SERVICE_ENDPOINT = "VehiclesController.getMyVehicles";
 
-    private static final Pattern AUTHORITY_CALL = Pattern.compile("has(?:Any)?Authority\\(([^)]*)\\)");
-    private static final Pattern ROLE_CALL = Pattern.compile("has(?:Any)?Role\\(([^)]*)\\)");
+    private static final Pattern PERMISSION_ROW = Pattern.compile("^\\| `([a-z_]+:[a-z_]+:[a-z_]+)`\\s*\\|(.*)$", Pattern.MULTILINE);
+    private static final Pattern AUTHORITY_ONLY = Pattern.compile(
+            "has(?:Any)?Authority\\('[a-z_]+:[a-z_]+:[a-z_]+'(?:, '[a-z_]+:[a-z_]+:[a-z_]+')*\\)");
+    private static final Pattern PERMISSION_LITERAL = Pattern.compile("'([a-z_]+:[a-z_]+:[a-z_]+)'");
+    private static final List<RoleTemplate> MATRIX_COLUMNS = List.of(
+            RoleTemplate.ROLE_WORKSHOP_OWNER, RoleTemplate.ROLE_WORKSHOP_ADMINISTRATOR, RoleTemplate.ROLE_CHIEF_MECHANIC,
+            RoleTemplate.ROLE_SERVICE_ADVISOR, RoleTemplate.ROLE_RECEPTIONIST, RoleTemplate.ROLE_MECHANIC,
+            RoleTemplate.ROLE_INVENTORY_MANAGER, RoleTemplate.ROLE_CASHIER);
 
-    private static final Set<String> MECHANIC_ONLY = Set.of(
-            "operations:tasks:track_time", "operations:tasks:upload_photos", "operations:tasks:complete");
-    private static final Set<String> STAFF_ATTENDANCE = Set.of("hr:attendance:clock_in", "hr:attendance:clock_out");
-    private static final Set<String> OWNER_ONLY = Set.of(
-            "iam:tenants:update", "iam:members:compensate",
-            "invoicing:cashflow:export_pdf", "invoicing:fiscal_config:manage",
-            "billing:subscriptions:manage_stripe", "billing:invoices:read");
-
-    private static List<String> expressions;
+    private static Map<String, String> expressions;
+    private static Map<String, String> documentedEndpoints;
+    private static Map<RoleTemplate, Set<String>> documentedMatrix;
 
     @BeforeAll
-    static void scanControllers() throws ClassNotFoundException {
+    static void loadSources() throws ClassNotFoundException, IOException {
         ClassPathScanningCandidateComponentProvider scanner = new ClassPathScanningCandidateComponentProvider(false);
         scanner.addIncludeFilter(new AnnotationTypeFilter(RestController.class));
-        expressions = new ArrayList<>();
+        expressions = new LinkedHashMap<>();
         for (BeanDefinition definition : scanner.findCandidateComponents("com.andeva.atelier.platform")) {
             Class<?> controller = ClassUtils.forName(definition.getBeanClassName(), PermissionCatalogTest.class.getClassLoader());
-            PreAuthorize classLevel = controller.getAnnotation(PreAuthorize.class);
-            if (classLevel != null) {
-                expressions.add(classLevel.value());
-            }
             for (Method method : controller.getDeclaredMethods()) {
                 PreAuthorize annotation = method.getAnnotation(PreAuthorize.class);
                 if (annotation != null) {
-                    expressions.add(annotation.value());
+                    expressions.put(controller.getSimpleName() + "." + method.getName(), annotation.value());
                 }
             }
         }
-        assertThat(expressions).as("@PreAuthorize expressions found in REST controllers").hasSizeGreaterThan(100);
-    }
+        assertThat(expressions).as("@PreAuthorize expressions found in REST controllers").hasSizeGreaterThan(150);
 
-    @Test
-    @DisplayName("Catalog should contain exactly the tenant authorities required by @PreAuthorize")
-    void catalogShouldMatchSecuredEndpoints() {
-        Set<String> required = arguments(AUTHORITY_CALL);
-        required.removeAll(PLATFORM_ONLY_PERMISSIONS);
+        String doc = Files.readString(ROLES_DOC, StandardCharsets.UTF_8).replace("\r\n", "\n");
+        String catalogSection = doc.substring(doc.indexOf("## 4. "), doc.indexOf("## 5. "));
+        String matrixSection = doc.substring(doc.indexOf("## 5. "), doc.indexOf("## 6. "));
 
-        assertThat(new TreeSet<>(PermissionCatalog.names())).containsExactlyInAnyOrderElementsOf(required);
-    }
+        documentedEndpoints = new LinkedHashMap<>();
+        Matcher row = PERMISSION_ROW.matcher(catalogSection);
+        while (row.find()) {
+            String[] cells = row.group(2).trim().split("\\|");
+            documentedEndpoints.put(row.group(1), cells[cells.length - 1].trim());
+        }
 
-    @Test
-    @DisplayName("@PreAuthorize should only reference factory RoleTemplate codes without ROLE_ prefix")
-    void securedEndpointsShouldOnlyReferenceTemplateRoles() {
-        Set<String> allowed = Arrays.stream(RoleTemplate.values())
-                .map(template -> template.code().substring("ROLE_".length()))
-                .collect(Collectors.toCollection(HashSet::new));
-        allowed.addAll(PLATFORM_ONLY_ROLES);
-
-        assertThat(arguments(ROLE_CALL)).isSubsetOf(allowed);
-    }
-
-    @Test
-    @DisplayName("Template defaults should only reference catalog permissions")
-    void templateDefaultsShouldBelongToCatalog() {
-        for (RoleTemplate template : RoleTemplate.values()) {
-            assertThat(PermissionCatalog.names()).containsAll(template.defaultPermissionNames());
+        documentedMatrix = new EnumMap<>(RoleTemplate.class);
+        MATRIX_COLUMNS.forEach(template -> documentedMatrix.put(template, new TreeSet<>()));
+        row = PERMISSION_ROW.matcher(matrixSection);
+        while (row.find()) {
+            String[] cells = Arrays.stream(row.group(2).trim().split("\\|")).map(String::trim)
+                    .filter(cell -> !cell.isEmpty()).toArray(String[]::new);
+            assertThat(cells).as("matrix row of %s", row.group(1)).hasSize(MATRIX_COLUMNS.size());
+            for (int i = 0; i < cells.length; i++) {
+                if (cells[i].equals("Sí")) {
+                    documentedMatrix.get(MATRIX_COLUMNS.get(i)).add(row.group(1));
+                }
+            }
         }
     }
 
     @Test
-    @DisplayName("Owner should hold every catalog permission except bay execution and attendance clocking")
-    void ownerDefaults() {
-        Set<String> expected = catalogExcept(MECHANIC_ONLY, STAFF_ATTENDANCE, Set.of());
-
-        assertThat(RoleTemplate.ROLE_WORKSHOP_OWNER.defaultPermissionNames()).containsExactlyInAnyOrderElementsOf(expected);
+    @DisplayName("Factory templates should be exactly the eight roles of the document")
+    void templatesShouldMatchDocumentedRoles() {
+        assertThat(Arrays.stream(RoleTemplate.values()).map(RoleTemplate::code)).containsExactly(
+                "ROLE_WORKSHOP_OWNER", "ROLE_WORKSHOP_ADMINISTRATOR", "ROLE_CHIEF_MECHANIC", "ROLE_SERVICE_ADVISOR",
+                "ROLE_RECEPTIONIST", "ROLE_MECHANIC", "ROLE_INVENTORY_MANAGER", "ROLE_CASHIER");
     }
 
     @Test
-    @DisplayName("Administrator should hold the owner permissions minus governance, fiscal and SaaS billing")
-    void administratorDefaults() {
-        Set<String> expected = catalogExcept(MECHANIC_ONLY, STAFF_ATTENDANCE, OWNER_ONLY);
-        expected.remove("iot:telemetry:ingest");
-
-        assertThat(RoleTemplate.ROLE_WORKSHOP_ADMIN.defaultPermissionNames()).containsExactlyInAnyOrderElementsOf(expected);
+    @DisplayName("Catalog should contain exactly the permissions documented in section 4")
+    void catalogShouldMatchDocumentedPermissions() {
+        assertThat(PermissionCatalog.names()).containsExactlyInAnyOrderElementsOf(documentedEndpoints.keySet());
     }
 
     @Test
-    @DisplayName("Service advisor defaults")
-    void serviceAdvisorDefaults() {
-        assertThat(RoleTemplate.ROLE_SERVICE_ADVISOR.defaultPermissionNames()).containsExactlyInAnyOrder(
-                "iam:tenants:read", "iam:branches:read",
-                "crm:customers:read", "crm:customers:create", "crm:customers:update", "crm:customers:manage",
-                "crm:vehicles:read", "crm:vehicles:create", "crm:vehicles:update", "crm:fleets:manage",
-                "crm:appointments:read", "crm:appointments:create", "crm:appointments:update", "crm:appointments:manage",
-                "operations:work-orders:read", "operations:work-orders:write", "operations:services:read",
-                "operations:tasks:read", "operations:tasks:update", "operations:bays:read",
-                "inventory:parts:read",
-                "hr:attendance:clock_in", "hr:attendance:clock_out", "hr:attendance:read_own", "hr:shifts:read",
-                "invoicing:invoices:read",
-                "iot:devices:read", "iot:installations:read", "iot:installations:manage", "iot:telemetry:read",
-                "iot:faults:read", "iot:alerts:read", "iot:alerts:acknowledge", "iot:alerts:convert",
-                "iot:health_reports:generate", "iot:health_reports:read"
-        );
+    @DisplayName("Template defaults should be exactly the matrix of section 5")
+    void templateDefaultsShouldMatchDocumentedMatrix() {
+        for (RoleTemplate template : RoleTemplate.values()) {
+            assertThat(template.defaultPermissionNames())
+                    .as("default permissions of %s", template)
+                    .containsExactlyInAnyOrderElementsOf(documentedMatrix.get(template));
+        }
     }
 
     @Test
-    @DisplayName("Mechanic defaults")
-    void mechanicDefaults() {
-        assertThat(RoleTemplate.ROLE_MECHANIC.defaultPermissionNames()).containsExactlyInAnyOrder(
-                "iam:tenants:read", "iam:branches:read",
-                "crm:vehicles:read",
-                "operations:work-orders:read", "operations:services:read", "operations:tasks:read",
-                "operations:tasks:track_time", "operations:tasks:upload_photos", "operations:tasks:complete",
-                "operations:bays:read",
-                "inventory:parts:read", "inventory:batches:dispatch_fifo",
-                "hr:attendance:clock_in", "hr:attendance:clock_out", "hr:attendance:read_own", "hr:shifts:read",
-                "iot:devices:read", "iot:installations:read", "iot:installations:manage",
-                "iot:telemetry:ingest", "iot:telemetry:read",
-                "iot:faults:read", "iot:faults:write", "iot:faults:resolve",
-                "iot:alerts:read", "iot:alerts:acknowledge",
-                "iot:health_reports:generate", "iot:health_reports:read"
-        );
+    @DisplayName("Endpoints should authorize exclusively with atomic permissions")
+    void endpointsShouldOnlyCheckPermissions() {
+        expressions.forEach((endpoint, expression) -> {
+            if (endpoint.equals(SELF_SERVICE_ENDPOINT)) {
+                assertThat(expression).isEqualTo("isAuthenticated()");
+            } else {
+                assertThat(expression).as(endpoint).matches(AUTHORITY_ONLY);
+            }
+        });
     }
 
     @Test
-    @DisplayName("Inventory manager defaults")
-    void inventoryManagerDefaults() {
-        assertThat(RoleTemplate.ROLE_INVENTORY_MANAGER.defaultPermissionNames()).containsExactlyInAnyOrder(
-                "iam:tenants:read", "iam:branches:read",
-                "crm:vehicles:read",
-                "operations:work-orders:read", "operations:tasks:read",
-                "inventory:parts:read", "inventory:parts:manage",
-                "inventory:suppliers:read", "inventory:suppliers:manage",
-                "inventory:purchase_orders:read", "inventory:purchase_orders:create",
-                "inventory:purchase_orders:receive", "inventory:purchase_orders:cancel",
-                "inventory:purchase_orders:manage",
-                "inventory:batches:read", "inventory:batches:receive", "inventory:batches:dispatch_fifo",
-                "inventory:batches:restore", "inventory:batches:manage",
-                "inventory:alerts:read", "inventory:alerts:evaluate", "inventory:alerts:resolve",
-                "inventory:alerts:manage",
-                "hr:attendance:clock_in", "hr:attendance:clock_out", "hr:attendance:read_own", "hr:shifts:read"
-        );
+    @DisplayName("Every permission required by an endpoint should belong to the catalog")
+    void requiredPermissionsShouldBelongToCatalog() {
+        Set<String> required = requiredPermissions();
+        required.remove(PLATFORM_ONLY_PERMISSION);
+
+        assertThat(PermissionCatalog.names()).containsAll(required);
+        assertThat(PermissionCatalog.names()).doesNotContain(PLATFORM_ONLY_PERMISSION);
+    }
+
+    @Test
+    @DisplayName("Permissions without endpoint should be the ones flagged in the document")
+    void unusedPermissionsShouldBeFlaggedInDocument() {
+        Set<String> required = requiredPermissions();
+        Set<String> withoutEndpoint = PermissionCatalog.names().stream()
+                .filter(name -> !required.contains(name))
+                .collect(Collectors.toCollection(TreeSet::new));
+        Set<String> flagged = documentedEndpoints.entrySet().stream()
+                .filter(entry -> entry.getValue().contains("Sin endpoint implementado")
+                        || entry.getValue().contains("públicos"))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toCollection(TreeSet::new));
+
+        assertThat(withoutEndpoint).containsExactlyInAnyOrderElementsOf(flagged);
     }
 
     @Test
@@ -182,25 +174,14 @@ class PermissionCatalogTest {
                 .allSatisfy(entry -> assertThat(entry.name()).startsWith(entry.category().toLowerCase() + ":"));
     }
 
-    @SafeVarargs
-    private static Set<String> catalogExcept(Set<String>... excluded) {
-        Set<String> names = new HashSet<>(PermissionCatalog.names());
-        for (Set<String> set : excluded) {
-            names.removeAll(set);
-        }
-        return names;
-    }
-
-    private static Set<String> arguments(Pattern call) {
-        Set<String> values = new TreeSet<>();
-        for (String expression : expressions) {
-            Matcher matcher = call.matcher(expression);
+    private static Set<String> requiredPermissions() {
+        Set<String> required = new HashSet<>();
+        for (String expression : expressions.values()) {
+            Matcher matcher = PERMISSION_LITERAL.matcher(expression);
             while (matcher.find()) {
-                for (String argument : matcher.group(1).split(",")) {
-                    values.add(argument.trim().replace("'", ""));
-                }
+                required.add(matcher.group(1));
             }
         }
-        return values;
+        return required;
     }
 }

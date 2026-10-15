@@ -7,6 +7,7 @@ import com.andeva.atelier.platform.iam.domain.model.aggregates.TenantMembership;
 import com.andeva.atelier.platform.iam.domain.model.entities.Permission;
 import com.andeva.atelier.platform.iam.domain.model.enums.RoleTemplate;
 import com.andeva.atelier.platform.iam.domain.model.enums.SalaryType;
+import com.andeva.atelier.platform.iam.domain.model.ids.RoleId;
 import com.andeva.atelier.platform.iam.domain.model.valueobjects.PermissionCatalog;
 import com.andeva.atelier.platform.iam.domain.repositories.PermissionRepository;
 import com.andeva.atelier.platform.iam.domain.repositories.RoleRepository;
@@ -61,72 +62,75 @@ class PermissionCatalogSeedingServiceTest {
     }
 
     @Test
-    @DisplayName("Should seed the catalog and migrate empty factory roles of existing tenants to their subsets")
-    void shouldSeedCatalogAndMigrateExistingTenant() {
-        List<Role> legacyRoles = new ArrayList<>();
-        for (RoleTemplate template : RoleTemplate.values()) {
-            if (template != RoleTemplate.ROLE_INVENTORY_MANAGER) {
-                legacyRoles.add(Role.fromTemplate(tenantId, template, List.of()));
-            }
-        }
-        Role legacyAdmin = legacyRoles.stream()
-                .filter(r -> RoleTemplate.ROLE_WORKSHOP_ADMIN.code().equals(r.code())).findFirst().orElseThrow();
+    @DisplayName("Should migrate a legacy tenant to the eight factory roles keeping role ids and memberships")
+    void shouldMigrateLegacyTenant() {
+        Permission obsolete = Permission.create("operations:work-orders:write", "Legacy permission", "OPERATIONS");
+        Role legacyOwner = legacySystemRole("ROLE_WORKSHOP_OWNER", "Workshop Owner", obsolete);
+        Role legacyAdmin = legacySystemRole("ROLE_WORKSHOP_ADMIN", "Workshop Administrator", obsolete);
+        Role legacyAdvisor = legacySystemRole("ROLE_SERVICE_ADVISOR", "Service Advisor", obsolete);
+        Role legacyMechanic = legacySystemRole("ROLE_MECHANIC", "Mechanic", obsolete);
+        Role legacyInventory = legacySystemRole("ROLE_INVENTORY_MANAGER", "Inventory Manager", obsolete);
+        Role custom = Role.createCustom(tenantId, "Lavador", "Custom role", Set.of(obsolete));
+        List<Role> legacyRoles = List.of(legacyOwner, legacyAdmin, legacyAdvisor, legacyMechanic, legacyInventory, custom);
+        RoleId adminId = legacyAdmin.id();
         TenantMembership registrant = TenantMembership.create(
                 tenantId, UserId.generate(), SalaryType.FIXED, Money.soles(0.0), Set.of(legacyAdmin));
 
-        when(permissionRepository.findAll()).thenReturn(List.of());
+        when(permissionRepository.findAll()).thenReturn(List.of(obsolete));
         when(permissionRepository.save(any(Permission.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(roleRepository.findAllSystemRoles()).thenReturn(legacyRoles);
+        when(roleRepository.findAll()).thenReturn(legacyRoles);
         when(roleRepository.save(any(Role.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(membershipRepository.findByTenantId(tenantId)).thenReturn(List.of(registrant));
         when(membershipRepository.findEarliestByTenantId(tenantId)).thenReturn(Optional.of(registrant));
 
         SeedingResult result = seedingService.synchronize();
 
-        assertThat(result.permissionsCreated()).isEqualTo(PermissionCatalog.entries().size());
-        assertThat(result.rolesUpdated()).isEqualTo(legacyRoles.size());
-        assertThat(result.rolesProvisioned()).isEqualTo(1);
-        assertThat(result.ownersAssigned()).isEqualTo(1);
+        assertThat(result).isEqualTo(new SeedingResult(PermissionCatalog.entries().size(), 1, 6, 3, 1));
+        verify(permissionRepository).delete(obsolete);
 
-        for (Role role : legacyRoles) {
+        assertThat(legacyAdmin.id()).isEqualTo(adminId);
+        assertThat(legacyAdmin.code()).isEqualTo("ROLE_WORKSHOP_ADMINISTRATOR");
+        assertThat(legacyAdmin.name()).isEqualTo("Administrador de Taller");
+        assertThat(legacyMechanic.name()).isEqualTo("Técnico Mecánico");
+        for (Role role : List.of(legacyOwner, legacyAdmin, legacyAdvisor, legacyMechanic, legacyInventory)) {
             RoleTemplate template = RoleTemplate.fromCode(role.code()).orElseThrow();
             assertThat(permissionNames(role)).containsExactlyInAnyOrderElementsOf(template.defaultPermissionNames());
         }
+        assertThat(custom.permissions()).isEmpty();
 
         ArgumentCaptor<Role> saved = ArgumentCaptor.forClass(Role.class);
         verify(roleRepository, atLeastOnce()).save(saved.capture());
-        Role provisionedInventory = saved.getAllValues().stream()
-                .filter(r -> RoleTemplate.ROLE_INVENTORY_MANAGER.code().equals(r.code())).findFirst().orElseThrow();
-        assertThat(permissionNames(provisionedInventory))
-                .containsExactlyInAnyOrderElementsOf(RoleTemplate.ROLE_INVENTORY_MANAGER.defaultPermissionNames());
+        Set<String> provisioned = saved.getAllValues().stream()
+                .filter(role -> !legacyRoles.contains(role))
+                .map(Role::code)
+                .collect(Collectors.toSet());
+        assertThat(provisioned).containsExactlyInAnyOrder("ROLE_CHIEF_MECHANIC", "ROLE_RECEPTIONIST", "ROLE_CASHIER");
 
         assertThat(registrant.assignedRoles()).extracting(Role::code)
-                .containsExactlyInAnyOrder("ROLE_WORKSHOP_ADMIN", "ROLE_WORKSHOP_OWNER");
+                .containsExactlyInAnyOrder("ROLE_WORKSHOP_ADMINISTRATOR", "ROLE_WORKSHOP_OWNER");
         verify(membershipRepository).save(registrant);
     }
 
     @Test
     @DisplayName("Should perform no writes when catalog and tenant roles are already synchronized")
     void shouldBeIdempotent() {
-        List<Permission> catalog = PermissionCatalog.entries().stream()
-                .map(entry -> Permission.create(entry.name(), entry.description(), entry.category()))
-                .toList();
+        List<Permission> catalog = seededCatalog();
         List<Role> roles = new ArrayList<>();
         for (RoleTemplate template : RoleTemplate.values()) {
             roles.add(Role.fromTemplate(tenantId, template, catalog));
         }
-        Role owner = roles.get(0);
         TenantMembership ownerMembership = TenantMembership.create(
-                tenantId, UserId.generate(), SalaryType.FIXED, Money.soles(0.0), Set.of(owner));
+                tenantId, UserId.generate(), SalaryType.FIXED, Money.soles(0.0), Set.of(roles.get(0)));
 
         when(permissionRepository.findAll()).thenReturn(catalog);
-        when(roleRepository.findAllSystemRoles()).thenReturn(roles);
+        when(roleRepository.findAll()).thenReturn(roles);
         when(membershipRepository.findByTenantId(tenantId)).thenReturn(List.of(ownerMembership));
 
         SeedingResult result = seedingService.synchronize();
 
-        assertThat(result).isEqualTo(new SeedingResult(0, 0, 0, 0));
+        assertThat(result.hasChanges()).isFalse();
         verify(permissionRepository, never()).save(any());
+        verify(permissionRepository, never()).delete(any());
         verify(roleRepository, never()).save(any());
         verify(membershipRepository, never()).save(any());
     }
@@ -134,37 +138,42 @@ class PermissionCatalogSeedingServiceTest {
     @Test
     @DisplayName("Should grant only newly introduced permissions and keep sovereign edits of existing roles")
     void shouldGrantOnlyNewPermissions() {
-        List<Permission> catalog = PermissionCatalog.entries().stream()
-                .filter(entry -> !entry.name().equals("operations:tasks:complete"))
-                .map(entry -> Permission.create(entry.name(), entry.description(), entry.category()))
+        List<Permission> catalog = seededCatalog().stream()
+                .filter(permission -> !permission.name().equals("operations:tasks:complete"))
                 .collect(Collectors.toCollection(ArrayList::new));
-        Role mechanic = Role.fromTemplate(tenantId, RoleTemplate.ROLE_MECHANIC, catalog);
-        mechanic.revokePermission(permission(catalog, "iot:telemetry:ingest").id());
-        Role owner = Role.fromTemplate(tenantId, RoleTemplate.ROLE_WORKSHOP_OWNER, catalog);
-        List<Role> roles = new ArrayList<>(List.of(owner, mechanic));
-        for (RoleTemplate template : List.of(RoleTemplate.ROLE_WORKSHOP_ADMIN,
-                RoleTemplate.ROLE_SERVICE_ADVISOR, RoleTemplate.ROLE_INVENTORY_MANAGER)) {
+        List<Role> roles = new ArrayList<>();
+        for (RoleTemplate template : RoleTemplate.values()) {
             roles.add(Role.fromTemplate(tenantId, template, catalog));
         }
+        Role mechanic = roles.stream().filter(r -> r.code().equals("ROLE_MECHANIC")).findFirst().orElseThrow();
+        mechanic.revokePermission(catalog.stream()
+                .filter(p -> p.name().equals("iot:telemetry:ingest")).findFirst().orElseThrow().id());
         TenantMembership ownerMembership = TenantMembership.create(
-                tenantId, UserId.generate(), SalaryType.FIXED, Money.soles(0.0), Set.of(owner));
+                tenantId, UserId.generate(), SalaryType.FIXED, Money.soles(0.0), Set.of(roles.get(0)));
 
         when(permissionRepository.findAll()).thenReturn(catalog);
         when(permissionRepository.save(any(Permission.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(roleRepository.findAllSystemRoles()).thenReturn(roles);
+        when(roleRepository.findAll()).thenReturn(roles);
         when(roleRepository.save(any(Role.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(membershipRepository.findByTenantId(tenantId)).thenReturn(List.of(ownerMembership));
 
         SeedingResult result = seedingService.synchronize();
 
-        assertThat(result).isEqualTo(new SeedingResult(1, 1, 0, 0));
+        // operations:tasks:complete belongs to the chief mechanic and mechanic templates
+        assertThat(result).isEqualTo(new SeedingResult(1, 0, 2, 0, 0));
         assertThat(permissionNames(mechanic))
                 .contains("operations:tasks:complete")
                 .doesNotContain("iot:telemetry:ingest");
     }
 
-    private static Permission permission(List<Permission> catalog, String name) {
-        return catalog.stream().filter(p -> p.name().equals(name)).findFirst().orElseThrow();
+    private Role legacySystemRole(String code, String name, Permission... permissions) {
+        return new Role(RoleId.generate(), tenantId, code, name, "Legacy factory role", true, Set.of(permissions));
+    }
+
+    private static List<Permission> seededCatalog() {
+        return PermissionCatalog.entries().stream()
+                .map(entry -> Permission.create(entry.name(), entry.description(), entry.category()))
+                .toList();
     }
 
     private static Set<String> permissionNames(Role role) {

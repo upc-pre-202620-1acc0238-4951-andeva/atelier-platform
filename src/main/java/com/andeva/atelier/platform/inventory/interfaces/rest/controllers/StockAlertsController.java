@@ -70,7 +70,7 @@ public class StockAlertsController {
      * Endpoint 20: List items that have reached or dropped below reorder threshold.
      */
     @GetMapping
-    @PreAuthorize("hasAuthority('inventory:alerts:read') or hasRole('INVENTORY_MANAGER') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('inventory:alerts:read')")
     @Operation(summary = "List items that have reached or dropped below reorder threshold")
     public ResponseEntity<?> getLowStockAlerts(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -86,7 +86,7 @@ public class StockAlertsController {
      * Endpoint 21: Acknowledge and mark low stock alert as resolved or replenishment in progress.
      */
     @PostMapping("/{id}/resolve")
-    @PreAuthorize("hasAuthority('inventory:alerts:resolve') or hasAuthority('inventory:alerts:manage') or hasRole('INVENTORY_MANAGER') or hasRole('WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('inventory:alerts:resolve')")
     @Operation(summary = "Acknowledge and mark low stock alert as resolved or replenishment in progress")
     public ResponseEntity<?> resolveAlert(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -114,7 +114,7 @@ public class StockAlertsController {
      * Endpoint 22: Trigger system-wide stock reorder threshold evaluation for workshop.
      */
     @PostMapping("/evaluate")
-    @PreAuthorize("hasAuthority('inventory:alerts:evaluate') or hasAuthority('inventory:alerts:manage') or hasRole('INVENTORY_MANAGER') or hasRole('WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('inventory:alerts:resolve')")
     @Operation(summary = "Trigger system-wide stock reorder threshold evaluation for workshop")
     public ResponseEntity<?> evaluateStockThresholds(
             @AuthenticationPrincipal CustomUserDetails userDetails,

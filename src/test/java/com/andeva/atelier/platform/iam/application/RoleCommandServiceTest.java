@@ -130,7 +130,7 @@ class RoleCommandServiceTest {
     void shouldResetSystemRoleToDefaultsSuccessfully() {
         Permission perm = Permission.create("iam:members:invite", "Invite staff", "IAM");
         Permission ownerOnly = Permission.create("invoicing:fiscal_config:manage", "Fiscal config", "INVOICING");
-        Role systemRole = Role.fromTemplate(tenantId, RoleTemplate.ROLE_WORKSHOP_ADMIN, Set.of());
+        Role systemRole = Role.fromTemplate(tenantId, RoleTemplate.ROLE_WORKSHOP_ADMINISTRATOR, Set.of());
         ResetRoleToDefaultsCommand command = new ResetRoleToDefaultsCommand(systemRole.id());
 
         when(roleRepository.findById(systemRole.id())).thenReturn(Optional.of(systemRole));
@@ -176,7 +176,7 @@ class RoleCommandServiceTest {
     @Test
     @DisplayName("Should reject deleting protected system role")
     void shouldRejectDeletingSystemRole() {
-        Role systemRole = Role.fromTemplate(tenantId, RoleTemplate.ROLE_WORKSHOP_ADMIN, Set.of());
+        Role systemRole = Role.fromTemplate(tenantId, RoleTemplate.ROLE_WORKSHOP_ADMINISTRATOR, Set.of());
         DeleteCustomRoleCommand command = new DeleteCustomRoleCommand(systemRole.id());
 
         when(roleRepository.findById(systemRole.id())).thenReturn(Optional.of(systemRole));

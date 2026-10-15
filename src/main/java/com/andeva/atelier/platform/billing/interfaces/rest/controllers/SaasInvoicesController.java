@@ -65,7 +65,7 @@ public class SaasInvoicesController {
             @ApiResponse(responseCode = "403", description = "Forbidden")
     })
     @GetMapping
-    @PreAuthorize("hasAuthority('billing:invoices:read') or hasRole('WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('billing:invoices:read')")
     public ResponseEntity<List<SaasInvoiceSummaryResource>> getTenantInvoices(
             @RequestParam(required = false) String status,
             @AuthenticationPrincipal CustomUserDetails userDetails
@@ -99,7 +99,7 @@ public class SaasInvoicesController {
             @ApiResponse(responseCode = "404", description = "Invoice not found")
     })
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('billing:invoices:read') or hasRole('WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('billing:invoices:read')")
     public ResponseEntity<SaasInvoiceResource> getInvoiceById(
             @PathVariable UUID id,
             @AuthenticationPrincipal CustomUserDetails userDetails
@@ -132,7 +132,7 @@ public class SaasInvoicesController {
             @ApiResponse(responseCode = "404", description = "Invoice or PDF not found")
     })
     @GetMapping("/{id}/pdf")
-    @PreAuthorize("hasAuthority('billing:invoices:read') or hasRole('WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('billing:invoices:read')")
     public ResponseEntity<Void> redirectToInvoicePdf(
             @PathVariable UUID id,
             @AuthenticationPrincipal CustomUserDetails userDetails

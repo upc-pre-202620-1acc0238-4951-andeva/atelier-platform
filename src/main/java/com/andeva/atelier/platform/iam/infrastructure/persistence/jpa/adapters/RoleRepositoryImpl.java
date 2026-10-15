@@ -105,8 +105,8 @@ public class RoleRepositoryImpl implements RoleRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Role> findAllSystemRoles() {
-        return rolePersistenceRepository.findBySystemRoleTrue()
+    public List<Role> findAll() {
+        return rolePersistenceRepository.findAll()
                 .stream()
                 .map(RolePersistenceAssembler::toDomain)
                 .toList();

@@ -25,7 +25,7 @@ public class Role extends AbstractDomainAggregateRoot<Role> {
 
     private final RoleId id;
     private final TenantId tenantId;
-    private final String code;
+    private String code;
     private String name;
     private String description;
     private final boolean systemRole;
@@ -137,6 +137,21 @@ public class Role extends AbstractDomainAggregateRoot<Role> {
         this.description = template.description();
         this.permissions.clear();
         this.permissions.addAll(templateSubset(template, catalog));
+        registerEvent(RoleUpdatedEvent.of(this.id, this.tenantId, this.name));
+    }
+
+    /**
+     * Rebinds a system role to a factory template identity (code, default name and description), keeping its
+     * id, permissions and memberships. Used to migrate roles provisioned under legacy template codes.
+     */
+    public void adoptTemplateIdentity(RoleTemplate template) {
+        if (!this.systemRole) {
+            throw new IllegalStateException("Only protected system roles can adopt a template identity");
+        }
+        Objects.requireNonNull(template, "Role template cannot be null");
+        this.code = template.code();
+        this.name = template.defaultName();
+        this.description = template.description();
         registerEvent(RoleUpdatedEvent.of(this.id, this.tenantId, this.name));
     }
 

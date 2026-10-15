@@ -101,7 +101,7 @@ class RoleTemplateTokenPermissionsTest {
         assertThat(tokenPermissions)
                 .contains("operations:tasks:track_time", "hr:attendance:clock_in", "ROLE_MECHANIC")
                 .doesNotContain("billing:subscriptions:manage_stripe", "iam:members:invite",
-                        "invoicing:payments:create", "operations:work-orders:write", "ROLE_WORKSHOP_OWNER");
+                        "invoicing:payments:create", "operations:work_orders:create", "ROLE_WORKSHOP_OWNER");
     }
 
     @Test

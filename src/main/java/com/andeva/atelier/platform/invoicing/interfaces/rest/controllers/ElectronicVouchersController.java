@@ -102,7 +102,7 @@ public class ElectronicVouchersController {
             @ApiResponse(responseCode = "502", description = "SUNAT integration failure")
     })
     @PostMapping
-    @PreAuthorize("hasAuthority('invoicing:invoices:issue_sunat') or hasAnyRole('WORKSHOP_ADMIN', 'WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('invoicing:invoices:issue_sunat')")
     public ResponseEntity<ElectronicVoucherResource> issueVoucher(
             @RequestHeader(value = "X-Tenant-Id", required = false) UUID headerTenantId,
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -171,7 +171,7 @@ public class ElectronicVouchersController {
             @ApiResponse(responseCode = "404", description = "Reference voucher or series not found")
     })
     @PostMapping("/credit-notes")
-    @PreAuthorize("hasAuthority('invoicing:invoices:issue_sunat') or hasAnyRole('WORKSHOP_ADMIN', 'WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('invoicing:invoices:issue_sunat')")
     public ResponseEntity<ElectronicVoucherResource> issueCreditNote(
             @RequestHeader(value = "X-Tenant-Id", required = false) UUID headerTenantId,
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -229,7 +229,7 @@ public class ElectronicVouchersController {
             @ApiResponse(responseCode = "404", description = "Voucher not found")
     })
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('invoicing:invoices:read') or hasAnyRole('SERVICE_ADVISOR', 'WORKSHOP_ADMIN', 'WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('invoicing:invoices:read')")
     public ResponseEntity<ElectronicVoucherResource> getVoucherById(
             @PathVariable UUID id,
             @RequestHeader(value = "X-Tenant-Id", required = false) UUID headerTenantId,
@@ -254,7 +254,7 @@ public class ElectronicVouchersController {
             @ApiResponse(responseCode = "403", description = "Forbidden")
     })
     @GetMapping
-    @PreAuthorize("hasAuthority('invoicing:invoices:read') or hasAnyRole('SERVICE_ADVISOR', 'WORKSHOP_ADMIN', 'WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('invoicing:invoices:read')")
     public ResponseEntity<List<ElectronicVoucherResource>> getVouchers(
             @RequestParam(required = false) UUID branchId,
             @RequestParam(required = false) String voucherType,
@@ -303,7 +303,7 @@ public class ElectronicVouchersController {
             @ApiResponse(responseCode = "403", description = "Forbidden")
     })
     @GetMapping("/work-order/{workOrderId}")
-    @PreAuthorize("hasAuthority('invoicing:invoices:read') or hasAnyRole('SERVICE_ADVISOR', 'WORKSHOP_ADMIN', 'WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('invoicing:invoices:read')")
     public ResponseEntity<List<ElectronicVoucherResource>> getVouchersByWorkOrder(
             @PathVariable UUID workOrderId,
             @RequestHeader(value = "X-Tenant-Id", required = false) UUID headerTenantId,
@@ -330,7 +330,7 @@ public class ElectronicVouchersController {
             @ApiResponse(responseCode = "404", description = "Voucher not found")
     })
     @PostMapping("/{id}/void")
-    @PreAuthorize("hasAuthority('invoicing:invoices:issue_sunat') or hasAnyRole('WORKSHOP_ADMIN', 'WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('invoicing:invoices:issue_sunat')")
     public ResponseEntity<ElectronicVoucherResource> voidVoucher(
             @PathVariable UUID id,
             @Valid @RequestBody VoidVoucherRequest request,

@@ -76,7 +76,7 @@ public class TenantSubscriptionsController {
             @ApiResponse(responseCode = "404", description = "Subscription not found")
     })
     @GetMapping("/me")
-    @PreAuthorize("hasAuthority('billing:subscriptions:read') or hasRole('WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('billing:subscriptions:read')")
     public ResponseEntity<TenantSubscriptionResource> getCurrentTenantSubscription(
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
@@ -102,7 +102,7 @@ public class TenantSubscriptionsController {
             @ApiResponse(responseCode = "409", description = "Duplicate subscription conflict")
     })
     @PostMapping("/checkout-session")
-    @PreAuthorize("hasAuthority('billing:subscriptions:manage_stripe') or hasRole('WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('billing:subscriptions:manage_stripe')")
     public ResponseEntity<CheckoutSessionResponse> createCheckoutSession(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody CreateCheckoutSessionRequest request
@@ -133,7 +133,7 @@ public class TenantSubscriptionsController {
             @ApiResponse(responseCode = "404", description = "Customer or subscription not found")
     })
     @PostMapping("/customer-portal")
-    @PreAuthorize("hasAuthority('billing:subscriptions:manage_stripe') or hasRole('WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('billing:subscriptions:manage_stripe')")
     public ResponseEntity<CustomerPortalResponse> createCustomerPortalSession(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody CustomerPortalRequest request
@@ -152,12 +152,12 @@ public class TenantSubscriptionsController {
             @ApiResponse(responseCode = "200", description = "Subscription cancellation scheduled at period end"),
             @ApiResponse(responseCode = "204", description = "Subscription canceled immediately"),
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "403", description = "Forbidden (Requires ROLE_WORKSHOP_OWNER)"),
+            @ApiResponse(responseCode = "403", description = "Forbidden (Requires billing:subscriptions:manage_stripe)"),
             @ApiResponse(responseCode = "404", description = "Subscription not found"),
             @ApiResponse(responseCode = "409", description = "Subscription already canceled")
     })
     @PostMapping("/cancel")
-    @PreAuthorize("hasAuthority('billing:subscriptions:manage_stripe') and hasRole('WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('billing:subscriptions:manage_stripe')")
     public ResponseEntity<TenantSubscriptionResource> cancelSubscription(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody CancelSubscriptionRequest request

@@ -112,12 +112,12 @@ public class SubscriptionPlansController {
             @ApiResponse(responseCode = "201", description = "Plan created successfully"),
             @ApiResponse(responseCode = "400", description = "Invalid payload or validation error"),
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "403", description = "Forbidden (Requires ROLE_SUPER_ADMIN)"),
+            @ApiResponse(responseCode = "403", description = "Forbidden (Requires platform authority billing:plans:write)"),
             @ApiResponse(responseCode = "409", description = "Duplicate plan name or Stripe price ID"),
             @ApiResponse(responseCode = "422", description = "Invalid plan pricing or quota limits")
     })
     @PostMapping
-    @PreAuthorize("hasAuthority('billing:plans:write') and hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('billing:plans:write')")
     public ResponseEntity<SubscriptionPlanResource> createPlan(
             @Valid @RequestBody CreateSubscriptionPlanRequest request
     ) {
@@ -153,12 +153,12 @@ public class SubscriptionPlansController {
             @ApiResponse(responseCode = "200", description = "Plan updated successfully"),
             @ApiResponse(responseCode = "400", description = "Invalid payload or validation error"),
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "403", description = "Forbidden (Requires ROLE_SUPER_ADMIN)"),
+            @ApiResponse(responseCode = "403", description = "Forbidden (Requires platform authority billing:plans:write)"),
             @ApiResponse(responseCode = "404", description = "Plan not found"),
             @ApiResponse(responseCode = "422", description = "Invalid plan pricing or quota limits")
     })
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('billing:plans:write') and hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('billing:plans:write')")
     public ResponseEntity<SubscriptionPlanResource> updatePlan(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateSubscriptionPlanRequest request

@@ -40,7 +40,7 @@ class TenantMembershipAggregateTest {
     @BeforeEach
     void setUp() {
         workOrdersCreate = Permission.of("operations:tasks:track_time", "Track labor time", "OPERATIONS");
-        Permission workOrdersRead = Permission.of("operations:work-orders:read", "Read work orders", "OPERATIONS");
+        Permission workOrdersRead = Permission.of("operations:work_orders:read", "Read work orders", "OPERATIONS");
 
         mechanicRole = Role.provisionFromTemplate(tenantId, RoleTemplate.ROLE_MECHANIC, Set.of(workOrdersCreate));
         advisorRole = Role.provisionFromTemplate(tenantId, RoleTemplate.ROLE_SERVICE_ADVISOR, Set.of(workOrdersRead));

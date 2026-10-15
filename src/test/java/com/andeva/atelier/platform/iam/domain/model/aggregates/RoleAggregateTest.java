@@ -47,12 +47,12 @@ class RoleAggregateTest {
         Permission adminPerm = Permission.of("iam:members:invite", "Invite staff", "IAM");
         Permission ownerOnlyPerm = Permission.of("billing:subscriptions:manage_stripe", "Manage Stripe", "BILLING");
         Role role = Role.provisionFromTemplate(
-                tenantId, RoleTemplate.ROLE_WORKSHOP_ADMIN, Set.of(adminPerm, ownerOnlyPerm, perm1));
+                tenantId, RoleTemplate.ROLE_WORKSHOP_ADMINISTRATOR, Set.of(adminPerm, ownerOnlyPerm, perm1));
 
         assertThat(role.id()).isNotNull();
         assertThat(role.tenantId()).isEqualTo(tenantId);
-        assertThat(role.name()).isEqualTo("Workshop Administrator");
-        assertThat(role.code()).isEqualTo("ROLE_WORKSHOP_ADMIN");
+        assertThat(role.name()).isEqualTo("Administrador de Taller");
+        assertThat(role.code()).isEqualTo("ROLE_WORKSHOP_ADMINISTRATOR");
         assertThat(role.isSystemRole()).isTrue();
         assertThat(role.permissions()).containsExactly(adminPerm);
 
@@ -82,7 +82,7 @@ class RoleAggregateTest {
         role.clearDomainEvents();
 
         role.resetToTemplate(RoleTemplate.ROLE_MECHANIC, Set.of(trackTime, perm1));
-        assertThat(role.name()).isEqualTo("Mechanic");
+        assertThat(role.name()).isEqualTo("Técnico Mecánico");
         assertThat(role.permissions()).containsExactly(trackTime);
 
         assertThat(role.domainEvents()).hasSize(1);

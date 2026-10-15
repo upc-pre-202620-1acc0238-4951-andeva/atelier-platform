@@ -75,7 +75,7 @@ public class VoucherPaymentsController {
             @ApiResponse(responseCode = "409", description = "Voucher already paid or payment exceeds balance")
     })
     @PostMapping
-    @PreAuthorize("hasAuthority('invoicing:payments:create') or hasAnyRole('WORKSHOP_ADMIN', 'WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('invoicing:payments:create')")
     public ResponseEntity<VoucherPaymentResource> registerPayment(
             @RequestHeader(value = "X-Tenant-Id", required = false) UUID headerTenantId,
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -109,7 +109,7 @@ public class VoucherPaymentsController {
             @ApiResponse(responseCode = "404", description = "Voucher not found")
     })
     @GetMapping("/voucher/{voucherId}")
-    @PreAuthorize("hasAuthority('invoicing:invoices:read') or hasAnyRole('SERVICE_ADVISOR', 'WORKSHOP_ADMIN', 'WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('invoicing:invoices:read')")
     public ResponseEntity<List<VoucherPaymentResource>> getPaymentsByVoucher(
             @PathVariable UUID voucherId,
             @RequestHeader(value = "X-Tenant-Id", required = false) UUID headerTenantId,
@@ -135,7 +135,7 @@ public class VoucherPaymentsController {
             @ApiResponse(responseCode = "403", description = "Forbidden")
     })
     @GetMapping("/branch/{branchId}/daily")
-    @PreAuthorize("hasAuthority('invoicing:invoices:read') or hasAnyRole('WORKSHOP_ADMIN', 'WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('invoicing:invoices:read')")
     public ResponseEntity<DailyReconciliationResource> getDailyReconciliation(
             @PathVariable UUID branchId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,

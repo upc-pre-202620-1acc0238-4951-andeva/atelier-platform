@@ -21,17 +21,19 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
  * Idempotent startup synchronization of the RBAC permission catalog and the factory roles of existing tenants.
  * <ol>
- *     <li>Inserts every {@link PermissionCatalog} permission missing from the {@code permissions} table.</li>
+ *     <li>Inserts every {@link PermissionCatalog} permission missing from the {@code permissions} table and deletes
+ *     permissions that are no longer part of the catalog (revoking them from every role first).</li>
+ *     <li>Rebinds system roles provisioned under legacy template codes or default names to their current
+ *     template, keeping role ids and therefore memberships.</li>
  *     <li>Grants each newly inserted permission to the system roles whose template includes it, so tenants
  *     registered before the permission existed receive it without overriding their sovereign edits.</li>
  *     <li>Provisions factory roles missing in a tenant and assigns the owner role to the account that
- *     registered the workshop when no member holds it (tenants registered before owners were provisioned).</li>
+ *     registered the workshop when no member holds it.</li>
  * </ol>
  * Running it again on a synchronized database performs no writes.
  *
@@ -43,6 +45,18 @@ public class PermissionCatalogSeedingService {
 
     private static final Logger log = LoggerFactory.getLogger(PermissionCatalogSeedingService.class);
 
+    /**
+     * Template codes and default names used before the eight canonical roles of atelier-roles.md.
+     */
+    private static final Map<String, RoleTemplate> LEGACY_CODES = Map.of(
+            "ROLE_WORKSHOP_ADMIN", RoleTemplate.ROLE_WORKSHOP_ADMINISTRATOR);
+    private static final Map<String, RoleTemplate> LEGACY_NAMES = Map.of(
+            "Workshop Owner", RoleTemplate.ROLE_WORKSHOP_OWNER,
+            "Workshop Administrator", RoleTemplate.ROLE_WORKSHOP_ADMINISTRATOR,
+            "Service Advisor", RoleTemplate.ROLE_SERVICE_ADVISOR,
+            "Mechanic", RoleTemplate.ROLE_MECHANIC,
+            "Inventory Manager", RoleTemplate.ROLE_INVENTORY_MANAGER);
+
     private final PermissionRepository permissionRepository;
     private final RoleRepository roleRepository;
     private final TenantMembershipRepository membershipRepository;
@@ -50,7 +64,16 @@ public class PermissionCatalogSeedingService {
     /**
      * Outcome of a synchronization run.
      */
-    public record SeedingResult(int permissionsCreated, int rolesUpdated, int rolesProvisioned, int ownersAssigned) {
+    public record SeedingResult(
+            int permissionsCreated,
+            int permissionsRemoved,
+            int rolesUpdated,
+            int rolesProvisioned,
+            int ownersAssigned
+    ) {
+        public boolean hasChanges() {
+            return permissionsCreated + permissionsRemoved + rolesUpdated + rolesProvisioned + ownersAssigned > 0;
+        }
     }
 
     public PermissionCatalogSeedingService(
@@ -64,36 +87,50 @@ public class PermissionCatalogSeedingService {
     }
 
     public SeedingResult synchronize() {
-        Map<String, Permission> catalog = permissionRepository.findAll().stream()
-                .collect(Collectors.toMap(Permission::name, Function.identity(), (a, b) -> a, LinkedHashMap::new));
+        Map<String, Permission> stored = new LinkedHashMap<>();
+        permissionRepository.findAll().forEach(permission -> stored.putIfAbsent(permission.name(), permission));
 
+        List<Permission> obsolete = stored.values().stream()
+                .filter(permission -> !PermissionCatalog.contains(permission.name()))
+                .toList();
         List<Permission> created = new ArrayList<>();
+        List<Permission> catalog = new ArrayList<>();
         for (PermissionCatalog.Entry entry : PermissionCatalog.entries()) {
-            if (!catalog.containsKey(entry.name())) {
-                Permission saved = permissionRepository.save(
+            Permission permission = stored.get(entry.name());
+            if (permission == null) {
+                permission = permissionRepository.save(
                         Permission.create(entry.name(), entry.description(), entry.category()));
-                catalog.put(saved.name(), saved);
-                created.add(saved);
+                created.add(permission);
             }
+            catalog.add(permission);
         }
 
         int rolesUpdated = 0;
         Map<TenantId, Map<RoleTemplate, Role>> systemRolesByTenant = new LinkedHashMap<>();
-        for (Role role : roleRepository.findAllSystemRoles()) {
-            Optional<RoleTemplate> template = RoleTemplate.fromCode(role.code());
-            if (template.isEmpty()) {
-                continue;
+        for (Role role : roleRepository.findAll()) {
+            boolean changed = revokeObsolete(role, obsolete);
+            Optional<RoleTemplate> template = Optional.empty();
+            if (role.isSystemRole()) {
+                template = resolveTemplate(role);
+                if (template.isPresent() && hasLegacyIdentity(role, template.get())) {
+                    role.adoptTemplateIdentity(template.get());
+                    changed = true;
+                }
+                if (template.isPresent()) {
+                    Set<Permission> grants = Role.templateSubset(template.get(), created);
+                    grants.forEach(role::grantPermission);
+                    changed |= !grants.isEmpty();
+                }
             }
-            Role current = role;
-            Set<Permission> grants = Role.templateSubset(template.get(), created);
-            if (!grants.isEmpty()) {
-                grants.forEach(current::grantPermission);
-                current = roleRepository.save(current);
+            Role current = changed ? roleRepository.save(role) : role;
+            if (changed) {
                 rolesUpdated++;
             }
-            systemRolesByTenant.computeIfAbsent(role.tenantId(), id -> new LinkedHashMap<>())
-                    .put(template.get(), current);
+            template.ifPresent(t -> systemRolesByTenant
+                    .computeIfAbsent(current.tenantId(), id -> new LinkedHashMap<>())
+                    .putIfAbsent(t, current));
         }
+        obsolete.forEach(permissionRepository::delete);
 
         int rolesProvisioned = 0;
         int ownersAssigned = 0;
@@ -102,7 +139,7 @@ public class PermissionCatalogSeedingService {
             Map<RoleTemplate, Role> roles = tenantRoles.getValue();
             for (RoleTemplate template : RoleTemplate.values()) {
                 if (!roles.containsKey(template)) {
-                    roles.put(template, roleRepository.save(Role.fromTemplate(tenantId, template, catalog.values())));
+                    roles.put(template, roleRepository.save(Role.fromTemplate(tenantId, template, catalog)));
                     rolesProvisioned++;
                 }
             }
@@ -111,11 +148,33 @@ public class PermissionCatalogSeedingService {
             }
         }
 
-        SeedingResult result = new SeedingResult(created.size(), rolesUpdated, rolesProvisioned, ownersAssigned);
-        if (created.size() + rolesUpdated + rolesProvisioned + ownersAssigned > 0) {
+        SeedingResult result = new SeedingResult(
+                created.size(), obsolete.size(), rolesUpdated, rolesProvisioned, ownersAssigned);
+        if (result.hasChanges()) {
             log.info("RBAC catalog synchronized: {}", result);
         }
         return result;
+    }
+
+    private static Optional<RoleTemplate> resolveTemplate(Role role) {
+        Optional<RoleTemplate> template = RoleTemplate.fromCode(role.code());
+        if (template.isPresent() || role.code() == null) {
+            return template;
+        }
+        return Optional.ofNullable(LEGACY_CODES.get(role.code()));
+    }
+
+    private static boolean hasLegacyIdentity(Role role, RoleTemplate template) {
+        return !template.code().equals(role.code()) || LEGACY_NAMES.get(role.name()) == template;
+    }
+
+    private static boolean revokeObsolete(Role role, List<Permission> obsolete) {
+        Set<String> obsoleteNames = obsolete.stream().map(Permission::name).collect(Collectors.toSet());
+        List<Permission> toRevoke = role.permissions().stream()
+                .filter(permission -> obsoleteNames.contains(permission.name()))
+                .toList();
+        toRevoke.forEach(permission -> role.revokePermission(permission.id()));
+        return !toRevoke.isEmpty();
     }
 
     private boolean assignOwnerIfMissing(TenantId tenantId, Role ownerRole) {

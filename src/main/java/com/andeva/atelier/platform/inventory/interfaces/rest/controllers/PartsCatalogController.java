@@ -73,7 +73,7 @@ public class PartsCatalogController {
     }
 
     @GetMapping("/{id}/batches")
-    @PreAuthorize("hasAuthority('inventory:batches:read') or hasAuthority('inventory:parts:read') or hasRole('MECHANIC') or hasRole('INVENTORY_MANAGER') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('inventory:batches:read')")
     @Operation(summary = "List batches for an inventory item")
     public ResponseEntity<?> getItemBatches(@PathVariable UUID id) {
         List<com.andeva.atelier.platform.inventory.domain.model.entities.InventoryBatch> batches = inventoryItemQueryService.handle(new GetInventoryBatchesByItemIdQuery(InventoryItemId.of(id)));
@@ -97,7 +97,7 @@ public class PartsCatalogController {
      * Endpoint 1: List and filter parts catalog.
      */
     @GetMapping
-    @PreAuthorize("hasAuthority('inventory:parts:read') or hasRole('MECHANIC') or hasRole('INVENTORY_MANAGER') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('inventory:parts:read')")
     @Operation(summary = "List and filter parts catalog")
     public ResponseEntity<?> getParts(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -156,7 +156,7 @@ public class PartsCatalogController {
      * Endpoint 2: Register new automotive part or consumable in workshop catalog.
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('inventory:parts:manage') or hasRole('INVENTORY_MANAGER') or hasRole('WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('inventory:parts:manage')")
     @Operation(summary = "Register new automotive part or consumable in workshop catalog")
     public ResponseEntity<?> createPart(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -183,7 +183,7 @@ public class PartsCatalogController {
      * Endpoint 3: Get detailed technical specifications and active batches for a part.
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('inventory:parts:read') or hasRole('MECHANIC') or hasRole('INVENTORY_MANAGER') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('inventory:parts:read')")
     @Operation(summary = "Get detailed technical specifications and active batches for a part")
     public ResponseEntity<?> getPartById(@PathVariable UUID id) {
         InventoryItemId itemId = InventoryItemId.of(id);
@@ -205,7 +205,7 @@ public class PartsCatalogController {
      * Endpoint 4: Update technical specifications, base price, or minimum stock.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('inventory:parts:manage') or hasRole('INVENTORY_MANAGER') or hasRole('WORKSHOP_OWNER')")
+    @PreAuthorize("hasAuthority('inventory:parts:manage')")
     @Operation(summary = "Update technical specifications, base price, or minimum stock")
     public ResponseEntity<?> updatePart(
             @PathVariable UUID id,
@@ -225,7 +225,7 @@ public class PartsCatalogController {
      * Endpoint 5: Lookup part by commercial SKU barcode.
      */
     @GetMapping("/by-sku/{sku}")
-    @PreAuthorize("hasAuthority('inventory:parts:read') or hasRole('MECHANIC') or hasRole('INVENTORY_MANAGER') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('inventory:parts:read')")
     @Operation(summary = "Lookup part by commercial SKU barcode")
     public ResponseEntity<?> getPartBySku(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -246,7 +246,7 @@ public class PartsCatalogController {
      * Endpoint 6: List parts belonging to a specific automotive category.
      */
     @GetMapping("/by-category/{category}")
-    @PreAuthorize("hasAuthority('inventory:parts:read') or hasRole('MECHANIC') or hasRole('INVENTORY_MANAGER') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('inventory:parts:read')")
     @Operation(summary = "List parts belonging to a specific automotive category")
     public ResponseEntity<?> getPartsByCategory(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -272,7 +272,7 @@ public class PartsCatalogController {
      * Endpoint 2.5: [GET] /low-stock returning low-stock items.
      */
     @GetMapping("/low-stock")
-    @PreAuthorize("hasAuthority('inventory:parts:read') or hasRole('MECHANIC') or hasRole('INVENTORY_MANAGER') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('inventory:parts:read')")
     @Operation(summary = "Get low-stock items")
     public ResponseEntity<?> getLowStockItems(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -290,7 +290,7 @@ public class PartsCatalogController {
      * Endpoint 2.6: [GET] /valuation returning inventory valuation.
      */
     @GetMapping("/valuation")
-    @PreAuthorize("hasAuthority('inventory:parts:read') or hasRole('INVENTORY_MANAGER') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('inventory:batches:read')")
     @Operation(summary = "Get inventory valuation")
     public ResponseEntity<?> getInventoryValuation(
             @AuthenticationPrincipal CustomUserDetails userDetails,
