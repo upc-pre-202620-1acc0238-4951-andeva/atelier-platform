@@ -5,6 +5,7 @@ import com.andeva.atelier.platform.billing.application.internal.outbound.acl.Bil
 import com.andeva.atelier.platform.billing.application.internal.outbound.acl.IamTenantValidationAclPort;
 import com.andeva.atelier.platform.billing.application.internal.outbound.acl.StripeGatewayPort;
 import com.andeva.atelier.platform.billing.domain.exceptions.DuplicateActiveSubscriptionException;
+import com.andeva.atelier.platform.billing.domain.exceptions.InvalidPlanPricingException;
 import com.andeva.atelier.platform.billing.domain.exceptions.PlanNotFoundException;
 import com.andeva.atelier.platform.billing.domain.exceptions.SubscriptionNotFoundException;
 import com.andeva.atelier.platform.billing.domain.model.aggregates.SubscriptionPlan;
@@ -12,6 +13,7 @@ import com.andeva.atelier.platform.billing.domain.model.aggregates.TenantSubscri
 import com.andeva.atelier.platform.billing.domain.model.commands.CancelSubscriptionCommand;
 import com.andeva.atelier.platform.billing.domain.model.commands.ChangeSubscriptionPlanCommand;
 import com.andeva.atelier.platform.billing.domain.model.commands.InitiateCheckoutSessionCommand;
+import com.andeva.atelier.platform.billing.domain.model.enums.PlanTier;
 import com.andeva.atelier.platform.billing.domain.model.ids.PlanId;
 import com.andeva.atelier.platform.billing.domain.model.valueobjects.StripeCustomerId;
 import com.andeva.atelier.platform.billing.domain.repositories.SubscriptionPlanRepository;
@@ -68,6 +70,10 @@ public class TenantSubscriptionCommandServiceImpl implements TenantSubscriptionC
 
         if (!plan.isActive()) {
             throw new PlanNotFoundException("Commercial plan is not active for new subscriptions: " + command.planId().value());
+        }
+        // Enterprise is negotiated with sales and has no self-service Stripe price
+        if (plan.tier() == PlanTier.ENTERPRISE) {
+            throw new InvalidPlanPricingException("The Enterprise plan is contracted through the Andeva sales team, not self-service checkout");
         }
 
         Optional<TenantSubscription> existingOpt = subscriptionRepository.findByTenantId(command.tenantId());
