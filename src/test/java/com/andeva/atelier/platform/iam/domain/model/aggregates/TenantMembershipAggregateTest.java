@@ -39,8 +39,8 @@ class TenantMembershipAggregateTest {
 
     @BeforeEach
     void setUp() {
-        workOrdersCreate = Permission.of("mro:work-orders:create", "Create work orders", "OPERATIONS");
-        Permission workOrdersRead = Permission.of("mro:work-orders:read", "Read work orders", "OPERATIONS");
+        workOrdersCreate = Permission.of("operations:tasks:track_time", "Track labor time", "OPERATIONS");
+        Permission workOrdersRead = Permission.of("operations:work_orders:read", "Read work orders", "OPERATIONS");
 
         mechanicRole = Role.provisionFromTemplate(tenantId, RoleTemplate.ROLE_MECHANIC, Set.of(workOrdersCreate));
         advisorRole = Role.provisionFromTemplate(tenantId, RoleTemplate.ROLE_SERVICE_ADVISOR, Set.of(workOrdersRead));
@@ -126,12 +126,12 @@ class TenantMembershipAggregateTest {
                 Set.of(mechanicRole)
         );
 
-        assertThat(membership.hasPermission("mro:work-orders:create")).isTrue();
+        assertThat(membership.hasPermission("operations:tasks:track_time")).isTrue();
         assertThat(membership.hasPermission("billing:invoices:create")).isFalse();
 
         // When deactivated, hasPermission returns false
         membership.deactivate();
-        assertThat(membership.hasPermission("mro:work-orders:create")).isFalse();
+        assertThat(membership.hasPermission("operations:tasks:track_time")).isFalse();
     }
 
     @Test

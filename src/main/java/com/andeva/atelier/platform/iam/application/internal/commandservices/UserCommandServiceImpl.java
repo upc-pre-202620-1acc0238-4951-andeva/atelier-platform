@@ -29,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -205,11 +206,20 @@ public class UserCommandServiceImpl implements UserCommandService {
                 .orElse(null);
 
         TenantId tenantId = activeMembership != null ? activeMembership.tenantId() : null;
-        Set<String> permissions = activeMembership != null
-                ? activeMembership.assignedRoles().stream()
-                .flatMap(role -> role.permissions().stream().map(Permission::name))
-                .collect(Collectors.toSet())
-                : Set.of();
+        Set<String> permissions = new HashSet<>();
+
+        if (activeMembership != null && activeMembership.assignedRoles() != null) {
+            for (com.andeva.atelier.platform.iam.domain.model.aggregates.Role role : activeMembership.assignedRoles()) {
+                // Factory roles expose their template code (e.g. ROLE_MECHANIC) for hasRole checks;
+                // custom roles are defined exclusively by their granted catalog permissions.
+                if (role.code() != null) {
+                    permissions.add(role.code());
+                }
+                if (role.permissions() != null) {
+                    role.permissions().forEach(p -> permissions.add(p.name()));
+                }
+            }
+        }
 
         String token = bearerTokenService.generateToken(user, tenantId, permissions);
         return new AuthenticatedUser(user, token, tenantId, permissions);
@@ -230,5 +240,21 @@ public class UserCommandServiceImpl implements UserCommandService {
 
         User savedUser = userRepository.save(user);
         return Result.success(savedUser);
+    }
+
+    @Override
+    @Transactional
+    public Result<Void, ApplicationError> handle(com.andeva.atelier.platform.iam.domain.model.commands.RegisterDeviceTokenCommand command) {
+        Objects.requireNonNull(command, "Command cannot be null");
+
+        Optional<User> userOptional = userRepository.findById(command.userId());
+        if (userOptional.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("User account not found with ID: " + command.userId().value()));
+        }
+
+        User user = userOptional.get();
+        user.updateFcmToken(command.fcmToken());
+        userRepository.save(user);
+        return Result.success(null);
     }
 }

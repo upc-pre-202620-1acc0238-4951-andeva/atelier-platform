@@ -66,18 +66,14 @@ public class WebSecurityConfiguration {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/",
-                                "/authentication/**",
-                                "/api/v1/authentication/**",
-                                "/auth/**",
                                 "/api/v1/auth/**",
-                                "/invitations/validate",
                                 "/api/v1/invitations/validate",
-                                "/invitations/accept",
                                 "/api/v1/invitations/accept",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",
-                                "/actuator/**",
+                                "/actuator/health/**",
+                                "/actuator/info",
                                 "/api/v1/billing/webhooks/**"
                         ).permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/billing/plans", "/api/v1/billing/plans/**").permitAll()

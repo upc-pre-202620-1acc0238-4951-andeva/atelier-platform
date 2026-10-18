@@ -72,7 +72,7 @@ public class StaffProfilesController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('iam:members:manage_roles') or hasRole('WORKSHOP_ADMINISTRATOR') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('hr:employees:manage')")
     @Operation(summary = "Register and formalize an employee profile")
     public ResponseEntity<?> registerEmployeeProfile(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -95,7 +95,7 @@ public class StaffProfilesController {
     }
 
     @GetMapping("/{profileId}")
-    @PreAuthorize("hasAuthority('iam:members:read') or hasRole('CHIEF_MECHANIC') or hasRole('WORKSHOP_ADMINISTRATOR') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('iam:members:read')")
     @Operation(summary = "Get employee profile by ID")
     public ResponseEntity<?> getEmployeeProfileById(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -117,7 +117,7 @@ public class StaffProfilesController {
     }
 
     @GetMapping("/membership/{membershipId}")
-    @PreAuthorize("hasAuthority('iam:members:read') or hasAuthority('hr:attendance:read_own') or hasRole('MECHANIC') or hasRole('CHIEF_MECHANIC') or isAuthenticated()")
+    @PreAuthorize("hasAnyAuthority('iam:members:read', 'hr:attendance:read_own')")
     @Operation(summary = "Get employee profile by IAM membership ID")
     public ResponseEntity<?> getEmployeeProfileByMembershipId(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -139,7 +139,7 @@ public class StaffProfilesController {
     }
 
     @GetMapping("/branch/{branchId}")
-    @PreAuthorize("hasAuthority('iam:members:read') or hasRole('CHIEF_MECHANIC') or hasRole('WORKSHOP_ADMINISTRATOR') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('iam:members:read')")
     @Operation(summary = "List all employee profiles assigned to a workshop branch")
     public ResponseEntity<List<EmployeeProfileResource>> getEmployeesByBranch(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -154,7 +154,7 @@ public class StaffProfilesController {
     }
 
     @PutMapping("/{profileId}/shift")
-    @PreAuthorize("hasAuthority('hr:shifts:manage') or hasRole('WORKSHOP_ADMINISTRATOR') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('hr:shifts:manage')")
     @Operation(summary = "Assign or update scheduled work shift for an employee")
     public ResponseEntity<?> assignShift(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -174,7 +174,7 @@ public class StaffProfilesController {
     }
 
     @PutMapping("/{profileId}/salary")
-    @PreAuthorize("hasAuthority('iam:members:compensate') or hasRole('WORKSHOP_ADMINISTRATOR') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('iam:members:compensate')")
     @Operation(summary = "Update employee base salary and compensation scheme")
     public ResponseEntity<?> updateSalary(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -194,7 +194,7 @@ public class StaffProfilesController {
     }
 
     @PatchMapping("/{profileId}/status")
-    @PreAuthorize("hasAuthority('iam:members:manage_roles') or hasRole('WORKSHOP_ADMINISTRATOR') or hasRole('WORKSHOP_OWNER') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('hr:employees:manage')")
     @Operation(summary = "Update employment status (ACTIVE, ON_LEAVE, TERMINATED)")
     public ResponseEntity<?> updateEmploymentStatus(
             @AuthenticationPrincipal CustomUserDetails userDetails,

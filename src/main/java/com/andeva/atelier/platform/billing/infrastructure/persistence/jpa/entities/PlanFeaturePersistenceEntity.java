@@ -3,8 +3,6 @@ package com.andeva.atelier.platform.billing.infrastructure.persistence.jpa.entit
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
@@ -41,7 +39,6 @@ import java.util.UUID;
 public class PlanFeaturePersistenceEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
 
@@ -68,7 +65,7 @@ public class PlanFeaturePersistenceEntity {
             String description,
             boolean isEnabled
     ) {
-        this.id = id;
+        this.id = id != null ? id : UUID.randomUUID();
         this.plan = plan;
         this.featureKey = featureKey;
         this.description = description;

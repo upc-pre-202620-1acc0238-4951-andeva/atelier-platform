@@ -14,6 +14,8 @@ import com.andeva.atelier.platform.iam.infrastructure.persistence.jpa.repositori
 import com.andeva.atelier.platform.iam.infrastructure.persistence.jpa.repositories.UserPersistenceRepository;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.UserId;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +41,13 @@ public class TenantMembershipRepositoryImpl implements TenantMembershipRepositor
     private final UserPersistenceRepository userPersistenceRepository;
     private final RolePersistenceRepository rolePersistenceRepository;
 
+    private ApplicationEventPublisher eventPublisher = event -> { };
+
+    @Autowired
+    void setEventPublisher(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
+
     public TenantMembershipRepositoryImpl(
             TenantMembershipPersistenceRepository membershipPersistenceRepository,
             TenantPersistenceRepository tenantPersistenceRepository,
@@ -53,8 +62,10 @@ public class TenantMembershipRepositoryImpl implements TenantMembershipRepositor
     @Override
     public TenantMembership save(TenantMembership membership) {
         Objects.requireNonNull(membership, "TenantMembership cannot be null");
-        TenantPersistenceEntity tenant = tenantPersistenceRepository.getReferenceById(membership.tenantId().value());
-        UserPersistenceEntity user = userPersistenceRepository.getReferenceById(membership.userId().value());
+        TenantPersistenceEntity tenant = tenantPersistenceRepository.findById(membership.tenantId().value())
+                .orElseGet(() -> tenantPersistenceRepository.getReferenceById(membership.tenantId().value()));
+        UserPersistenceEntity user = userPersistenceRepository.findById(membership.userId().value())
+                .orElseGet(() -> userPersistenceRepository.getReferenceById(membership.userId().value()));
 
         List<UUID> roleUuids = membership.assignedRoles() != null
                 ? membership.assignedRoles().stream().map(r -> r.id().value()).toList()
@@ -70,6 +81,8 @@ public class TenantMembershipRepositoryImpl implements TenantMembershipRepositor
                 roles
         );
         TenantMembershipPersistenceEntity saved = membershipPersistenceRepository.save(entity);
+        membership.domainEvents().forEach(eventPublisher::publishEvent);
+        membership.clearDomainEvents();
         return TenantMembershipPersistenceAssembler.toDomain(saved);
     }
 
@@ -124,5 +137,15 @@ public class TenantMembershipRepositoryImpl implements TenantMembershipRepositor
             return 0;
         }
         return membershipPersistenceRepository.countByTenant_Id(tenantId.value());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<TenantMembership> findEarliestByTenantId(TenantId tenantId) {
+        if (tenantId == null) {
+            return Optional.empty();
+        }
+        return membershipPersistenceRepository.findFirstByTenant_IdOrderByCreatedAtAsc(tenantId.value())
+                .map(TenantMembershipPersistenceAssembler::toDomain);
     }
 }

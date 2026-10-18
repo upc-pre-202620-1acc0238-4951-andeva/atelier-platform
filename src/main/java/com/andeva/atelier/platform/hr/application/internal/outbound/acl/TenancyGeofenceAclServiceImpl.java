@@ -49,7 +49,7 @@ public class TenancyGeofenceAclServiceImpl implements TenancyGeofenceAclService 
         if (tenantId == null || membershipId == null) return false;
         if (this.tenancyContextFacade != null) {
             try {
-                return this.tenancyContextFacade.isUserStaffMemberOfTenant(membershipId.value(), tenantId.value());
+                return this.tenancyContextFacade.isActiveMembershipOfTenant(membershipId.value(), tenantId.value());
             } catch (Exception e) {
                 // fallback
             }

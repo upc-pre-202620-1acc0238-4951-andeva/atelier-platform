@@ -21,4 +21,6 @@ public interface PermissionRepository {
     Optional<Permission> findByName(String name);
 
     Permission save(Permission permission);
+
+    void delete(Permission permission);
 }

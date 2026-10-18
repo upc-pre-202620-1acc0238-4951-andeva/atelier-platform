@@ -40,6 +40,11 @@ public class UserDomainEventsHandler {
                 log.info("Sending email verification OTP to: {}", user.email().value());
                 resendEmailService.sendVerificationEmail(user.email(), event.tokenValue());
             });
+        } else if (event.type() == TokenType.PASSWORD_RESET) {
+            userRepository.findById(event.userId()).ifPresent(user -> {
+                log.info("Sending password reset link to: {}", user.email().value());
+                resendEmailService.sendPasswordResetEmail(user.email(), event.tokenValue());
+            });
         }
     }
 

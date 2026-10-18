@@ -26,4 +26,9 @@ public interface TenantMembershipRepository {
     List<TenantMembership> findByUserId(UserId userId);
 
     long countByTenantId(TenantId tenantId);
+
+    /**
+     * First membership created in the tenant, which belongs to the account that registered the workshop.
+     */
+    Optional<TenantMembership> findEarliestByTenantId(TenantId tenantId);
 }

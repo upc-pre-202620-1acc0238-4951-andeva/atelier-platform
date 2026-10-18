@@ -47,6 +47,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -75,27 +76,31 @@ class RolesControllerTest {
     void setUp() {
         RolesController controller = new RolesController(roleQueryService, roleCommandService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-                .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
-                    @Override
-                    public boolean supportsParameter(MethodParameter parameter) {
-                        return parameter.getParameterType().equals(CustomUserDetails.class);
-                    }
-
-                    @Override
-                    public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
-                                                  NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
-                        return new CustomUserDetails(
-                                userUuid,
-                                "admin@precision.pe",
-                                "hashedPassword",
-                                tenantUuid,
-                                Collections.emptyList(),
-                                true
-                        );
-                    }
-                })
+                .setCustomArgumentResolvers(principalResolver(tenantUuid))
                 .build();
         objectMapper = new ObjectMapper();
+    }
+
+    private HandlerMethodArgumentResolver principalResolver(UUID principalTenantUuid) {
+        return new HandlerMethodArgumentResolver() {
+            @Override
+            public boolean supportsParameter(MethodParameter parameter) {
+                return parameter.getParameterType().equals(CustomUserDetails.class);
+            }
+
+            @Override
+            public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
+                                          NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
+                return new CustomUserDetails(
+                        userUuid,
+                        "admin@precision.pe",
+                        "hashedPassword",
+                        principalTenantUuid,
+                        Collections.emptyList(),
+                        true
+                );
+            }
+        };
     }
 
     @Test
@@ -130,6 +135,54 @@ class RolesControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(roleUuid.toString()))
                 .andExpect(jsonPath("$[0].name").value("Senior Mechanic"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/tenants/{tenantId}/roles matches the RoleResource contract of atelier-roles.md section 7.1")
+    void getRolesMatchesDocumentedContract() throws Exception {
+        UUID documentedTenantUuid = UUID.fromString("018f6c40-7e12-7000-8000-000000000001");
+        Role role = new Role(
+                RoleId.of(UUID.fromString("018f6c40-7e12-7000-8000-000000000010")),
+                TenantId.of(documentedTenantUuid),
+                "ROLE_MECHANIC",
+                "Técnico Mecánico",
+                "Ejecución directa de labores mecánicas y diagnóstico en bahía",
+                true,
+                Set.of(new Permission(
+                        PermissionId.of(UUID.fromString("018f6c45-aaaa-7000-8000-000000000001")),
+                        "operations:tasks:track_time",
+                        "Registrar tiempos de trabajo en tareas",
+                        "OPERATIONS"))
+        );
+        MockMvc documentedTenantMockMvc = MockMvcBuilders
+                .standaloneSetup(new RolesController(roleQueryService, roleCommandService))
+                .setCustomArgumentResolvers(principalResolver(documentedTenantUuid))
+                .build();
+
+        when(roleQueryService.handle(new GetRolesByTenantIdQuery(TenantId.of(documentedTenantUuid))))
+                .thenReturn(List.of(role));
+
+        documentedTenantMockMvc.perform(get("/api/v1/tenants/" + documentedTenantUuid + "/roles"))
+                .andExpect(status().isOk())
+                .andExpect(content().json("""
+                        [
+                          {
+                            "id": "018f6c40-7e12-7000-8000-000000000010",
+                            "tenantId": "018f6c40-7e12-7000-8000-000000000001",
+                            "code": "ROLE_MECHANIC",
+                            "name": "Técnico Mecánico",
+                            "description": "Ejecución directa de labores mecánicas y diagnóstico en bahía",
+                            "isSystemRole": true,
+                            "permissions": [
+                              {
+                                "id": "018f6c45-aaaa-7000-8000-000000000001",
+                                "name": "operations:tasks:track_time",
+                                "category": "operations"
+                              }
+                            ]
+                          }
+                        ]
+                        """, true));
     }
 
     @Test
@@ -190,7 +243,9 @@ class RolesControllerTest {
                         .content(objectMapper.writeValueAsString(resource)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(roleUuid.toString()))
-                .andExpect(jsonPath("$.permissions[0]").value("iam:roles:read"));
+                .andExpect(jsonPath("$.permissions[0].id").value(permUuid.toString()))
+                .andExpect(jsonPath("$.permissions[0].name").value("iam:roles:read"))
+                .andExpect(jsonPath("$.permissions[0].category").value("iam"));
 
         verify(roleCommandService).handle(any(UpdateRolePermissionsCommand.class));
     }
@@ -260,6 +315,7 @@ class RolesControllerTest {
         mockMvc.perform(get("/api/v1/permissions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("iam:users:read"))
-                .andExpect(jsonPath("$[0].category").value("IAM"));
+                .andExpect(jsonPath("$[0].description").value("View user accounts"))
+                .andExpect(jsonPath("$[0].category").value("iam"));
     }
 }

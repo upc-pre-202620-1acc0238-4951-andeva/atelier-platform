@@ -193,6 +193,11 @@ class IoTRepositoryAdaptersTest {
         assertThat(adapter.findAllByVehicleId(vehicleId)).hasSize(1);
         assertThat(adapter.findAllByTenantIdAndStatus(tenantId, AlertStatus.DISPATCHED)).hasSize(1);
         assertThat(adapter.findAllByTenantId(tenantId)).hasSize(1);
+
+        when(predictiveAlertPersistenceRepository.existsByVehicleIdAndAlertTypeAndStatusIn(
+                vehicleId.value(), AlertType.BATTERY_FAILURE_RISK, List.of(AlertStatus.DISPATCHED, AlertStatus.ACKNOWLEDGED)))
+                .thenReturn(true);
+        assertThat(adapter.existsOpenAlert(vehicleId, AlertType.BATTERY_FAILURE_RISK)).isTrue();
     }
 
     @Test

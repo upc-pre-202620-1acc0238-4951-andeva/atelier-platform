@@ -61,7 +61,7 @@ public class CustomerMembershipsController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('crm:customers:manage') or hasAuthority('crm:fleets:manage')")
+    @PreAuthorize("hasAuthority('crm:fleets:manage')")
     @Operation(summary = "Invite or assign user to corporate customer fleet")
     public ResponseEntity<?> inviteMember(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -85,7 +85,7 @@ public class CustomerMembershipsController {
     }
 
     @DeleteMapping("/{userId}")
-    @PreAuthorize("hasAuthority('crm:customers:manage') or hasAuthority('crm:fleets:manage')")
+    @PreAuthorize("hasAuthority('crm:fleets:manage')")
     @Operation(summary = "Revoke corporate fleet membership from user")
     public ResponseEntity<?> revokeMember(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -112,7 +112,7 @@ public class CustomerMembershipsController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('crm:customers:read') or hasAuthority('crm:fleets:manage')")
+    @PreAuthorize("hasAuthority('crm:customers:read')")
     @Operation(summary = "List corporate fleet members assigned to customer")
     public ResponseEntity<?> getMembersByCustomerId(@PathVariable UUID customerId) {
         List<CustomerMembership> members = customerMembershipQueryService.handle(

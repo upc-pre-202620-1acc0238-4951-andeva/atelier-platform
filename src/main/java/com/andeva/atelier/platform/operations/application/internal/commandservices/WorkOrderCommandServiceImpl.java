@@ -383,6 +383,10 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
             return Result.failure(ApplicationError.notFound("WorkOrder with identifier " + command.workOrderId().value() + " was not found"));
         }
 
+        if (!storageGateway.validateStorageUrl(command.imageUrl())) {
+            return Result.failure(ApplicationError.badRequest("Image URL must point to the platform storage bucket"));
+        }
+
         WorkOrder order = orderOpt.get();
         order.attachIntakeImage(StorageUrl.of(command.imageUrl()), command.description());
         WorkOrder saved = workOrderRepository.save(order);
@@ -393,6 +397,9 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
     public Result<WorkOrderTask, ApplicationError> handle(AttachTaskEvidenceImageCommand command) {
         if (command == null || command.taskId() == null) {
             return Result.failure(ApplicationError.badRequest("Command and taskId cannot be null"));
+        }
+        if (!storageGateway.validateStorageUrl(command.imageUrl())) {
+            return Result.failure(ApplicationError.badRequest("Image URL must point to the platform storage bucket"));
         }
         Optional<WorkOrder> orderOpt = workOrderRepository.findByTaskId(command.taskId());
         if (orderOpt.isEmpty()) {
@@ -414,6 +421,10 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
         Optional<WorkOrder> orderOpt = workOrderRepository.findById(command.workOrderId());
         if (orderOpt.isEmpty()) {
             return Result.failure(ApplicationError.notFound("WorkOrder with identifier " + command.workOrderId().value() + " was not found"));
+        }
+
+        if (command.imageUrl() != null && !storageGateway.validateStorageUrl(command.imageUrl().value())) {
+            return Result.failure(ApplicationError.badRequest("Image URL must point to the platform storage bucket"));
         }
 
         WorkOrder order = orderOpt.get();

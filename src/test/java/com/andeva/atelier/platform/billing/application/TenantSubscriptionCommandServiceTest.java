@@ -6,6 +6,7 @@ import com.andeva.atelier.platform.billing.application.internal.outbound.acl.Bil
 import com.andeva.atelier.platform.billing.application.internal.outbound.acl.IamTenantValidationAclPort;
 import com.andeva.atelier.platform.billing.application.internal.outbound.acl.StripeGatewayPort;
 import com.andeva.atelier.platform.billing.domain.exceptions.DuplicateActiveSubscriptionException;
+import com.andeva.atelier.platform.billing.domain.exceptions.InvalidPlanPricingException;
 import com.andeva.atelier.platform.billing.domain.exceptions.PlanNotFoundException;
 import com.andeva.atelier.platform.billing.domain.exceptions.SubscriptionNotFoundException;
 import com.andeva.atelier.platform.billing.domain.model.aggregates.SubscriptionPlan;
@@ -78,6 +79,31 @@ class TenantSubscriptionCommandServiceTest {
                 iamTenantValidationAclPort,
                 eventPublisher
         );
+    }
+
+    @Test
+    @DisplayName("Should reject self-service checkout for the Enterprise plan")
+    void shouldRejectCheckoutForEnterprisePlan() {
+        TenantId tenantId = TenantId.generate();
+        PlanId planId = PlanId.generate();
+
+        SubscriptionPlan plan = new SubscriptionPlan(
+                planId,
+                new StripePriceId("price_enterprise_custom"),
+                "Enterprise",
+                PlanTier.ENTERPRISE,
+                PlanPricing.of(Money.of(new BigDecimal("999.00"), Currency.PEN), BillingCycle.MONTHLY),
+                TenantQuotaLimits.proPlanPreset(),
+                true
+        );
+        when(planRepository.findById(planId)).thenReturn(Optional.of(plan));
+
+        InitiateCheckoutSessionCommand command = new InitiateCheckoutSessionCommand(
+                tenantId, planId, "https://success", "https://cancel");
+
+        assertThatThrownBy(() -> commandService.handle(command))
+                .isInstanceOf(InvalidPlanPricingException.class);
+        verifyNoInteractions(stripeGatewayPort);
     }
 
     @Test

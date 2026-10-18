@@ -10,6 +10,8 @@ import com.andeva.atelier.platform.shared.domain.model.valueobjects.BranchId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.CustomerId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.VehicleId;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
@@ -27,6 +29,13 @@ public class AppointmentRepositoryImpl implements AppointmentRepository {
 
     private final AppointmentPersistenceRepository appointmentPersistenceRepository;
 
+    private ApplicationEventPublisher eventPublisher = event -> { };
+
+    @Autowired
+    void setEventPublisher(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
+
     public AppointmentRepositoryImpl(AppointmentPersistenceRepository appointmentPersistenceRepository) {
         this.appointmentPersistenceRepository = Objects.requireNonNull(appointmentPersistenceRepository);
     }
@@ -40,6 +49,8 @@ public class AppointmentRepositoryImpl implements AppointmentRepository {
                 })
                 .orElseGet(() -> AppointmentPersistenceAssembler.toEntity(appointment));
         AppointmentPersistenceEntity saved = appointmentPersistenceRepository.save(entity);
+        appointment.domainEvents().forEach(eventPublisher::publishEvent);
+        appointment.clearDomainEvents();
         return AppointmentPersistenceAssembler.toDomain(saved);
     }
 

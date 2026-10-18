@@ -7,6 +7,8 @@ import com.andeva.atelier.platform.iam.infrastructure.persistence.jpa.entities.T
 import com.andeva.atelier.platform.iam.infrastructure.persistence.jpa.repositories.TenantPersistenceRepository;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TaxId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,13 @@ public class TenantRepositoryImpl implements TenantRepository {
 
     private final TenantPersistenceRepository persistenceRepository;
 
+    private ApplicationEventPublisher eventPublisher = event -> { };
+
+    @Autowired
+    void setEventPublisher(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
+
     public TenantRepositoryImpl(TenantPersistenceRepository persistenceRepository) {
         this.persistenceRepository = persistenceRepository;
     }
@@ -32,7 +41,9 @@ public class TenantRepositoryImpl implements TenantRepository {
     public Tenant save(Tenant tenant) {
         Objects.requireNonNull(tenant, "Tenant cannot be null");
         TenantPersistenceEntity entity = TenantPersistenceAssembler.toEntity(tenant);
-        TenantPersistenceEntity saved = persistenceRepository.save(entity);
+        TenantPersistenceEntity saved = persistenceRepository.saveAndFlush(entity);
+        tenant.domainEvents().forEach(eventPublisher::publishEvent);
+        tenant.clearDomainEvents();
         return TenantPersistenceAssembler.toDomain(saved);
     }
 

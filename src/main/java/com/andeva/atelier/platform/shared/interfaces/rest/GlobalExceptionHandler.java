@@ -17,8 +17,11 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.text.MessageFormat;
 import java.util.List;
@@ -62,7 +65,7 @@ public class GlobalExceptionHandler {
 
         log.warn("Validation failure in REST request: {} errors detected", details.size());
         String message = resolveMessageOrDefault(
-                "error.application.bad_request",
+                "error.application.validation_failed",
                 "The submitted request payload violates field validation constraints"
         );
         ErrorResource errorResource = ErrorResource.of("VALIDATION_FAILED", message, details);
@@ -80,7 +83,7 @@ public class GlobalExceptionHandler {
 
         log.warn("Constraint violation on parameter: {}", ex.getMessage());
         String message = resolveMessageOrDefault(
-                "error.application.bad_request",
+                "error.application.validation_failed",
                 "One or more request parameters violate constraint rules"
         );
         ErrorResource errorResource = ErrorResource.of("CONSTRAINT_VIOLATION", message, details);
@@ -134,7 +137,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResource> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
         log.warn("Malformed HTTP request body: {}", ex.getMessage());
         String message = resolveMessageOrDefault(
-                "error.application.bad_request",
+                "error.application.validation_failed",
                 "Request body contains invalid JSON syntax or incompatible data types"
         );
         ErrorResource errorResource = ErrorResource.of("MALFORMED_JSON_REQUEST", message);
@@ -175,6 +178,44 @@ public class GlobalExceptionHandler {
         String message = "Supplied Content-Type is not supported by this endpoint";
         ErrorResource errorResource = ErrorResource.of("UNSUPPORTED_MEDIA_TYPE", message);
         return new ResponseEntity<>(errorResource, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+    }
+
+    /**
+     * Handles requests to paths that match no endpoint.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResource> handleNoResourceFound(NoResourceFoundException ex) {
+        ErrorResource errorResource = ErrorResource.of("NOT_FOUND", "No endpoint matches " + ex.getHttpMethod() + " /" + ex.getResourcePath());
+        return new ResponseEntity<>(errorResource, HttpStatus.NOT_FOUND);
+    }
+
+    /**
+     * Handles aggregate state-transition violations (e.g. adding a proposal to a completed work order).
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResource> handleIllegalState(IllegalStateException ex) {
+        log.warn("Business state transition rejected: {}", ex.getMessage());
+        ErrorResource errorResource = ErrorResource.of("UNPROCESSABLE_ENTITY", ex.getMessage());
+        return new ResponseEntity<>(errorResource, HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
+    /**
+     * Handles requests missing a mandatory query parameter.
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResource> handleMissingParameter(MissingServletRequestParameterException ex) {
+        ErrorResource errorResource = ErrorResource.of("MISSING_PARAMETER", "Required parameter '%s' is missing".formatted(ex.getParameterName()));
+        return new ResponseEntity<>(errorResource, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Handles path or query parameters that cannot be converted (e.g. a malformed UUID).
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResource> handleArgumentTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        log.warn("Invalid value for parameter '{}': {}", ex.getName(), ex.getValue());
+        ErrorResource errorResource = ErrorResource.of("INVALID_PARAMETER", "Invalid value for parameter '%s'".formatted(ex.getName()));
+        return new ResponseEntity<>(errorResource, HttpStatus.BAD_REQUEST);
     }
 
     /**

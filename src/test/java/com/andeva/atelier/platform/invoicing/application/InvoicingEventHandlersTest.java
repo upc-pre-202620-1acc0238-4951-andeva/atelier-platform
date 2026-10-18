@@ -64,7 +64,7 @@ class InvoicingEventHandlersTest {
         emailGateway = Mockito.mock(VoucherReceiptEmailGateway.class);
 
         outboxPublisher = new InvoicingTransactionalOutboxPublisher(outboxRepository, objectMapper);
-        domainEventsHandler = new InvoicingDomainEventsHandler(outboxPublisher, emailGateway);
+        domainEventsHandler = new InvoicingDomainEventsHandler(outboxPublisher);
     }
 
     @Test

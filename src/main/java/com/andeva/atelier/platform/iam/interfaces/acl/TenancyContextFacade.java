@@ -41,6 +41,31 @@ public interface TenancyContextFacade {
     Optional<UserAclDto> fetchUserById(UUID userId);
 
     /**
+     * Resolves the user account holding the active workshop owner role in a tenant.
+     *
+     * @param tenantId the tenant UUID
+     * @return Optional containing the owner's user ACL DTO, or empty if none is active
+     */
+    Optional<UserAclDto> fetchTenantOwner(UUID tenantId);
+
+    /**
+     * Resolves the push notification (FCM) token registered by the user's mobile device.
+     *
+     * @param userId the user UUID
+     * @return Optional containing the FCM token, or empty if no device is registered
+     */
+    Optional<String> fetchUserDeviceToken(UUID userId);
+
+    /**
+     * Checks that a membership exists, belongs to the tenant and is active.
+     *
+     * @param membershipId the tenant membership UUID
+     * @param tenantId the tenant UUID
+     * @return true if the membership is active within the tenant
+     */
+    boolean isActiveMembershipOfTenant(UUID membershipId, UUID tenantId);
+
+    /**
      * Checks if a user is an active staff member of a specific workshop tenant.
      *
      * @param userId the user UUID

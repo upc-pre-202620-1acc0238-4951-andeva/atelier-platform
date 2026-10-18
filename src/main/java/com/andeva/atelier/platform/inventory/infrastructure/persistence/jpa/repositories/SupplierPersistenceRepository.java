@@ -22,7 +22,7 @@ public interface SupplierPersistenceRepository extends JpaRepository<SupplierPer
     List<SupplierPersistenceEntity> findByTenantIdAndActive(UUID tenantId, boolean active);
 
     @Query("SELECT s FROM SupplierPersistenceEntity s WHERE s.tenantId = :tenantId " +
-            "AND (:search IS NULL OR LOWER(s.businessName) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(s.taxId) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+            "AND (CAST(:search AS String) IS NULL OR LOWER(s.businessName) LIKE LOWER(CONCAT('%', CAST(:search AS String), '%')) OR LOWER(s.taxId) LIKE LOWER(CONCAT('%', CAST(:search AS String), '%'))) " +
             "AND (:active IS NULL OR s.active = :active) " +
             "AND s.deletedAt IS NULL")
     List<SupplierPersistenceEntity> searchSuppliers(@Param("tenantId") UUID tenantId,

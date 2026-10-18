@@ -7,6 +7,8 @@ import com.andeva.atelier.platform.iam.infrastructure.persistence.jpa.entities.U
 import com.andeva.atelier.platform.iam.infrastructure.persistence.jpa.repositories.UserPersistenceRepository;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.EmailAddress;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.UserId;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,13 @@ public class UserRepositoryImpl implements UserRepository {
 
     private final UserPersistenceRepository persistenceRepository;
 
+    private ApplicationEventPublisher eventPublisher = event -> { };
+
+    @Autowired
+    void setEventPublisher(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
+
     public UserRepositoryImpl(UserPersistenceRepository persistenceRepository) {
         this.persistenceRepository = persistenceRepository;
     }
@@ -32,7 +41,9 @@ public class UserRepositoryImpl implements UserRepository {
     public User save(User user) {
         Objects.requireNonNull(user, "User cannot be null");
         UserPersistenceEntity entity = UserPersistenceAssembler.toEntity(user);
-        UserPersistenceEntity saved = persistenceRepository.save(entity);
+        UserPersistenceEntity saved = persistenceRepository.saveAndFlush(entity);
+        user.domainEvents().forEach(eventPublisher::publishEvent);
+        user.clearDomainEvents();
         return UserPersistenceAssembler.toDomain(saved);
     }
 

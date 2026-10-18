@@ -107,8 +107,7 @@ public class RoleCommandServiceImpl implements RoleCommandService {
             return Result.failure(ApplicationError.notFound("RoleTemplate", role.code()));
         }
 
-        Set<Permission> allPermissions = new HashSet<>(permissionRepository.findAll());
-        role.resetToTemplate(template, allPermissions);
+        role.resetToTemplate(template, permissionRepository.findAll());
         Role savedRole = roleRepository.save(role);
 
         return Result.success(savedRole);
@@ -146,10 +145,10 @@ public class RoleCommandServiceImpl implements RoleCommandService {
         Objects.requireNonNull(command, "ProvisionTenantRolesCommand cannot be null");
 
         List<Role> provisioned = new ArrayList<>();
-        Set<Permission> allPermissions = new HashSet<>(permissionRepository.findAll());
+        List<Permission> permissionCatalog = permissionRepository.findAll();
 
         for (RoleTemplate template : RoleTemplate.values()) {
-            Role role = Role.fromTemplate(command.tenantId(), template, allPermissions);
+            Role role = Role.fromTemplate(command.tenantId(), template, permissionCatalog);
             provisioned.add(roleRepository.save(role));
         }
 

@@ -42,7 +42,15 @@ public class VehicleOwnershipRepositoryImpl implements VehicleOwnershipRepositor
         if (ownership.getVehicleId() != null) {
             vehicleEntity = vehiclePersistenceRepository.findById(ownership.getVehicleId().value()).orElse(null);
         }
-        VehicleOwnershipPersistenceEntity entity = VehicleOwnershipPersistenceAssembler.toEntity(ownership, vehicleEntity);
+        // Update the managed row when it exists (e.g. closing an ownership on transfer);
+        // a freshly assembled entity is always flagged as new
+        final VehiclePersistenceEntity vehicle = vehicleEntity;
+        VehicleOwnershipPersistenceEntity entity = ownershipPersistenceRepository.findById(ownership.getId().value())
+                .map(existing -> {
+                    existing.setEndDate(ownership.getEndDate());
+                    return existing;
+                })
+                .orElseGet(() -> VehicleOwnershipPersistenceAssembler.toEntity(ownership, vehicle));
         VehicleOwnershipPersistenceEntity saved = ownershipPersistenceRepository.save(entity);
         return VehicleOwnershipPersistenceAssembler.toDomain(saved);
     }

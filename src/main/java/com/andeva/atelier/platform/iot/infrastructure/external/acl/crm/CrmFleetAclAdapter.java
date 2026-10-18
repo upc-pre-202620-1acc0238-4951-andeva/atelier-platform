@@ -3,6 +3,7 @@ package com.andeva.atelier.platform.iot.infrastructure.external.acl.crm;
 import com.andeva.atelier.platform.crm.interfaces.acl.CustomerFleetContextFacade;
 import com.andeva.atelier.platform.crm.interfaces.acl.dto.CustomerAclDto;
 import com.andeva.atelier.platform.crm.interfaces.acl.dto.VehicleAclDto;
+import com.andeva.atelier.platform.iam.interfaces.acl.TenancyContextFacade;
 import com.andeva.atelier.platform.iot.application.internal.outbound.acl.CrmFleetAclPort;
 import com.andeva.atelier.platform.iot.domain.model.dto.ai.RecommendedServiceActionDto;
 import com.andeva.atelier.platform.iot.domain.model.ids.AlertId;
@@ -32,25 +33,51 @@ public class CrmFleetAclAdapter implements CrmFleetAclPort {
     private final ConcurrentHashMap<UUID, String> mockDeviceTokens = new ConcurrentHashMap<>();
 
     private final CustomerFleetContextFacade customerFleetContextFacade;
+    private final TenancyContextFacade tenancyContextFacade;
 
     public CrmFleetAclAdapter() {
-        this(null);
+        this(null, null);
     }
 
-    @Autowired(required = false)
     public CrmFleetAclAdapter(CustomerFleetContextFacade customerFleetContextFacade) {
-        this.customerFleetContextFacade = customerFleetContextFacade;
+        this(customerFleetContextFacade, null);
     }
 
+    @Autowired
+    public CrmFleetAclAdapter(
+            @Autowired(required = false) CustomerFleetContextFacade customerFleetContextFacade,
+            @Autowired(required = false) TenancyContextFacade tenancyContextFacade) {
+        this.customerFleetContextFacade = customerFleetContextFacade;
+        this.tenancyContextFacade = tenancyContextFacade;
+    }
+
+    /**
+     * Resolves the FCM token of a driver linked to the vehicle's current owner
+     * (vehicle → owner customer → active member accounts → registered device token).
+     */
     @Override
     public String getDriverFcmDeviceToken(VehicleId vehicleId) {
         if (vehicleId == null) {
             return null;
         }
-        return mockDeviceTokens.getOrDefault(
-                vehicleId.value(),
-                "fcm_token_simulated_" + vehicleId.value().toString().substring(0, 8)
-        );
+        String registered = mockDeviceTokens.get(vehicleId.value());
+        if (registered != null) {
+            return registered;
+        }
+        if (customerFleetContextFacade == null || tenancyContextFacade == null) {
+            return "fcm_token_simulated_" + vehicleId.value().toString().substring(0, 8);
+        }
+        try {
+            return customerFleetContextFacade.fetchCurrentOwnerId(vehicleId.value())
+                    .flatMap(ownerId -> customerFleetContextFacade.fetchActiveMembershipsByCustomerId(ownerId).stream()
+                            .map(membership -> tenancyContextFacade.fetchUserDeviceToken(membership.userId()))
+                            .flatMap(Optional::stream)
+                            .findFirst())
+                    .orElse(null);
+        } catch (Exception e) {
+            log.warn("Failed to resolve driver FCM token for vehicle {}: {}", vehicleId.value(), e.getMessage());
+            return null;
+        }
     }
 
     @Override

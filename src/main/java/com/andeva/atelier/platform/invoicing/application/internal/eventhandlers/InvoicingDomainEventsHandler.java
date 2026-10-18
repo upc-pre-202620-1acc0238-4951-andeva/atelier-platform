@@ -1,6 +1,5 @@
 package com.andeva.atelier.platform.invoicing.application.internal.eventhandlers;
 
-import com.andeva.atelier.platform.invoicing.application.internal.outbound.acl.VoucherReceiptEmailGateway;
 import com.andeva.atelier.platform.invoicing.domain.model.events.CreditNoteIssuedEvent;
 import com.andeva.atelier.platform.invoicing.domain.model.events.ElectronicVoucherIssuedEvent;
 import com.andeva.atelier.platform.invoicing.domain.model.events.SeriesConfigurationCreatedEvent;
@@ -36,14 +35,9 @@ public class InvoicingDomainEventsHandler {
     private static final Logger log = LoggerFactory.getLogger(InvoicingDomainEventsHandler.class);
 
     private final InvoicingTransactionalOutboxPublisher outboxPublisher;
-    private final VoucherReceiptEmailGateway emailGateway;
 
-    public InvoicingDomainEventsHandler(
-            InvoicingTransactionalOutboxPublisher outboxPublisher,
-            VoucherReceiptEmailGateway emailGateway
-    ) {
+    public InvoicingDomainEventsHandler(InvoicingTransactionalOutboxPublisher outboxPublisher) {
         this.outboxPublisher = Objects.requireNonNull(outboxPublisher, "Outbox publisher cannot be null");
-        this.emailGateway = Objects.requireNonNull(emailGateway, "Email gateway cannot be null");
     }
 
     @EventListener

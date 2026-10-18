@@ -4,7 +4,13 @@ import com.andeva.atelier.platform.iam.infrastructure.security.model.CustomUserD
 import com.andeva.atelier.platform.inventory.application.commandservices.PurchaseOrderCommandService;
 import com.andeva.atelier.platform.inventory.application.queryservices.PurchaseOrderQueryService;
 import com.andeva.atelier.platform.inventory.domain.model.aggregates.PurchaseOrder;
+import com.andeva.atelier.platform.inventory.domain.model.commands.AddPurchaseOrderItemCommand;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.Currency;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.Money;
+import com.andeva.atelier.platform.inventory.domain.model.valueobjects.Quantity;
+import com.andeva.atelier.platform.inventory.domain.model.ids.InventoryItemId;
 import com.andeva.atelier.platform.inventory.domain.model.commands.CancelPurchaseOrderCommand;
+import com.andeva.atelier.platform.inventory.domain.model.commands.IssuePurchaseOrderCommand;
 import com.andeva.atelier.platform.inventory.domain.model.commands.CreatePurchaseOrderCommand;
 import com.andeva.atelier.platform.inventory.domain.model.commands.ReceivePurchaseOrderCommand;
 import com.andeva.atelier.platform.inventory.domain.model.ids.PurchaseOrderId;
@@ -14,6 +20,7 @@ import com.andeva.atelier.platform.inventory.domain.model.queries.GetPurchaseOrd
 import com.andeva.atelier.platform.inventory.domain.model.valueobjects.StorageUrl;
 import com.andeva.atelier.platform.inventory.interfaces.rest.assemblers.PurchaseOrderResourceAssembler;
 import com.andeva.atelier.platform.inventory.interfaces.rest.resources.requests.CancelPurchaseOrderResource;
+import com.andeva.atelier.platform.inventory.interfaces.rest.resources.requests.CreatePurchaseOrderItemResource;
 import com.andeva.atelier.platform.inventory.interfaces.rest.resources.requests.CreatePurchaseOrderResource;
 import com.andeva.atelier.platform.inventory.interfaces.rest.resources.requests.ReceivePurchaseOrderResource;
 import com.andeva.atelier.platform.inventory.interfaces.rest.resources.responses.PurchaseOrderResource;
@@ -86,7 +93,7 @@ public class PurchaseOrdersController {
      * Endpoint 11: List purchase orders filtered by status or supplier.
      */
     @GetMapping
-    @PreAuthorize("hasAuthority('inventory:purchase_orders:read') or hasRole('INVENTORY_MANAGER') or hasRole('TENANT_ADMIN') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('inventory:purchase_orders:read')")
     @Operation(summary = "List purchase orders filtered by status or supplier")
     public ResponseEntity<?> getPurchaseOrders(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -118,7 +125,7 @@ public class PurchaseOrdersController {
      * Endpoint 12: Draft new multi-item purchase order to supplier.
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('inventory:purchase_orders:create') or hasAuthority('inventory:purchase_orders:manage') or hasRole('INVENTORY_MANAGER') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('inventory:purchase_orders:create')")
     @Operation(summary = "Draft new multi-item purchase order to supplier")
     public ResponseEntity<?> createPurchaseOrder(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -145,7 +152,7 @@ public class PurchaseOrdersController {
      * Endpoint 13: Get detailed purchase order with lines and reception status.
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('inventory:purchase_orders:read') or hasRole('INVENTORY_MANAGER') or hasRole('TENANT_ADMIN') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('inventory:purchase_orders:read')")
     @Operation(summary = "Get detailed purchase order with lines and reception status")
     public ResponseEntity<?> getPurchaseOrderById(@PathVariable UUID id) {
         Optional<PurchaseOrder> orderOpt = purchaseOrderQueryService.handle(new GetPurchaseOrderDetailQuery(PurchaseOrderId.of(id)));
@@ -158,10 +165,57 @@ public class PurchaseOrdersController {
     }
 
     /**
+     * Adds a spare part line to a purchase order still in DRAFT.
+     */
+    @PostMapping("/{id}/items")
+    @PreAuthorize("hasAuthority('inventory:purchase_orders:create')")
+    @Operation(summary = "Add a line to a draft purchase order")
+    public ResponseEntity<?> addPurchaseOrderItem(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestHeader(value = "X-Tenant-Id", required = false) UUID tenantHeader,
+            @PathVariable UUID id,
+            @Valid @RequestBody CreatePurchaseOrderItemResource resource
+    ) {
+        TenantId tenantId = resolveTenantId(userDetails, tenantHeader);
+        AddPurchaseOrderItemCommand command = new AddPurchaseOrderItemCommand(
+                tenantId,
+                PurchaseOrderId.of(id),
+                InventoryItemId.of(resource.itemId()),
+                Quantity.of(resource.quantity()),
+                Money.of(resource.unitCost(), Currency.PEN)
+        );
+        Result<PurchaseOrder, ApplicationError> result = purchaseOrderCommandService.handle(command);
+        if (result.isFailure()) {
+            return ErrorResponseAssembler.toErrorResponseFromApplicationError(result.getError());
+        }
+        return ResponseEntity.ok(PurchaseOrderResourceAssembler.toResource(result.getOrThrow()));
+    }
+
+    /**
+     * Formalizes a draft purchase order with the supplier (DRAFT -> ISSUED), enabling its reception.
+     */
+    @PutMapping("/{id}/issue")
+    @PreAuthorize("hasAuthority('inventory:purchase_orders:create')")
+    @Operation(summary = "Issue a draft purchase order to the supplier")
+    public ResponseEntity<?> issuePurchaseOrder(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestHeader(value = "X-Tenant-Id", required = false) UUID tenantHeader,
+            @PathVariable UUID id
+    ) {
+        TenantId tenantId = resolveTenantId(userDetails, tenantHeader);
+        Result<PurchaseOrder, ApplicationError> result =
+                purchaseOrderCommandService.handle(new IssuePurchaseOrderCommand(tenantId, PurchaseOrderId.of(id)));
+        if (result.isFailure()) {
+            return ErrorResponseAssembler.toErrorResponseFromApplicationError(result.getError());
+        }
+        return ResponseEntity.ok(PurchaseOrderResourceAssembler.toResource(result.getOrThrow()));
+    }
+
+    /**
      * Endpoint 14: Confirm technical goods reception, physical count, and invoice registration.
      */
     @PutMapping("/{id}/receive")
-    @PreAuthorize("hasAuthority('inventory:purchase_orders:receive') or hasAuthority('inventory:purchase_orders:manage') or hasRole('INVENTORY_MANAGER') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('inventory:batches:receive')")
     @Operation(summary = "Confirm technical goods reception, physical count, and invoice registration")
     public ResponseEntity<?> receivePurchaseOrder(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -204,7 +258,7 @@ public class PurchaseOrdersController {
      * Endpoint 15: Cancel pending purchase order before delivery.
      */
     @PutMapping("/{id}/cancel")
-    @PreAuthorize("hasAuthority('inventory:purchase_orders:cancel') or hasAuthority('inventory:purchase_orders:manage') or hasRole('INVENTORY_MANAGER') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('inventory:purchase_orders:create')")
     @Operation(summary = "Cancel pending purchase order before delivery")
     public ResponseEntity<?> cancelPurchaseOrder(
             @AuthenticationPrincipal CustomUserDetails userDetails,

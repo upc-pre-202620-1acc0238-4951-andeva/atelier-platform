@@ -18,6 +18,9 @@ import java.util.Objects;
 @Component
 public class IoTSubscriptionQuotaAdapter implements IoTSubscriptionQuotaPort {
 
+    /** Plan quota value meaning "no limit" (e.g. Enterprise). */
+    private static final int UNLIMITED = -1;
+
     private final SubscriptionContextFacade subscriptionContextFacade;
 
     public IoTSubscriptionQuotaAdapter(SubscriptionContextFacade subscriptionContextFacade) {
@@ -36,7 +39,7 @@ public class IoTSubscriptionQuotaAdapter implements IoTSubscriptionQuotaPort {
             ));
         }
 
-        if (currentActiveDevices >= limits.maxActiveObd2Devices()) {
+        if (limits.maxActiveObd2Devices() != UNLIMITED && currentActiveDevices >= limits.maxActiveObd2Devices()) {
             throw new QuotaExceededException(String.format(
                     "Tenant %s has reached the maximum active OBD-II scanners quota (%d/%d)",
                     tenantId.value(), currentActiveDevices, limits.maxActiveObd2Devices()
@@ -56,7 +59,7 @@ public class IoTSubscriptionQuotaAdapter implements IoTSubscriptionQuotaPort {
             ));
         }
 
-        if (currentMonthlyReports >= limits.maxMonthlyAiReports()) {
+        if (limits.maxMonthlyAiReports() != UNLIMITED && currentMonthlyReports >= limits.maxMonthlyAiReports()) {
             throw new QuotaExceededException(String.format(
                     "Tenant %s has reached the monthly AI report generation quota (%d/%d)",
                     tenantId.value(), currentMonthlyReports, limits.maxMonthlyAiReports()
