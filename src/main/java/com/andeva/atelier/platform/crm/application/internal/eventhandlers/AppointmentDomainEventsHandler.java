@@ -59,10 +59,10 @@ public class AppointmentDomainEventsHandler {
     @EventListener
     public void on(AppointmentConfirmedEvent event) {
         log.info("Processing AppointmentConfirmedEvent for appointment ID: {}", event.appointmentId());
-        driverAppPushGateway.sendPushNotification(
-                "token_placeholder",
-                "Appointment Confirmed",
-                "Your appointment has been confirmed for " + event.scheduledAt(),
+        driverAppPushGateway.sendPushToCustomer(
+                event.customerId().value(),
+                "Cita confirmada",
+                "Tu cita en el taller fue confirmada para " + event.scheduledAt(),
                 Map.of("appointmentId", event.appointmentId().value().toString())
         );
     }

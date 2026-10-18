@@ -79,7 +79,7 @@ public class AttendanceController {
     }
 
     @PostMapping("/clock-in")
-    @PreAuthorize("hasAuthority('hr:attendance:clock_in') or hasRole('MECHANIC') or hasRole('CHIEF_MECHANIC') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('hr:attendance:clock_in')")
     @Operation(summary = "Record physical clock-in with geofenced location")
     public ResponseEntity<?> clockIn(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -104,7 +104,7 @@ public class AttendanceController {
     }
 
     @PostMapping("/clock-out")
-    @PreAuthorize("hasAuthority('hr:attendance:clock_out') or hasRole('MECHANIC') or hasRole('CHIEF_MECHANIC') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('hr:attendance:clock_out')")
     @Operation(summary = "Record physical clock-out")
     public ResponseEntity<?> clockOut(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -124,7 +124,7 @@ public class AttendanceController {
     }
 
     @PostMapping("/{attendanceId}/justify")
-    @PreAuthorize("hasAuthority('hr:justifications:approve') or hasRole('CHIEF_MECHANIC') or hasRole('WORKSHOP_ADMINISTRATOR') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('hr:justifications:approve')")
     @Operation(summary = "Justify a late or absent attendance record")
     public ResponseEntity<?> justifyAttendance(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -147,7 +147,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/branch/{branchId}/daily")
-    @PreAuthorize("hasAuthority('hr:attendance:audit_all') or hasRole('CHIEF_MECHANIC') or hasRole('WORKSHOP_ADMINISTRATOR') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('hr:attendance:audit_all')")
     @Operation(summary = "List attendance records for a specific branch and date")
     public ResponseEntity<List<AttendanceResource>> getAttendanceByBranch(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -163,7 +163,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/employee/{membershipId}/history")
-    @PreAuthorize("hasAnyAuthority('hr:attendance:audit_all', 'hr:attendance:read_own') or isAuthenticated()")
+    @PreAuthorize("hasAnyAuthority('hr:attendance:audit_all', 'hr:attendance:read_own')")
     @Operation(summary = "Get employee attendance history within a date range")
     public ResponseEntity<List<AttendanceResource>> getEmployeeAttendanceHistory(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -180,7 +180,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/employee/{membershipId}/status-today")
-    @PreAuthorize("hasAnyAuthority('hr:attendance:audit_all', 'hr:attendance:read_own') or isAuthenticated()")
+    @PreAuthorize("hasAnyAuthority('hr:attendance:audit_all', 'hr:attendance:read_own')")
     @Operation(summary = "Get active clock-in status for an employee today")
     public ResponseEntity<?> getActiveAttendance(
             @AuthenticationPrincipal CustomUserDetails userDetails,

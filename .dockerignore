@@ -1,9 +1,20 @@
+# Build outputs and tooling
 target/
 .git
 .gitignore
 .idea/
-*.env*
+.vscode/
 .codegraph/
+.claude/
+
+# Secrets never go into the image (Render injects them at runtime)
+*.env*
+.env*
+firebase-service-account.json
+
+# Not needed to build the JAR
+src/test/
 docs/
 README.md
 HELP.md
+docker-compose.yml

@@ -63,8 +63,6 @@ public class CustomUserDetailsService implements UserDetailsService {
                     for (RolePersistenceEntity role : membership.getAssignedRoles()) {
                         if (role.getCode() != null) {
                             authorities.add(new SimpleGrantedAuthority(role.getCode()));
-                        } else {
-                            authorities.add(new SimpleGrantedAuthority("ROLE_" + role.getName().replace(' ', '_').toUpperCase()));
                         }
                         if (role.getPermissions() != null) {
                             role.getPermissions().forEach(p -> authorities.add(new SimpleGrantedAuthority(p.getName())));

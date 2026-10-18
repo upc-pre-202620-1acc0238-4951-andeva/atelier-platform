@@ -1,4 +1,4 @@
-package com.andeva.atelier.platform.iot.infrastructure.external.notification.firebase;
+package com.andeva.atelier.platform.shared.infrastructure.messaging.firebase;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;

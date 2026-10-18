@@ -12,6 +12,7 @@ import com.andeva.atelier.platform.billing.infrastructure.external.messaging.out
 import com.andeva.atelier.platform.billing.infrastructure.external.payment.stripe.StripeWebhookSignatureVerifierAdapter;
 import com.andeva.atelier.platform.iam.interfaces.acl.TenancyContextFacade;
 import com.andeva.atelier.platform.iam.interfaces.acl.dto.TenantAclDto;
+import com.andeva.atelier.platform.iam.interfaces.acl.dto.UserAclDto;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.Currency;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.Money;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
@@ -78,7 +79,9 @@ class BillingExternalAdaptersTest {
 
         assertThat(adapter.tenantExists(tenantId)).isTrue();
         assertThat(adapter.getTenantLegalName(tenantId)).isEqualTo("Talleres Lima S.A.C.");
-        assertThat(adapter.getTenantContactEmail(tenantId)).contains("20123456789");
+        when(tenancyContextFacade.fetchTenantOwner(tenantUuid))
+                .thenReturn(Optional.of(new UserAclDto(UUID.randomUUID(), "owner@talleres.pe", "Owner Lima", "ACTIVE")));
+        assertThat(adapter.getTenantContactEmail(tenantId)).isEqualTo("owner@talleres.pe");
 
         TenantId nonExistent = TenantId.generate();
         when(tenancyContextFacade.fetchTenantById(nonExistent.value())).thenReturn(Optional.empty());

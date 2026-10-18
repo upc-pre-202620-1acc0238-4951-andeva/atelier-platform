@@ -177,7 +177,16 @@ COMMENT ON TABLE stripe_webhook_events IS 'Cerrojo de concurrencia e idempotenci
 -- 7. SEED DATA OFICIAL: CATÁLOGO DE PLANES COMERCIALES (v7.0)
 -- ==============================================================================
 
+-- Compatibilidad con el esquema generado por Hibernate (ddl-auto=update): sus tablas no
+-- declaran valores por defecto para claves ni marcas de auditoría, así que se fijan aquí.
+ALTER TABLE plans ALTER COLUMN id SET DEFAULT gen_random_uuid();
+ALTER TABLE plans ALTER COLUMN created_at SET DEFAULT NOW();
+ALTER TABLE plans ALTER COLUMN updated_at SET DEFAULT NOW();
+ALTER TABLE plan_features ALTER COLUMN id SET DEFAULT gen_random_uuid();
+ALTER TABLE plan_features ALTER COLUMN created_at SET DEFAULT NOW();
+
 -- Limpieza preventiva de datos previos de seed si existen
+-- (ejecutar solo antes de que existan suscripciones: subscriptions referencia a plans)
 DELETE FROM plan_features;
 DELETE FROM plans;
 
@@ -359,7 +368,7 @@ INSERT INTO plans (
 
 -- Inserción de capacidades para Plan Go (id: a0000001-...)
 INSERT INTO plan_features (plan_id, feature_key, description, is_enabled)
-SELECT p.id, f.key, f.desc, f.enabled
+SELECT p.id, f.key, f.descr, f.enabled
 FROM plans p
 CROSS JOIN (VALUES
     ('MRO_CORE', 'Gestión completa de órdenes de trabajo y tareas en fosa', true),
@@ -373,12 +382,12 @@ CROSS JOIN (VALUES
     ('COMPANY_FLEET_MANAGEMENT', 'Registro de empresas y administración de flotas corporativas', false),
     ('ATELIER_BUSSINESS_MARKETPLACE', 'Presencia y captación en el directorio B2B Atelier Bussiness', false),
     ('MULTI_WAREHOUSE_TRANSFERS', 'Transferencias de repuestos inter-sede y multi-almacén', false)
-) AS f(key, desc, enabled)
+) AS f(key, descr, enabled)
 WHERE p.tier = 'GO';
 
 -- Inserción de capacidades para Plan Pro (id: b0000002-...)
 INSERT INTO plan_features (plan_id, feature_key, description, is_enabled)
-SELECT p.id, f.key, f.desc, f.enabled
+SELECT p.id, f.key, f.descr, f.enabled
 FROM plans p
 CROSS JOIN (VALUES
     ('MRO_CORE', 'Gestión completa de órdenes de trabajo y tareas en fosa', true),
@@ -394,12 +403,12 @@ CROSS JOIN (VALUES
     ('COMPANY_FLEET_MANAGEMENT', 'Registro de empresas y administración de flotas corporativas', false),
     ('ATELIER_BUSSINESS_MARKETPLACE', 'Presencia y captación en el directorio B2B Atelier Bussiness', false),
     ('MULTI_WAREHOUSE_TRANSFERS', 'Transferencias de repuestos inter-sede y multi-almacén', false)
-) AS f(key, desc, enabled)
+) AS f(key, descr, enabled)
 WHERE p.tier = 'PRO';
 
 -- Inserción de capacidades para Plan Max (id: c0000003-...)
 INSERT INTO plan_features (plan_id, feature_key, description, is_enabled)
-SELECT p.id, f.key, f.desc, f.enabled
+SELECT p.id, f.key, f.descr, f.enabled
 FROM plans p
 CROSS JOIN (VALUES
     ('MRO_CORE', 'Gestión completa de órdenes de trabajo y tareas en fosa', true),
@@ -415,12 +424,12 @@ CROSS JOIN (VALUES
     ('ATELIER_BUSSINESS_MARKETPLACE', 'Taller verificado y listado en el marketplace B2B Atelier Bussiness', true),
     ('MULTI_WAREHOUSE_TRANSFERS', 'Suite ERP Automotriz: multi-almacén FIFO inter-sede y traspasos', true),
     ('WHITE_LABEL_REPORTS', 'Reportes PDF y presupuestos con membrete y logotipo propio del taller', true)
-) AS f(key, desc, enabled)
+) AS f(key, descr, enabled)
 WHERE p.tier = 'MAX';
 
 -- Inserción de capacidades para Plan Enterprise (id: d0000004-...)
 INSERT INTO plan_features (plan_id, feature_key, description, is_enabled)
-SELECT p.id, f.key, f.desc, f.enabled
+SELECT p.id, f.key, f.descr, f.enabled
 FROM plans p
 CROSS JOIN (VALUES
     ('MRO_CORE', 'Gestión completa de órdenes de trabajo y tareas en fosa', true),
@@ -437,7 +446,7 @@ CROSS JOIN (VALUES
     ('MULTI_WAREHOUSE_TRANSFERS', 'Suite ERP Automotriz multi-sede consolidada', true),
     ('ERP_CONNECTOR_EXTERNAL', 'Conector e integración bidireccional hacia ERP externo (SAP, Oracle, Odoo)', true),
     ('DEDICATED_SLA_SUPPORT', 'Gerente de cuenta dedicado y SLA garantizado inferior a 1 hora (24/7)', true)
-) AS f(key, desc, enabled)
+) AS f(key, descr, enabled)
 WHERE p.tier = 'ENTERPRISE';
 
 -- ==============================================================================

@@ -5,6 +5,7 @@ import com.andeva.atelier.platform.iam.application.internal.commandservices.Tena
 import com.andeva.atelier.platform.iam.application.internal.outbound.security.BCryptHashingService;
 import com.andeva.atelier.platform.iam.domain.model.aggregates.Role;
 import com.andeva.atelier.platform.iam.domain.model.aggregates.Tenant;
+import com.andeva.atelier.platform.iam.domain.model.aggregates.TenantMembership;
 import com.andeva.atelier.platform.iam.domain.model.aggregates.User;
 import com.andeva.atelier.platform.iam.domain.model.commands.CreateTenantCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.UpdateTenantProfileCommand;
@@ -28,6 +29,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -99,8 +101,9 @@ class TenantCommandServiceTest {
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(tenantRepository.save(any(Tenant.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Permission perm = Permission.create("mro:work-orders:read", "Read work orders", "OPERATIONS");
-        when(permissionRepository.findAll()).thenReturn(List.of(perm));
+        Permission ownerOnly = Permission.create("billing:subscriptions:manage_stripe", "Manage Stripe", "BILLING");
+        Permission mechanicOnly = Permission.create("operations:tasks:track_time", "Track time", "OPERATIONS");
+        when(permissionRepository.findAll()).thenReturn(List.of(ownerOnly, mechanicOnly));
         when(roleRepository.save(any(Role.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Result<Tenant, ApplicationError> result = tenantCommandService.handle(command);
@@ -116,8 +119,20 @@ class TenantCommandServiceTest {
 
         verify(userRepository).save(any(User.class));
         verify(tenantRepository).save(any(Tenant.class));
-        verify(roleRepository, times(RoleTemplate.values().length)).save(any(Role.class));
-        verify(membershipRepository).save(any());
+        ArgumentCaptor<Role> roles = ArgumentCaptor.forClass(Role.class);
+        verify(roleRepository, times(RoleTemplate.values().length)).save(roles.capture());
+        Role owner = roles.getAllValues().stream()
+                .filter(r -> RoleTemplate.ROLE_WORKSHOP_OWNER.code().equals(r.code())).findFirst().orElseThrow();
+        Role mechanic = roles.getAllValues().stream()
+                .filter(r -> RoleTemplate.ROLE_MECHANIC.code().equals(r.code())).findFirst().orElseThrow();
+        assertThat(owner.permissions()).containsExactly(ownerOnly);
+        assertThat(mechanic.permissions()).containsExactly(mechanicOnly);
+
+        ArgumentCaptor<TenantMembership> membership = ArgumentCaptor.forClass(TenantMembership.class);
+        verify(membershipRepository).save(membership.capture());
+        assertThat(membership.getValue().assignedRoles())
+                .extracting(Role::code)
+                .containsExactly(RoleTemplate.ROLE_WORKSHOP_OWNER.code());
     }
 
     @Test

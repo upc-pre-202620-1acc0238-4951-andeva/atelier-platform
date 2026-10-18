@@ -9,6 +9,8 @@ import com.andeva.atelier.platform.crm.infrastructure.persistence.jpa.repositori
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.CustomerId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.UserId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.VehicleId;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -25,6 +27,13 @@ public class VehicleRepositoryImpl implements VehicleRepository {
 
     private final VehiclePersistenceRepository vehiclePersistenceRepository;
 
+    private ApplicationEventPublisher eventPublisher = event -> { };
+
+    @Autowired
+    void setEventPublisher(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
+
     public VehicleRepositoryImpl(VehiclePersistenceRepository vehiclePersistenceRepository) {
         this.vehiclePersistenceRepository = Objects.requireNonNull(vehiclePersistenceRepository);
     }
@@ -38,6 +47,8 @@ public class VehicleRepositoryImpl implements VehicleRepository {
                 })
                 .orElseGet(() -> VehiclePersistenceAssembler.toEntity(vehicle));
         VehiclePersistenceEntity saved = vehiclePersistenceRepository.save(entity);
+        vehicle.domainEvents().forEach(eventPublisher::publishEvent);
+        vehicle.clearDomainEvents();
         return VehiclePersistenceAssembler.toDomain(saved);
     }
 

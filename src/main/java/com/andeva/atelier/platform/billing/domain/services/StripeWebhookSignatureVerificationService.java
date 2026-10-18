@@ -26,7 +26,7 @@ public class StripeWebhookSignatureVerificationService {
         this("whsec_default_secret");
     }
 
-    public StripeWebhookSignatureVerificationService(@Value("${stripe.webhook.secret:whsec_default_secret}") String webhookSecret) {
+    public StripeWebhookSignatureVerificationService(@Value("${stripe.webhook-secret:whsec_default_secret}") String webhookSecret) {
         this.webhookSecret = webhookSecret != null ? webhookSecret : "";
     }
 

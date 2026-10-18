@@ -11,14 +11,17 @@ import java.util.UUID;
 public interface VoucherReceiptEmailGateway {
 
     /**
-     * Sends transactional email containing legal receipt PDF and UBL 2.1 XML attachments.
+     * Sends transactional email attaching the legal receipt PDF and UBL 2.1 XML hosted by the PSE.
+     *
+     * @param pdfUrl public URL of the PDF representation (may be null)
+     * @param xmlUrl public URL of the signed XML (may be null)
      */
     void sendVoucherReceiptEmail(
             UUID voucherId,
             String recipientEmail,
             String customerName,
             String voucherNumber,
-            byte[] pdfContent,
-            byte[] xmlContent
+            String pdfUrl,
+            String xmlUrl
     );
 }

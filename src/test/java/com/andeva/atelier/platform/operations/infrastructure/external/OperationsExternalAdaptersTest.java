@@ -227,10 +227,10 @@ class OperationsExternalAdaptersTest {
             UUID mechanicId = UUID.randomUUID();
             UUID tenantId = UUID.randomUUID();
 
-            when(iamFacade.isUserStaffMemberOfTenant(mechanicId, tenantId)).thenReturn(true);
+            when(iamFacade.isActiveMembershipOfTenant(mechanicId, tenantId)).thenReturn(true);
             assertThat(adapter.isMechanicEligible(mechanicId, tenantId)).isTrue();
 
-            when(iamFacade.isUserStaffMemberOfTenant(mechanicId, tenantId)).thenReturn(false);
+            when(iamFacade.isActiveMembershipOfTenant(mechanicId, tenantId)).thenReturn(false);
             assertThat(adapter.isMechanicEligible(mechanicId, tenantId)).isFalse();
         }
 

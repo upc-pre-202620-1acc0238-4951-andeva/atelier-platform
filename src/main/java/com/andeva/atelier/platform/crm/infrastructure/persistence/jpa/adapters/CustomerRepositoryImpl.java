@@ -9,6 +9,8 @@ import com.andeva.atelier.platform.crm.infrastructure.persistence.jpa.entities.C
 import com.andeva.atelier.platform.crm.infrastructure.persistence.jpa.repositories.CustomerPersistenceRepository;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.CustomerId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -25,6 +27,13 @@ public class CustomerRepositoryImpl implements CustomerRepository {
 
     private final CustomerPersistenceRepository customerPersistenceRepository;
 
+    private ApplicationEventPublisher eventPublisher = event -> { };
+
+    @Autowired
+    void setEventPublisher(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
+
     public CustomerRepositoryImpl(CustomerPersistenceRepository customerPersistenceRepository) {
         this.customerPersistenceRepository = Objects.requireNonNull(customerPersistenceRepository);
     }
@@ -38,6 +47,8 @@ public class CustomerRepositoryImpl implements CustomerRepository {
                 })
                 .orElseGet(() -> CustomerPersistenceAssembler.toEntity(customer));
         CustomerPersistenceEntity saved = customerPersistenceRepository.save(entity);
+        customer.domainEvents().forEach(eventPublisher::publishEvent);
+        customer.clearDomainEvents();
         return CustomerPersistenceAssembler.toDomain(saved);
     }
 

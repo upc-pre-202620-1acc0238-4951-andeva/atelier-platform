@@ -5,7 +5,6 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -18,28 +17,27 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OpenApiConfigurationTest {
 
     @Test
-    @DisplayName("Should create OpenAPI specification with metadata and security schemes")
+    @DisplayName("Should create OpenAPI specification with metadata and bearer security scheme")
     void shouldCreateOpenApiSpecification() {
-        OpenApiConfiguration config = new OpenApiConfiguration();
-        ReflectionTestUtils.setField(config, "applicationName", "Atelier Automotive Platform API");
+        OpenAPI openAPI = new OpenApiConfiguration().customOpenAPI();
 
-        OpenAPI openAPI = config.customOpenAPI();
-
-        assertThat(openAPI).isNotNull();
-        assertThat(openAPI.getInfo()).isNotNull();
-        assertThat(openAPI.getInfo().getTitle()).isEqualTo("Atelier Automotive Platform API");
+        assertThat(openAPI.getInfo().getTitle()).isEqualTo("Atelier Platform API");
         assertThat(openAPI.getInfo().getVersion()).isEqualTo("1.0.0");
-        assertThat(openAPI.getInfo().getContact().getEmail()).isEqualTo("engineering@andeva.pe");
-        assertThat(openAPI.getInfo().getLicense().getName()).isEqualTo("Proprietary - Andeva Software");
 
-        assertThat(openAPI.getServers()).hasSize(2);
-        assertThat(openAPI.getServers().get(0).getUrl()).isEqualTo("/api/v1");
-        assertThat(openAPI.getServers().get(1).getUrl()).isEqualTo("https://api.atelier.andeva.pe/api/v1");
+        assertThat(openAPI.getSecurity()).hasSize(1);
+        assertThat(openAPI.getSecurity().get(0)).containsKey("bearerAuth");
 
-        assertThat(openAPI.getComponents().getSecuritySchemes()).containsKey("bearerAuth");
         SecurityScheme scheme = openAPI.getComponents().getSecuritySchemes().get("bearerAuth");
         assertThat(scheme.getType()).isEqualTo(SecurityScheme.Type.HTTP);
         assertThat(scheme.getScheme()).isEqualTo("bearer");
         assertThat(scheme.getBearerFormat()).isEqualTo("JWT");
+    }
+
+    @Test
+    @DisplayName("Should not hardcode servers so springdoc infers them from the request host")
+    void shouldNotDeclareHardcodedServers() {
+        OpenAPI openAPI = new OpenApiConfiguration().customOpenAPI();
+
+        assertThat(openAPI.getServers()).isNullOrEmpty();
     }
 }

@@ -1,10 +1,12 @@
 package com.andeva.atelier.platform.iot.infrastructure.persistence.jpa.repositories;
 
 import com.andeva.atelier.platform.iot.domain.model.enums.AlertStatus;
+import com.andeva.atelier.platform.iot.domain.model.enums.AlertType;
 import com.andeva.atelier.platform.iot.infrastructure.persistence.jpa.entities.PredictiveAlertPersistenceEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,4 +23,6 @@ public interface PredictiveAlertPersistenceRepository extends JpaRepository<Pred
     List<PredictiveAlertPersistenceEntity> findAllByTenantIdAndStatus(UUID tenantId, AlertStatus status);
 
     List<PredictiveAlertPersistenceEntity> findAllByTenantId(UUID tenantId);
+
+    boolean existsByVehicleIdAndAlertTypeAndStatusIn(UUID vehicleId, AlertType alertType, Collection<AlertStatus> statuses);
 }

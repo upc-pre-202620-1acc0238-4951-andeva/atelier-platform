@@ -9,6 +9,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -50,6 +52,7 @@ public class OutboxMessagePersistenceEntity {
     @Column(name = "event_type", nullable = false, length = 150)
     private String eventType;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "payload", columnDefinition = "jsonb", nullable = false)
     private String payload;
 

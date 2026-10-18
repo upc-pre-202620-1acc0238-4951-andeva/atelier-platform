@@ -26,8 +26,17 @@ public record ScheduleAppointmentResource(
         Instant scheduledAt,
 
         @jakarta.validation.constraints.Min(value = 15, message = "Estimated duration must be at least 15 minutes")
-        int estimatedDurationMinutes,
+        Integer estimatedDurationMinutes,
 
         @Size(max = 1000, message = "Reason must not exceed 1000 characters")
         String reason
-) {}
+) {
+    /** Default slot length when the client does not send one. */
+    public static final int DEFAULT_DURATION_MINUTES = 30;
+
+    public ScheduleAppointmentResource {
+        if (estimatedDurationMinutes == null) {
+            estimatedDurationMinutes = DEFAULT_DURATION_MINUTES;
+        }
+    }
+}

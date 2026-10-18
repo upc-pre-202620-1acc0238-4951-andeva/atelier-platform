@@ -50,7 +50,7 @@ public class TasksController {
     }
 
     @GetMapping("/{taskId}")
-    @PreAuthorize("hasAuthority('operations:tasks:read') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('operations:tasks:read')")
     @Operation(summary = "Get detailed technical task by id")
     public ResponseEntity<?> getTaskById(@PathVariable UUID taskId) {
         return workOrderQueryService.handle(new GetWorkOrderTaskByIdQuery(new WorkOrderTaskId(taskId)))
@@ -60,7 +60,7 @@ public class TasksController {
     }
 
     @PutMapping("/{taskId}")
-    @PreAuthorize("hasAuthority('operations:tasks:update') or hasAuthority('operations:tasks:write') or hasRole('MECHANIC') or hasRole('SERVICE_ADVISOR')")
+    @PreAuthorize("hasAuthority('operations:work_orders:update')")
     @Operation(summary = "Update task parameters and assigned mechanic")
     public ResponseEntity<?> updateTask(
             @PathVariable UUID taskId,
@@ -81,7 +81,7 @@ public class TasksController {
     }
 
     @PutMapping("/{taskId}/mechanic")
-    @PreAuthorize("hasAuthority('operations:tasks:update') or hasAuthority('operations:tasks:write') or hasRole('SERVICE_ADVISOR')")
+    @PreAuthorize("hasAuthority('operations:bays:reassign')")
     @Operation(summary = "Assign or change mechanic for technical task")
     public ResponseEntity<?> assignMechanic(
             @PathVariable UUID taskId,
@@ -98,7 +98,7 @@ public class TasksController {
     }
 
     @PostMapping("/{taskId}/start")
-    @PreAuthorize("hasAuthority('operations:tasks:track_time') or hasAuthority('operations:tasks:write') or hasRole('MECHANIC')")
+    @PreAuthorize("hasAuthority('operations:tasks:track_time')")
     @Operation(summary = "Start or resume execution of a technical task")
     public ResponseEntity<?> startTask(@PathVariable UUID taskId) {
         StartWorkOrderTaskCommand command = new StartWorkOrderTaskCommand(new WorkOrderTaskId(taskId));
@@ -112,7 +112,7 @@ public class TasksController {
     }
 
     @PostMapping("/{taskId}/hold")
-    @PreAuthorize("hasAuthority('operations:tasks:track_time') or hasAuthority('operations:tasks:write') or hasRole('MECHANIC')")
+    @PreAuthorize("hasAuthority('operations:tasks:hold_request')")
     @Operation(summary = "Put task on hold due to missing parts or technical inspection")
     public ResponseEntity<?> holdTask(
             @PathVariable UUID taskId,
@@ -129,7 +129,7 @@ public class TasksController {
     }
 
     @PostMapping("/{taskId}/resume")
-    @PreAuthorize("hasAuthority('operations:tasks:track_time') or hasAuthority('operations:tasks:write') or hasRole('MECHANIC')")
+    @PreAuthorize("hasAuthority('operations:tasks:hold_validate')")
     @Operation(summary = "Resume paused task after parts arrival")
     public ResponseEntity<?> resumeTask(@PathVariable UUID taskId) {
         ResumeWorkOrderTaskCommand command = new ResumeWorkOrderTaskCommand(new WorkOrderTaskId(taskId));
@@ -143,7 +143,7 @@ public class TasksController {
     }
 
     @PostMapping("/{taskId}/complete")
-    @PreAuthorize("hasAuthority('operations:tasks:complete') or hasAuthority('operations:tasks:write') or hasRole('MECHANIC')")
+    @PreAuthorize("hasAuthority('operations:tasks:complete')")
     @Operation(summary = "Mark technical task as completed with actual labor hours")
     public ResponseEntity<?> completeTask(
             @PathVariable UUID taskId,
@@ -160,7 +160,7 @@ public class TasksController {
     }
 
     @PostMapping("/{taskId}/reopen")
-    @PreAuthorize("hasAuthority('operations:tasks:update') or hasAuthority('operations:tasks:write') or hasRole('SERVICE_ADVISOR')")
+    @PreAuthorize("hasAuthority('operations:work_orders:update')")
     @Operation(summary = "Reopen completed task for quality rework")
     public ResponseEntity<?> reopenTask(
             @PathVariable UUID taskId,
@@ -177,7 +177,7 @@ public class TasksController {
     }
 
     @PostMapping("/{taskId}/products")
-    @PreAuthorize("hasAuthority('operations:tasks:update') or hasAuthority('operations:tasks:write') or hasRole('MECHANIC') or hasRole('SERVICE_ADVISOR')")
+    @PreAuthorize("hasAuthority('operations:work_orders:update')")
     @Operation(summary = "Add consumed product or spare part to technical task")
     public ResponseEntity<?> addProduct(
             @PathVariable UUID taskId,
@@ -208,7 +208,7 @@ public class TasksController {
     }
 
     @PutMapping("/{taskId}/products/{productId}")
-    @PreAuthorize("hasAuthority('operations:tasks:update') or hasAuthority('operations:tasks:write') or hasRole('SERVICE_ADVISOR') or hasRole('MECHANIC')")
+    @PreAuthorize("hasAuthority('operations:work_orders:update')")
     @Operation(summary = "Update quantity of consumed spare part")
     public ResponseEntity<?> updateProductQuantity(
             @PathVariable UUID taskId,
@@ -237,7 +237,7 @@ public class TasksController {
     }
 
     @DeleteMapping("/{taskId}/products/{productId}")
-    @PreAuthorize("hasAuthority('operations:tasks:update') or hasAuthority('operations:tasks:write') or hasRole('MECHANIC') or hasRole('SERVICE_ADVISOR')")
+    @PreAuthorize("hasAuthority('operations:work_orders:update')")
     @Operation(summary = "Remove consumed product or spare part from technical task")
     public ResponseEntity<?> removeTaskProduct(
             @PathVariable UUID taskId,
@@ -255,7 +255,7 @@ public class TasksController {
     }
 
     @PostMapping("/{taskId}/evidence-images")
-    @PreAuthorize("hasAuthority('operations:tasks:upload_photos') or hasAuthority('operations:tasks:write') or hasRole('MECHANIC')")
+    @PreAuthorize("hasAuthority('operations:tasks:upload_photos')")
     @Operation(summary = "Attach photographic evidence to technical task")
     public ResponseEntity<?> attachEvidence(
             @PathVariable UUID taskId,

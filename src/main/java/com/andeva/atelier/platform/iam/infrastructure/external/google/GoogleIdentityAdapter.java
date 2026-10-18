@@ -11,7 +11,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.util.Collections;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -25,16 +26,26 @@ public class GoogleIdentityAdapter implements GoogleIdentityGateway {
 
     private static final Logger log = LoggerFactory.getLogger(GoogleIdentityAdapter.class);
 
-    private final String clientId;
+    private static final String PLACEHOLDER_CLIENT_ID = "google_client_id_placeholder";
+
+    private final boolean mockMode;
     private final GoogleIdTokenVerifier verifier;
 
-    public GoogleIdentityAdapter(@Value("${google.client-id:google_client_id_placeholder}") String clientId) {
-        this.clientId = clientId;
+    /**
+     * @param clientIds comma-separated OAuth client IDs accepted as token audience
+     *                  (Web, Android and iOS clients each have their own ID)
+     */
+    public GoogleIdentityAdapter(@Value("${google.client-id:" + PLACEHOLDER_CLIENT_ID + "}") String clientIds) {
+        List<String> audiences = Arrays.stream(clientIds.split(","))
+                .map(String::trim)
+                .filter(id -> !id.isEmpty())
+                .toList();
+        this.mockMode = audiences.isEmpty() || audiences.contains(PLACEHOLDER_CLIENT_ID);
         this.verifier = new GoogleIdTokenVerifier.Builder(
                 new NetHttpTransport(),
                 GsonFactory.getDefaultInstance()
         )
-        .setAudience(Collections.singletonList(clientId))
+        .setAudience(audiences)
         .build();
     }
 
@@ -44,8 +55,8 @@ public class GoogleIdentityAdapter implements GoogleIdentityGateway {
             return Optional.empty();
         }
 
-        // Mock token fallback for local development and testing
-        if (idTokenString.startsWith("mock-google-token-") || "google_client_id_placeholder".equals(clientId)) {
+        // Mock fallback only when no real Google client ID is configured (local development)
+        if (mockMode) {
             log.info("[Mock Google SSO] Resolving mock token: {}", idTokenString);
             return Optional.of(new GoogleUserPayload(
                     "google-sub-mock-12345",

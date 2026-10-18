@@ -80,7 +80,7 @@ public class SuppliersController {
      * Endpoint 7: List registered and homologated automotive suppliers.
      */
     @GetMapping
-    @PreAuthorize("hasAuthority('inventory:suppliers:read') or hasRole('INVENTORY_MANAGER') or hasRole('TENANT_ADMIN') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('inventory:suppliers:manage')")
     @Operation(summary = "List registered and homologated automotive suppliers")
     public ResponseEntity<?> getSuppliers(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -113,7 +113,7 @@ public class SuppliersController {
      * Endpoint 8: Register new homologated supplier under tax identification.
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('inventory:suppliers:manage') or hasRole('INVENTORY_MANAGER') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('inventory:suppliers:manage')")
     @Operation(summary = "Register new homologated supplier under RUC/tax identification")
     public ResponseEntity<?> registerSupplier(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -140,7 +140,7 @@ public class SuppliersController {
      * Endpoint 9: Get detailed profile of registered supplier.
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('inventory:suppliers:read') or hasRole('INVENTORY_MANAGER') or hasRole('TENANT_ADMIN') or isAuthenticated()")
+    @PreAuthorize("hasAuthority('inventory:suppliers:manage')")
     @Operation(summary = "Get detailed profile of registered supplier")
     public ResponseEntity<?> getSupplierById(@PathVariable UUID id) {
         Optional<Supplier> supplierOpt = supplierQueryService.handle(new GetSupplierByIdQuery(SupplierId.of(id)));
@@ -156,7 +156,7 @@ public class SuppliersController {
      * Endpoint 10: Update supplier contact information and fiscal address.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('inventory:suppliers:manage') or hasRole('INVENTORY_MANAGER') or hasRole('TENANT_ADMIN')")
+    @PreAuthorize("hasAuthority('inventory:suppliers:manage')")
     @Operation(summary = "Update supplier contact information and fiscal address")
     public ResponseEntity<?> updateSupplier(
             @PathVariable UUID id,

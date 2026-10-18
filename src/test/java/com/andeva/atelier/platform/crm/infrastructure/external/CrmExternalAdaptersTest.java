@@ -2,6 +2,12 @@ package com.andeva.atelier.platform.crm.infrastructure.external;
 
 import com.andeva.atelier.platform.billing.interfaces.acl.SubscriptionContextFacade;
 import com.andeva.atelier.platform.crm.application.internal.outbound.acl.VerifiedAddressDto;
+import com.andeva.atelier.platform.crm.domain.model.entities.CustomerMembership;
+import com.andeva.atelier.platform.crm.domain.model.enums.CustomerMembershipStatus;
+import com.andeva.atelier.platform.crm.domain.repositories.CustomerMembershipRepository;
+import com.andeva.atelier.platform.iam.interfaces.acl.TenancyContextFacade;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.CustomerId;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.UserId;
 import com.andeva.atelier.platform.crm.infrastructure.external.billing.SubscriptionValidationClient;
 import com.andeva.atelier.platform.crm.infrastructure.external.firebase.DriverAppFcmClient;
 import com.andeva.atelier.platform.crm.infrastructure.external.google.GooglePlacesClient;
@@ -120,7 +126,25 @@ class CrmExternalAdaptersTest {
     @DisplayName("DriverAppFcmClient Tests")
     class DriverAppFcmClientTests {
 
-        private final DriverAppFcmClient fcmClient = new DriverAppFcmClient();
+        private final CustomerMembershipRepository membershipRepository = org.mockito.Mockito.mock(CustomerMembershipRepository.class);
+        private final TenancyContextFacade tenancyContextFacade = org.mockito.Mockito.mock(TenancyContextFacade.class);
+        private final DriverAppFcmClient fcmClient = new DriverAppFcmClient(membershipRepository, tenancyContextFacade);
+
+        @Test
+        @DisplayName("Should dispatch to devices registered by the customer's active members")
+        void shouldDispatchToCustomerMemberDevices() {
+            UUID customerId = UUID.randomUUID();
+            UUID userId = UUID.randomUUID();
+            CustomerMembership membership = org.mockito.Mockito.mock(CustomerMembership.class);
+            when(membership.status()).thenReturn(CustomerMembershipStatus.ACTIVE);
+            when(membership.userId()).thenReturn(UserId.of(userId));
+            when(membershipRepository.findByCustomerId(CustomerId.of(customerId))).thenReturn(java.util.List.of(membership));
+            when(tenancyContextFacade.fetchUserDeviceToken(userId)).thenReturn(Optional.of("fcm-device-token-12345"));
+
+            int dispatched = fcmClient.sendPushToCustomer(customerId, "Cita confirmada", "Body", Map.of());
+
+            assertThat(dispatched).isEqualTo(1);
+        }
 
         @Test
         @DisplayName("Should successfully dispatch push notification with valid token")

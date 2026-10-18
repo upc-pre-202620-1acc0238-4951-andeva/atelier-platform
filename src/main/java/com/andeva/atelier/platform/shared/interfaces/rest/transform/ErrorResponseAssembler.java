@@ -63,7 +63,12 @@ public final class ErrorResponseAssembler {
                     Object[] args = !error.details().isEmpty()
                             ? error.details().toArray()
                             : new Object[]{error.message()};
-                    return MessageFormat.format(bundle.getString(key), args);
+                    String template = bundle.getString(key);
+                    // A template expecting more arguments than available would leak raw "{n}" placeholders
+                    if (template.contains("{" + args.length + "}")) {
+                        return error.message();
+                    }
+                    return MessageFormat.format(template, args);
                 }
             }
         } catch (MissingResourceException ignored) {

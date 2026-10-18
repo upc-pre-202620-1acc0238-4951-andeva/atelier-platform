@@ -24,5 +24,7 @@ public interface TenantMembershipPersistenceRepository extends JpaRepository<Ten
 
     long countByTenant_Id(UUID tenantId);
 
+    Optional<TenantMembershipPersistenceEntity> findFirstByTenant_IdOrderByCreatedAtAsc(UUID tenantId);
+
     long countByAssignedRoles_Id(UUID roleId);
 }

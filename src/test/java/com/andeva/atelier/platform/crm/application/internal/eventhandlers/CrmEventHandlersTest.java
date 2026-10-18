@@ -405,7 +405,7 @@ class CrmEventHandlersTest {
 
             handler.on(event);
 
-            verify(driverAppPushGateway).sendPushNotification(any(), any(), any(), any());
+            verify(driverAppPushGateway).sendPushToCustomer(any(), any(), any(), any());
         }
 
         @Test

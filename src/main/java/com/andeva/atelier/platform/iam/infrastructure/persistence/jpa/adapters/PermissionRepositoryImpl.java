@@ -40,6 +40,13 @@ public class PermissionRepositoryImpl implements PermissionRepository {
     }
 
     @Override
+    public void delete(Permission permission) {
+        if (permission != null && permission.id() != null) {
+            persistenceRepository.deleteById(permission.id().value());
+        }
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<Permission> findAll() {
         return persistenceRepository.findAll()

@@ -38,11 +38,11 @@ public class ResendBillingNotificationAdapter implements TenantBillingNotificati
     public ResendBillingNotificationAdapter(
             IamTenantValidationAclPort iamTenantValidationAclPort,
             @Value("${resend.api-key:resend_key_placeholder}") String resendApiKey,
-            @Value("${resend.from-email:billing@atelier.andeva.com}") String fromEmail
+            @Value("${resend.from-email:Atelier <notificaciones@andeva.tech>}") String fromEmail
     ) {
         this.iamTenantValidationAclPort = Objects.requireNonNull(iamTenantValidationAclPort, "IamTenantValidationAclPort cannot be null");
         this.resendApiKey = resendApiKey;
-        this.fromEmail = fromEmail != null ? fromEmail : "billing@atelier.andeva.com";
+        this.fromEmail = fromEmail;
         this.restClient = RestClient.builder().build();
     }
 
