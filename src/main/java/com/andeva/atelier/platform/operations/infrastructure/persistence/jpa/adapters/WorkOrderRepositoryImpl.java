@@ -1,6 +1,7 @@
 package com.andeva.atelier.platform.operations.infrastructure.persistence.jpa.adapters;
 
 import com.andeva.atelier.platform.operations.domain.model.aggregates.WorkOrder;
+import com.andeva.atelier.platform.operations.domain.model.enums.WorkOrderStatus;
 import com.andeva.atelier.platform.operations.domain.model.ids.WorkBayId;
 import com.andeva.atelier.platform.operations.domain.model.ids.WorkOrderId;
 import com.andeva.atelier.platform.operations.domain.model.valueobjects.WorkOrderNumber;
@@ -21,6 +22,9 @@ import java.util.Optional;
 
 @Repository
 public class WorkOrderRepositoryImpl implements WorkOrderRepository {
+
+    private static final List<WorkOrderStatus> OPEN_STATUSES =
+            List.of(WorkOrderStatus.DRAFT, WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.COMPLETED);
 
     private final WorkOrderPersistenceRepository workOrderPersistenceRepository;
     private final ApplicationEventPublisher applicationEventPublisher;
@@ -91,6 +95,16 @@ public class WorkOrderRepositoryImpl implements WorkOrderRepository {
         return workOrderPersistenceRepository.findByCustomerId(customerId.value()).stream()
                 .map(WorkOrderPersistenceAssembler::toDomain)
                 .toList();
+    }
+
+    @Override
+    public Optional<WorkOrder> findOpenByVehicleId(TenantId tenantId, VehicleId vehicleId) {
+        if (tenantId == null || vehicleId == null) {
+            return Optional.empty();
+        }
+        return workOrderPersistenceRepository.findFirstByTenantIdAndVehicleIdAndStatusIn(
+                        tenantId.value(), vehicleId.value(), OPEN_STATUSES)
+                .map(WorkOrderPersistenceAssembler::toDomain);
     }
 
     @Override

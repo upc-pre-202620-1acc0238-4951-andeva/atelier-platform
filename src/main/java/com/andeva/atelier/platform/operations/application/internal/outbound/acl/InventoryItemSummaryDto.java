@@ -10,6 +10,7 @@ public record InventoryItemSummaryDto(
         BigDecimal currentStock,
         BigDecimal reservedStock,
         String unitOfMeasure,
-        String currency
+        String currency,
+        BigDecimal basePrice
 ) {
 }

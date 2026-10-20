@@ -24,17 +24,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
 import com.andeva.atelier.platform.operations.application.internal.outbound.acl.CustomerFleetAclService;
+import com.andeva.atelier.platform.operations.application.internal.outbound.acl.InventoryItemSummaryDto;
 import com.andeva.atelier.platform.operations.application.internal.outbound.acl.InventoryReservationAclService;
 import com.andeva.atelier.platform.operations.application.internal.outbound.acl.TenancyAclService;
 
 @Service
 @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
 public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
+
+    private static final BigDecimal MINUTES_PER_HOUR = BigDecimal.valueOf(60);
 
     private final WorkOrderRepository workOrderRepository;
     private final WorkBayRepository workBayRepository;
@@ -76,6 +81,14 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
     public Result<WorkOrder, ApplicationError> handle(CreateWorkOrderCommand command) {
         if (command == null) {
             return Result.failure(ApplicationError.badRequest("CreateWorkOrderCommand cannot be null"));
+        }
+
+        // A vehicle stays in custody until its order is paid or canceled: only one open order at a time
+        Optional<WorkOrder> openOrder = workOrderRepository.findOpenByVehicleId(command.tenantId(), command.vehicleId());
+        if (openOrder.isPresent()) {
+            return Result.failure(ApplicationError.conflict("Vehicle already has an open work order #"
+                    + openOrder.get().getInternalNumber().sequence() + " (" + openOrder.get().getStatus() + "): "
+                    + openOrder.get().getId().value()));
         }
 
         Integer nextSeq = workOrderRepository.findNextInternalSequence(command.tenantId());
@@ -178,9 +191,17 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
             return Result.failure(ApplicationError.notFound("WorkOrder with identifier " + command.workOrderId().value() + " was not found"));
         }
 
-        if (serviceRepository.findById(command.serviceId()).isEmpty()) {
+        Optional<com.andeva.atelier.platform.operations.domain.model.aggregates.Service> serviceOpt = serviceRepository.findById(command.serviceId());
+        if (serviceOpt.isEmpty()) {
             return Result.failure(ApplicationError.notFound("Service with identifier " + command.serviceId().value() + " was not found"));
         }
+
+        // Labor price and estimated hours default to the catalog service when not overridden
+        var service = serviceOpt.get();
+        BigDecimal price = command.price() != null ? command.price() : service.getBasePrice().amount();
+        BigDecimal estimatedHours = command.estimatedHours() != null
+                ? command.estimatedHours()
+                : BigDecimal.valueOf(Math.max(service.getEstimatedDurationMinutes(), 1)).divide(MINUTES_PER_HOUR, 2, RoundingMode.HALF_UP);
 
         WorkOrder workOrder = orderOpt.get();
         try {
@@ -188,8 +209,8 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
                     command.serviceId(),
                     command.mechanicId(),
                     command.description(),
-                    Money.soles(command.price()),
-                    LaborHours.of(command.estimatedHours())
+                    Money.soles(price),
+                    LaborHours.of(estimatedHours)
             );
             WorkOrder saved = workOrderRepository.save(workOrder);
             return Result.success(saved);
@@ -325,8 +346,28 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
             return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
         }
         WorkOrder order = orderOpt.get();
+        BigDecimal unitPrice = command.unitPrice();
+        if (inventoryAclService != null) {
+            UUID tenantId = order.getTenantId().value();
+            Optional<InventoryItemSummaryDto> item = inventoryAclService.fetchItemDetails(tenantId, command.productId());
+            if (item.isEmpty()) {
+                return Result.failure(ApplicationError.notFound("Inventory item with identifier " + command.productId() + " was not found"));
+            }
+            // Reject up front: the FIFO discount runs after commit and could no longer refuse the line
+            if (!inventoryAclService.checkItemStockAvailability(tenantId, command.productId(), command.quantity())) {
+                return Result.failure(ApplicationError.conflict("Insufficient stock for " + item.get().sku() + ": requested "
+                        + command.quantity().stripTrailingZeros().toPlainString() + ", available "
+                        + item.get().currentStock().stripTrailingZeros().toPlainString()));
+            }
+            if (unitPrice == null) {
+                unitPrice = item.get().basePrice();
+            }
+        }
+        if (unitPrice == null) {
+            return Result.failure(ApplicationError.badRequest("unitPrice is required when the catalog price cannot be resolved"));
+        }
         try {
-            order.addProductToTask(command.taskId(), command.productId(), Quantity.of(command.quantity()), Money.soles(command.unitPrice()));
+            order.addProductToTask(command.taskId(), command.productId(), Quantity.of(command.quantity()), Money.soles(unitPrice));
             WorkOrder saved = workOrderRepository.save(order);
             return Result.success(saved);
         } catch (Exception e) {

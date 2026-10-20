@@ -26,6 +26,11 @@ public interface WorkOrderRepository {
 
     List<WorkOrder> findByVehicleId(VehicleId vehicleId);
 
+    /**
+     * Order still holding the vehicle in custody (not yet paid nor canceled), if any.
+     */
+    Optional<WorkOrder> findOpenByVehicleId(TenantId tenantId, VehicleId vehicleId);
+
     List<WorkOrder> findByCustomerId(CustomerId customerId);
 
     Optional<WorkOrder> findByCurrentBayId(WorkBayId bayId);
