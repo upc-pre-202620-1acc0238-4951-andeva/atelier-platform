@@ -240,15 +240,22 @@ public class TasksController {
             return ErrorResponseAssembler.toErrorResponseFromApplicationError(result.getError());
         }
 
+        // Answer with the stored line: its unit price may have been copied from the catalog
+        var line = result.getOrThrow().getTasks().stream()
+                .filter(t -> t.getId().value().equals(taskId))
+                .flatMap(t -> t.getConsumedProducts().stream())
+                .filter(p -> p.getProductId().equals(resource.productId()))
+                .reduce((first, second) -> second)
+                .orElseThrow();
         TaskProductResource productResource = new TaskProductResource(
-                UUID.randomUUID(),
+                line.getId().value(),
                 taskId,
                 resource.productId(),
                 "Product " + resource.productId(),
-                resource.quantity(),
-                resource.unitPrice(),
-                resource.unitPrice().multiply(resource.quantity()),
-                resource.currency() != null ? resource.currency() : "PEN"
+                line.getQuantity().value(),
+                line.getUnitPrice().amount(),
+                line.getTotalAmount().amount(),
+                line.getUnitPrice().currency().name()
         );
 
         URI location = ucb.path("/api/v1/tasks/{taskId}/products/{productId}")
