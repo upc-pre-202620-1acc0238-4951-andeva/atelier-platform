@@ -17,15 +17,18 @@ import com.andeva.atelier.platform.iam.domain.repositories.RoleRepository;
 import com.andeva.atelier.platform.iam.domain.repositories.TenantMembershipRepository;
 import com.andeva.atelier.platform.iam.domain.repositories.TenantRepository;
 import com.andeva.atelier.platform.iam.domain.repositories.UserRepository;
+import com.andeva.atelier.platform.iam.interfaces.events.TenantCreatedIntegrationEvent;
 import com.andeva.atelier.platform.shared.application.result.ApplicationError;
 import com.andeva.atelier.platform.shared.application.result.Result;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.DistanceMeters;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.GeoPoint;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.Money;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -53,6 +56,7 @@ public class TenantCommandServiceImpl implements TenantCommandService {
     private final PermissionRepository permissionRepository;
     private final TenantMembershipRepository membershipRepository;
     private final BCryptHashingService hashingService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public TenantCommandServiceImpl(
             TenantRepository tenantRepository,
@@ -60,7 +64,8 @@ public class TenantCommandServiceImpl implements TenantCommandService {
             RoleRepository roleRepository,
             PermissionRepository permissionRepository,
             TenantMembershipRepository membershipRepository,
-            BCryptHashingService hashingService
+            BCryptHashingService hashingService,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.tenantRepository = Objects.requireNonNull(tenantRepository, "TenantRepository cannot be null");
         this.userRepository = Objects.requireNonNull(userRepository, "UserRepository cannot be null");
@@ -68,6 +73,7 @@ public class TenantCommandServiceImpl implements TenantCommandService {
         this.permissionRepository = Objects.requireNonNull(permissionRepository, "PermissionRepository cannot be null");
         this.membershipRepository = Objects.requireNonNull(membershipRepository, "TenantMembershipRepository cannot be null");
         this.hashingService = Objects.requireNonNull(hashingService, "BCryptHashingService cannot be null");
+        this.eventPublisher = Objects.requireNonNull(eventPublisher, "ApplicationEventPublisher cannot be null");
     }
 
     @Override
@@ -122,6 +128,16 @@ public class TenantCommandServiceImpl implements TenantCommandService {
                 Set.of(workshopOwnerRole)
         );
         membershipRepository.save(adminMembership);
+
+        // 7. Announce the workshop to other contexts; listeners act after commit (Billing starts the free trial)
+        eventPublisher.publishEvent(new TenantCreatedIntegrationEvent(
+                savedTenant.id().value(),
+                savedTenant.name(),
+                savedTenant.legalName(),
+                savedTenant.taxId().value(),
+                Instant.now(),
+                command.trialPlanId()
+        ));
 
         return Result.success(savedTenant);
     }

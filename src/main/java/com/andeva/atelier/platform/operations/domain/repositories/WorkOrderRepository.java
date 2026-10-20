@@ -11,6 +11,7 @@ import com.andeva.atelier.platform.operations.domain.model.valueobjects.WorkOrde
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface WorkOrderRepository {
 
@@ -30,6 +31,11 @@ public interface WorkOrderRepository {
      * Order still holding the vehicle in custody (not yet paid nor canceled), if any.
      */
     Optional<WorkOrder> findOpenByVehicleId(TenantId tenantId, VehicleId vehicleId);
+
+    /**
+     * Orders still in the workshop (draft, in progress) holding at least one task assigned to the mechanic.
+     */
+    List<WorkOrder> findActiveWithTasksAssignedTo(TenantId tenantId, UUID mechanicMembershipId);
 
     List<WorkOrder> findByCustomerId(CustomerId customerId);
 

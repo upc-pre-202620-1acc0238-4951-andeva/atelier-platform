@@ -143,6 +143,25 @@ public class TenancyContextFacadeImpl implements TenancyContextFacade {
     }
 
     @Override
+    public Optional<UUID> fetchActiveMembershipId(UUID userId, UUID tenantId) {
+        if (userId == null || tenantId == null) {
+            return Optional.empty();
+        }
+        return membershipQueryService.handle(new GetMembershipByTenantAndUserQuery(TenantId.of(tenantId), UserId.of(userId)))
+                .filter(membership -> membership.status() == MembershipStatus.ACTIVE)
+                .map(membership -> membership.id().value());
+    }
+
+    @Override
+    public Optional<UUID> fetchUserIdOfMembership(UUID membershipId) {
+        if (membershipId == null) {
+            return Optional.empty();
+        }
+        return membershipQueryService.handle(new GetMembershipByIdQuery(TenantMembershipId.of(membershipId)))
+                .map(membership -> membership.userId().value());
+    }
+
+    @Override
     public boolean isPointWithinBranchGeofence(UUID branchId, double latitude, double longitude) {
         if (branchId == null) {
             return false;

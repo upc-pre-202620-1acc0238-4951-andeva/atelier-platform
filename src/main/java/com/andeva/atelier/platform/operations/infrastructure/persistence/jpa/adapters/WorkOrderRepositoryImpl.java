@@ -19,6 +19,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public class WorkOrderRepositoryImpl implements WorkOrderRepository {
@@ -105,6 +106,17 @@ public class WorkOrderRepositoryImpl implements WorkOrderRepository {
         return workOrderPersistenceRepository.findFirstByTenantIdAndVehicleIdAndStatusIn(
                         tenantId.value(), vehicleId.value(), OPEN_STATUSES)
                 .map(WorkOrderPersistenceAssembler::toDomain);
+    }
+
+    @Override
+    public List<WorkOrder> findActiveWithTasksAssignedTo(TenantId tenantId, UUID mechanicMembershipId) {
+        if (tenantId == null || mechanicMembershipId == null) {
+            return List.of();
+        }
+        return workOrderPersistenceRepository.findWithTasksAssignedTo(tenantId.value(), mechanicMembershipId,
+                        List.of(WorkOrderStatus.DRAFT, WorkOrderStatus.IN_PROGRESS)).stream()
+                .map(WorkOrderPersistenceAssembler::toDomain)
+                .toList();
     }
 
     @Override

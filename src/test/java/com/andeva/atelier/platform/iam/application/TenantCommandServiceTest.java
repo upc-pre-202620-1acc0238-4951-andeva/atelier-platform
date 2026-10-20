@@ -21,6 +21,7 @@ import com.andeva.atelier.platform.iam.domain.repositories.RoleRepository;
 import com.andeva.atelier.platform.iam.domain.repositories.TenantMembershipRepository;
 import com.andeva.atelier.platform.iam.domain.repositories.TenantRepository;
 import com.andeva.atelier.platform.iam.domain.repositories.UserRepository;
+import com.andeva.atelier.platform.iam.interfaces.events.TenantCreatedIntegrationEvent;
 import com.andeva.atelier.platform.shared.application.result.ApplicationError;
 import com.andeva.atelier.platform.shared.application.result.Result;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.EmailAddress;
@@ -34,6 +35,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Optional;
@@ -64,6 +66,8 @@ class TenantCommandServiceTest {
     private TenantMembershipRepository membershipRepository;
     @Mock
     private BCryptHashingService hashingService;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     private TenantCommandService tenantCommandService;
 
@@ -81,7 +85,8 @@ class TenantCommandServiceTest {
                 roleRepository,
                 permissionRepository,
                 membershipRepository,
-                hashingService
+                hashingService,
+                eventPublisher
         );
     }
 
@@ -140,6 +145,11 @@ class TenantCommandServiceTest {
         assertThat(membership.getValue().assignedRoles())
                 .extracting(Role::code)
                 .containsExactly(RoleTemplate.ROLE_WORKSHOP_OWNER.code());
+
+        ArgumentCaptor<TenantCreatedIntegrationEvent> announced = ArgumentCaptor.forClass(TenantCreatedIntegrationEvent.class);
+        verify(eventPublisher).publishEvent(announced.capture());
+        assertThat(announced.getValue().tenantId()).isEqualTo(tenant.id().value());
+        assertThat(announced.getValue().taxId()).isEqualTo(validRuc.value());
     }
 
     @Test

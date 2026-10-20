@@ -1,7 +1,12 @@
 package com.andeva.atelier.platform.operations.interfaces.rest.controllers;
 
 import com.andeva.atelier.platform.operations.application.commandservices.WorkOrderCommandService;
+import com.andeva.atelier.platform.iam.infrastructure.security.model.CustomUserDetails;
+import com.andeva.atelier.platform.operations.application.queryservices.AssignedTaskView;
 import com.andeva.atelier.platform.operations.application.queryservices.WorkOrderQueryService;
+import com.andeva.atelier.platform.operations.domain.model.queries.GetTasksAssignedToMechanicQuery;
+import com.andeva.atelier.platform.operations.interfaces.rest.resources.responses.AssignedTaskResource;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import com.andeva.atelier.platform.operations.domain.model.aggregates.WorkOrder;
 import com.andeva.atelier.platform.operations.domain.model.commands.*;
 import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTask;
@@ -23,11 +28,13 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.math.BigDecimal;
 import java.net.URI;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -47,6 +54,18 @@ public class TasksController {
     public TasksController(WorkOrderCommandService workOrderCommandService, WorkOrderQueryService workOrderQueryService) {
         this.workOrderCommandService = Objects.requireNonNull(workOrderCommandService, "workOrderCommandService cannot be null");
         this.workOrderQueryService = Objects.requireNonNull(workOrderQueryService, "workOrderQueryService cannot be null");
+    }
+
+    @GetMapping("/my")
+    @PreAuthorize("hasAuthority('operations:tasks:read')")
+    @Operation(summary = "List the open tasks assigned to the authenticated mechanic, in progress first")
+    public ResponseEntity<List<AssignedTaskResource>> getMyTasks(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (userDetails == null || userDetails.getTenantId() == null || userDetails.getUserId() == null) {
+            throw new org.springframework.security.access.AccessDeniedException("Active tenant context is required");
+        }
+        List<AssignedTaskView> tasks = workOrderQueryService.handle(new GetTasksAssignedToMechanicQuery(
+                TenantId.of(userDetails.getTenantId()), userDetails.getUserId()));
+        return ResponseEntity.ok(AssignedTaskResourceAssembler.toResources(tasks));
     }
 
     @GetMapping("/{taskId}")

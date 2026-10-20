@@ -75,6 +75,23 @@ public interface TenancyContextFacade {
     boolean isUserStaffMemberOfTenant(UUID userId, UUID tenantId);
 
     /**
+     * Resolves the active staff membership of a user inside a workshop tenant.
+     *
+     * @param userId the user UUID
+     * @param tenantId the tenant UUID
+     * @return the active membership UUID, if the user works in the tenant
+     */
+    Optional<UUID> fetchActiveMembershipId(UUID userId, UUID tenantId);
+
+    /**
+     * Resolves the user account behind a staff membership (e.g. to reach the person's device).
+     *
+     * @param membershipId the tenant membership UUID
+     * @return the user UUID, if the membership exists
+     */
+    Optional<UUID> fetchUserIdOfMembership(UUID membershipId);
+
+    /**
      * Evaluates whether a given geographic coordinate falls within the branch's operational geofence.
      *
      * @param branchId the branch UUID

@@ -10,4 +10,9 @@ public interface TenancyAclService {
     boolean isMechanicEligible(UUID mechanicMembershipId, UUID tenantId);
 
     Optional<MechanicStaffDto> fetchMechanicDetails(UUID mechanicMembershipId);
+
+    /**
+     * Active staff membership of a user in the tenant (tasks are assigned to memberships, not users).
+     */
+    Optional<UUID> resolveActiveMembershipId(UUID userId, UUID tenantId);
 }

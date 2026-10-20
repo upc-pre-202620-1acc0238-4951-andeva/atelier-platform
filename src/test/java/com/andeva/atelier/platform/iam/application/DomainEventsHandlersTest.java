@@ -15,7 +15,6 @@ import com.andeva.atelier.platform.iam.domain.model.valueobjects.Password;
 import com.andeva.atelier.platform.iam.domain.model.valueobjects.PersonName;
 import com.andeva.atelier.platform.iam.domain.repositories.TenantRepository;
 import com.andeva.atelier.platform.iam.domain.repositories.UserRepository;
-import com.andeva.atelier.platform.iam.interfaces.events.TenantCreatedIntegrationEvent;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.EmailAddress;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TaxId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
@@ -23,15 +22,12 @@ import com.andeva.atelier.platform.shared.domain.model.valueobjects.UserId;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Instant;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 /**
@@ -49,8 +45,6 @@ class DomainEventsHandlersTest {
     private UserRepository userRepository;
     @Mock
     private TenantRepository tenantRepository;
-    @Mock
-    private ApplicationEventPublisher eventPublisher;
 
     @Test
     @DisplayName("UserDomainEventsHandler: should send verification email on email verification token issued")
@@ -115,7 +109,7 @@ class DomainEventsHandlersTest {
     @Test
     @DisplayName("TenantDomainEventsHandler: should send staff invitation email on staff invited")
     void shouldSendStaffInvitationEmail() {
-        TenantDomainEventsHandler handler = new TenantDomainEventsHandler(resendEmailService, tenantRepository, eventPublisher);
+        TenantDomainEventsHandler handler = new TenantDomainEventsHandler(resendEmailService, tenantRepository);
 
         TenantId tenantId = TenantId.generate();
         Tenant tenant = Tenant.create("AutoTaller Pro", "AutoTaller S.A.", TaxId.ruc("20456789014"));
@@ -131,19 +125,15 @@ class DomainEventsHandlersTest {
     }
 
     @Test
-    @DisplayName("TenantDomainEventsHandler: should announce the committed tenant to other contexts")
-    void shouldPublishTenantCreatedIntegrationEvent() {
-        TenantDomainEventsHandler handler = new TenantDomainEventsHandler(resendEmailService, tenantRepository, eventPublisher);
+    @DisplayName("TenantDomainEventsHandler: should handle TenantRegisteredEvent after commit")
+    void shouldHandleTenantRegisteredEvent() {
+        TenantDomainEventsHandler handler = new TenantDomainEventsHandler(resendEmailService, tenantRepository);
 
-        Tenant tenant = Tenant.create("AutoTaller Pro", "AutoTaller S.A.", TaxId.ruc("20456789014"));
-        when(tenantRepository.findById(tenant.id())).thenReturn(Optional.of(tenant));
+        TenantRegisteredEvent event = TenantRegisteredEvent.of(
+                TenantId.generate(), "AutoTaller Pro", TaxId.ruc("20456789014")
+        );
 
-        handler.on(TenantRegisteredEvent.of(tenant.id(), "AutoTaller Pro", TaxId.ruc("20456789014")));
-
-        ArgumentCaptor<TenantCreatedIntegrationEvent> captor = ArgumentCaptor.forClass(TenantCreatedIntegrationEvent.class);
-        verify(eventPublisher).publishEvent(captor.capture());
-        assertThat(captor.getValue().tenantId()).isEqualTo(tenant.id().value());
-        assertThat(captor.getValue().legalName()).isEqualTo("AutoTaller S.A.");
-        assertThat(captor.getValue().taxId()).isEqualTo("20456789014");
+        handler.on(event);
+        // Asserts execution without errors or exceptions
     }
 }

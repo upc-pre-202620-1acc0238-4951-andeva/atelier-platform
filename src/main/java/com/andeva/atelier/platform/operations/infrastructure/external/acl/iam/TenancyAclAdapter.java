@@ -56,6 +56,14 @@ public class TenancyAclAdapter implements TenancyAclService {
     }
 
     @Override
+    public Optional<UUID> resolveActiveMembershipId(UUID userId, UUID tenantId) {
+        if (tenancyContextFacade == null || userId == null || tenantId == null) {
+            return Optional.empty();
+        }
+        return tenancyContextFacade.fetchActiveMembershipId(userId, tenantId);
+    }
+
+    @Override
     public Optional<MechanicStaffDto> fetchMechanicDetails(UUID mechanicMembershipId) {
         if (mechanicMembershipId == null) {
             return Optional.empty();
