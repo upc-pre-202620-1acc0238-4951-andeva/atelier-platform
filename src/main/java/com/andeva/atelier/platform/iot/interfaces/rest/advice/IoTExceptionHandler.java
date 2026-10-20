@@ -5,6 +5,7 @@ import com.andeva.atelier.platform.iot.domain.exceptions.ActiveInstallationConfl
 import com.andeva.atelier.platform.iot.domain.exceptions.DeviceAlreadyInstalledException;
 import com.andeva.atelier.platform.iot.domain.exceptions.DeviceNotFoundException;
 import com.andeva.atelier.platform.iot.domain.exceptions.InstallationNotFoundException;
+import com.andeva.atelier.platform.iot.domain.exceptions.InsufficientTelemetryException;
 import com.andeva.atelier.platform.iot.domain.exceptions.InvalidDeviceIdentifierException;
 import com.andeva.atelier.platform.iot.domain.exceptions.InvalidDtcCodeException;
 import com.andeva.atelier.platform.iot.domain.exceptions.IoTDomainException;
@@ -120,6 +121,12 @@ public class IoTExceptionHandler {
     public ResponseEntity<ProblemDetail> handleVehicleHealthReportNotFound(VehicleHealthReportNotFoundException ex, HttpServletRequest request) {
         log.warn("Vehicle health report not found: {}", ex.getMessage());
         return buildResponse(HttpStatus.NOT_FOUND, "health-report-not-found", "Health Report Not Found", ex.getMessage(), ex.errorCode(), request);
+    }
+
+    @ExceptionHandler(InsufficientTelemetryException.class)
+    public ResponseEntity<ProblemDetail> handleInsufficientTelemetry(InsufficientTelemetryException ex, HttpServletRequest request) {
+        log.warn("Insufficient telemetry for predictive diagnosis: {}", ex.getMessage());
+        return buildResponse(HttpStatus.UNPROCESSABLE_ENTITY, "insufficient-telemetry", "Insufficient Telemetry", ex.getMessage(), ex.errorCode(), request);
     }
 
     @ExceptionHandler(TimescaleIngestionException.class)

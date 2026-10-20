@@ -1,30 +1,39 @@
 package com.andeva.atelier.platform.iot.application.queryservices;
 
-import com.andeva.atelier.platform.iot.domain.model.dto.ai.VehicleHealthReportAiDto;
+import com.andeva.atelier.platform.iot.domain.model.aggregates.VehicleHealthReport;
 import com.andeva.atelier.platform.iot.domain.model.queries.ExportVehicleHealthReportPdfQuery;
 import com.andeva.atelier.platform.iot.domain.model.queries.GetLatestVehicleHealthReportQuery;
+import com.andeva.atelier.platform.iot.domain.model.queries.GetVehicleHealthReportByIdQuery;
 
 import java.util.Optional;
 
 /**
- * Query Service for consulting latest vehicle diagnostic reports and generating PDF exports.
+ * Query Service port for issued vehicle health reports and their institutional PDF rendering.
  *
  * @author Joel Huamani Estefanero
  */
 public interface VehicleHealthReportQueryService {
 
     /**
-     * Retrieves the latest stored AI-assisted vehicle health diagnostic report.
+     * Retrieves the latest issued AI vehicle health report of a vehicle, without re-running inference.
      *
      * @param query query with target vehicle identifier
-     * @return optional VehicleHealthReportAiDto
+     * @return the latest stored report, if any
      */
-    Optional<VehicleHealthReportAiDto> handle(GetLatestVehicleHealthReportQuery query);
+    Optional<VehicleHealthReport> handle(GetLatestVehicleHealthReportQuery query);
 
     /**
-     * Generates and exports a complete institutional PDF document for a vehicle diagnostic report.
+     * Retrieves an issued report by identifier within the tenant.
      *
-     * @param query query with target vehicle identifier and report options
+     * @param query query with report identifier
+     * @return the stored report, if it exists in the tenant
+     */
+    Optional<VehicleHealthReport> handle(GetVehicleHealthReportByIdQuery query);
+
+    /**
+     * Renders the institutional PDF of an issued report.
+     *
+     * @param query query with report identifier
      * @return raw binary PDF byte array
      */
     byte[] handle(ExportVehicleHealthReportPdfQuery query);

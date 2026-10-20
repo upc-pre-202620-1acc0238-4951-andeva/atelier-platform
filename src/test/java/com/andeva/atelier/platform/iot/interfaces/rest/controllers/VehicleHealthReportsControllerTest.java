@@ -3,6 +3,8 @@ package com.andeva.atelier.platform.iot.interfaces.rest.controllers;
 import com.andeva.atelier.platform.iam.infrastructure.security.model.CustomUserDetails;
 import com.andeva.atelier.platform.iot.application.commandservices.VehicleHealthReportCommandService;
 import com.andeva.atelier.platform.iot.application.queryservices.VehicleHealthReportQueryService;
+import com.andeva.atelier.platform.iot.domain.exceptions.InsufficientTelemetryException;
+import com.andeva.atelier.platform.iot.domain.model.aggregates.VehicleHealthReport;
 import com.andeva.atelier.platform.iot.domain.model.commands.GenerateVehicleHealthReportCommand;
 import com.andeva.atelier.platform.iot.domain.model.dto.ai.DtcTelemetryCorrelationDto;
 import com.andeva.atelier.platform.iot.domain.model.dto.ai.PredictiveRiskDto;
@@ -10,9 +12,11 @@ import com.andeva.atelier.platform.iot.domain.model.dto.ai.RecommendedServiceAct
 import com.andeva.atelier.platform.iot.domain.model.dto.ai.VehicleHealthReportAiDto;
 import com.andeva.atelier.platform.iot.domain.model.queries.ExportVehicleHealthReportPdfQuery;
 import com.andeva.atelier.platform.iot.domain.model.queries.GetLatestVehicleHealthReportQuery;
+import com.andeva.atelier.platform.iot.domain.model.queries.GetVehicleHealthReportByIdQuery;
 import com.andeva.atelier.platform.iot.interfaces.rest.advice.IoTExceptionHandler;
 import com.andeva.atelier.platform.iot.interfaces.rest.resources.requests.GenerateHealthReportRequest;
 import com.andeva.atelier.platform.iot.interfaces.rest.transform.VehicleHealthReportResourceAssembler;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.VehicleId;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,6 +73,7 @@ class VehicleHealthReportsControllerTest {
     private final UUID userUuid = UUID.randomUUID();
     private final UUID vehicleUuid = UUID.randomUUID();
     private VehicleHealthReportAiDto reportDto;
+    private VehicleHealthReport issuedReport;
 
     @BeforeEach
     void setUp() {
@@ -115,12 +120,13 @@ class VehicleHealthReportsControllerTest {
                 List.of(new RecommendedServiceActionDto("SRV-COOL-01", "Radiator Flush", "HIGH", BigDecimal.valueOf(180.00), "Prevent overheating")),
                 List.of(new DtcTelemetryCorrelationDto("P0117", "102C", "ECT sensor short circuit"))
         );
+        issuedReport = VehicleHealthReport.issue(TenantId.of(tenantUuid), VehicleId.of(vehicleUuid), 30, reportDto);
     }
 
     @Test
     @DisplayName("Should generate health report synchronously with 201 Created")
     void shouldGenerateHealthReportSynchronously() throws Exception {
-        when(reportCommandService.handle(any(GenerateVehicleHealthReportCommand.class))).thenReturn(reportDto);
+        when(reportCommandService.handle(any(GenerateVehicleHealthReportCommand.class))).thenReturn(issuedReport);
 
         GenerateHealthReportRequest request = new GenerateHealthReportRequest(30, true);
 
@@ -157,7 +163,7 @@ class VehicleHealthReportsControllerTest {
     @DisplayName("Should get latest vehicle health report")
     void shouldGetLatestHealthReport() throws Exception {
         when(reportQueryService.handle(any(GetLatestVehicleHealthReportQuery.class)))
-                .thenReturn(Optional.of(reportDto));
+                .thenReturn(Optional.of(issuedReport));
 
         mockMvc.perform(get("/api/v1/iot/health-reports/latest")
                         .param("vehicleId", vehicleUuid.toString()))
@@ -189,12 +195,49 @@ class VehicleHealthReportsControllerTest {
                 .thenReturn(fakePdfBytes);
 
         mockMvc.perform(get("/api/v1/iot/health-reports/{reportId}/pdf", reportId)
-                        .param("vehicleId", vehicleUuid.toString()))
+)
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_PDF))
                 .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"vehicle-health-report-" + reportId + ".pdf\""))
                 .andExpect(content().bytes(fakePdfBytes));
 
         verify(reportQueryService).handle(any(ExportVehicleHealthReportPdfQuery.class));
+    }
+
+    @Test
+    @DisplayName("Should return the stored diagnosis of an issued report by id")
+    void shouldGetIssuedReportById() throws Exception {
+        when(reportQueryService.handle(any(GetVehicleHealthReportByIdQuery.class)))
+                .thenReturn(Optional.of(issuedReport));
+
+        mockMvc.perform(get("/api/v1/iot/health-reports/{reportId}", issuedReport.getId().value()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reportId").value(issuedReport.getId().value().toString()))
+                .andExpect(jsonPath("$.daysAnalyzed").value(30))
+                .andExpect(jsonPath("$.diagnosis.healthScore").value(85))
+                .andExpect(jsonPath("$.diagnosis.predictiveRisks[0].category").exists());
+    }
+
+    @Test
+    @DisplayName("Should return 404 for a report that does not exist in the tenant")
+    void shouldReturnNotFoundForUnknownReport() throws Exception {
+        when(reportQueryService.handle(any(GetVehicleHealthReportByIdQuery.class)))
+                .thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/v1/iot/health-reports/{reportId}", UUID.randomUUID()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.errorCode").value("ERR_HEALTH_REPORT_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("Should return 422 when the vehicle has no telemetry nor faults to analyze")
+    void shouldRejectGenerationWithoutTelemetry() throws Exception {
+        when(reportCommandService.handle(any(GenerateVehicleHealthReportCommand.class)))
+                .thenThrow(new InsufficientTelemetryException(VehicleId.of(vehicleUuid), 30));
+
+        mockMvc.perform(post("/api/v1/iot/health-reports/generate")
+                        .param("vehicleId", vehicleUuid.toString()))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.errorCode").value("ERR_INSUFFICIENT_TELEMETRY"));
     }
 }
