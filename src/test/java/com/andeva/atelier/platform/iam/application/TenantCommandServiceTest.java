@@ -12,6 +12,8 @@ import com.andeva.atelier.platform.iam.domain.model.commands.UpdateTenantProfile
 import com.andeva.atelier.platform.iam.domain.model.entities.Permission;
 import com.andeva.atelier.platform.iam.domain.model.enums.RoleTemplate;
 import com.andeva.atelier.platform.iam.domain.model.enums.TenantStatus;
+import com.andeva.atelier.platform.iam.domain.model.enums.TokenType;
+import com.andeva.atelier.platform.iam.domain.model.enums.UserStatus;
 import com.andeva.atelier.platform.iam.domain.model.valueobjects.Password;
 import com.andeva.atelier.platform.iam.domain.model.valueobjects.PersonName;
 import com.andeva.atelier.platform.iam.domain.repositories.PermissionRepository;
@@ -117,7 +119,12 @@ class TenantCommandServiceTest {
         assertThat(tenant.branches()).hasSize(1);
         assertThat(tenant.branches().get(0).name()).isEqualTo("Sede Principal");
 
-        verify(userRepository).save(any(User.class));
+        ArgumentCaptor<User> ownerAccount = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(ownerAccount.capture());
+        assertThat(ownerAccount.getValue().status()).isEqualTo(UserStatus.PENDING_VERIFICATION);
+        assertThat(ownerAccount.getValue().verificationTokens())
+                .singleElement()
+                .satisfies(token -> assertThat(token.type()).isEqualTo(TokenType.EMAIL_VERIFICATION));
         verify(tenantRepository).save(any(Tenant.class));
         ArgumentCaptor<Role> roles = ArgumentCaptor.forClass(Role.class);
         verify(roleRepository, times(RoleTemplate.values().length)).save(roles.capture());

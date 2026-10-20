@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionOperations;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -47,7 +48,8 @@ class TenantLifecycleIntegrationEventHandlerTest {
 
     @BeforeEach
     void setUp() {
-        handler = new TenantLifecycleIntegrationEventHandler(tenantSubscriptionCommandService, planRepository);
+        handler = new TenantLifecycleIntegrationEventHandler(
+                tenantSubscriptionCommandService, planRepository, TransactionOperations.withoutTransaction());
     }
 
     @Test

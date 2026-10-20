@@ -92,7 +92,7 @@ public final class ErrorResponseAssembler {
             case "CONFLICT", "ALREADY_EXISTS", "DUPLICATE_RESOURCE" -> HttpStatus.CONFLICT;
             case "BAD_REQUEST", "VALIDATION_FAILED", "VALIDATION_ERROR", "INVALID_ARGUMENT" -> HttpStatus.BAD_REQUEST;
             case "UNAUTHORIZED", "INVALID_CREDENTIALS", "TOKEN_EXPIRED" -> HttpStatus.UNAUTHORIZED;
-            case "FORBIDDEN", "ACCESS_DENIED", "SUBSCRIPTION_REQUIRED" -> HttpStatus.FORBIDDEN;
+            case "FORBIDDEN", "ACCESS_DENIED", "SUBSCRIPTION_REQUIRED", "EMAIL_NOT_VERIFIED" -> HttpStatus.FORBIDDEN;
             case "UNPROCESSABLE_ENTITY", "BUSINESS_RULE_VIOLATION", "INSUFFICIENT_STOCK", "CURRENCY_MISMATCH" -> HttpStatus.UNPROCESSABLE_ENTITY;
             case String s when s.endsWith("_NOT_FOUND") -> HttpStatus.NOT_FOUND;
             case String s when s.endsWith("_CONFLICT") -> HttpStatus.CONFLICT;

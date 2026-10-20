@@ -12,6 +12,7 @@ import com.andeva.atelier.platform.iam.domain.model.aggregates.TenantMembership;
 import com.andeva.atelier.platform.iam.domain.model.aggregates.User;
 import com.andeva.atelier.platform.iam.domain.model.commands.AuthenticateUserCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.AuthenticateWithGoogleCommand;
+import com.andeva.atelier.platform.iam.domain.model.commands.ResendEmailVerificationCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.RegisterUserCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.RequestPasswordResetCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.ResetPasswordCommand;
@@ -167,7 +168,7 @@ class UserCommandServiceTest {
         Result<AuthenticatedUser, ApplicationError> result = userCommandService.handle(command);
 
         assertThat(result.isFailure()).isTrue();
-        assertThat(result.getError().code()).isEqualTo("FORBIDDEN");
+        assertThat(result.getError().code()).isEqualTo("EMAIL_NOT_VERIFIED");
     }
 
     @Test
@@ -188,6 +189,56 @@ class UserCommandServiceTest {
         AuthenticatedUser auth = result.getOrThrow();
         assertThat(auth.token()).isEqualTo("google.jwt.token");
         assertThat(auth.user().email().value()).isEqualTo("googleuser@atelier.pe");
+    }
+
+    @Test
+    @DisplayName("Should activate a pending local account when Google proves the email")
+    void shouldActivatePendingAccountOnGoogleSignIn() {
+        User pending = User.registerWithLocalCredentials(email, password, name, phone);
+        GoogleUserPayload payload = new GoogleUserPayload("g-123", email.value(), "Carlos", "García", null, true);
+
+        when(googleIdentityGateway.verifyIdToken("valid-google-id-token")).thenReturn(Optional.of(payload));
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(pending));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(membershipRepository.findByUserId(any())).thenReturn(List.of());
+        when(bearerTokenService.generateToken(any(), any(), any())).thenReturn("google.jwt.token");
+
+        Result<AuthenticatedUser, ApplicationError> result =
+                userCommandService.handle(new AuthenticateWithGoogleCommand("valid-google-id-token"));
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(pending.status()).isEqualTo(UserStatus.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("Should issue a new verification code only for accounts pending verification")
+    void shouldResendVerificationCodeForPendingAccount() {
+        User pending = User.registerWithLocalCredentials(email, password, name, phone);
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(pending));
+
+        Result<Void, ApplicationError> result = userCommandService.handle(new ResendEmailVerificationCommand(email));
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(pending.verificationTokens())
+                .singleElement()
+                .satisfies(token -> assertThat(token.type()).isEqualTo(TokenType.EMAIL_VERIFICATION));
+        verify(userRepository).save(pending);
+    }
+
+    @Test
+    @DisplayName("Should answer the same without issuing a code for active or unknown accounts")
+    void shouldNotResendVerificationCodeForActiveOrUnknownAccount() {
+        User active = User.registerWithLocalCredentials(email, password, name, phone);
+        active.activate();
+        EmailAddress unknown = EmailAddress.of("nobody@atelier.pe");
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(active));
+        when(userRepository.findByEmail(unknown)).thenReturn(Optional.empty());
+
+        assertThat(userCommandService.handle(new ResendEmailVerificationCommand(email)).isSuccess()).isTrue();
+        assertThat(userCommandService.handle(new ResendEmailVerificationCommand(unknown)).isSuccess()).isTrue();
+
+        assertThat(active.verificationTokens()).isEmpty();
+        verify(userRepository, never()).save(any());
     }
 
     @Test

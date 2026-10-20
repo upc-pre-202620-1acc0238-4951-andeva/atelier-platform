@@ -12,6 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -33,7 +35,9 @@ public class WorkOrderStockReservationCancelledListener {
         this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher cannot be null");
     }
 
+    // Delivered after the publisher's commit: a transaction of its own is required for these writes to persist
     @EventListener
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(ProductStockReservationCancelledIntegrationEvent event) {
         log.info("Processing stock reservation cancellation for product {} in work order {} task {}",
                 event.productId(), event.workOrderId(), event.taskId());

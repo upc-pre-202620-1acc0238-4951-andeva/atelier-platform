@@ -7,6 +7,7 @@ import com.andeva.atelier.platform.iam.domain.model.commands.AuthenticateWithGoo
 import com.andeva.atelier.platform.iam.domain.model.commands.RegisterDeviceTokenCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.RegisterUserCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.RequestPasswordResetCommand;
+import com.andeva.atelier.platform.iam.domain.model.commands.ResendEmailVerificationCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.ResetPasswordCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.UpdateUserProfileCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.VerifyEmailTokenCommand;
@@ -27,6 +28,8 @@ public interface UserCommandService {
     Result<AuthenticatedUser, ApplicationError> handle(AuthenticateWithGoogleCommand command);
 
     Result<Void, ApplicationError> handle(VerifyEmailTokenCommand command);
+
+    Result<Void, ApplicationError> handle(ResendEmailVerificationCommand command);
 
     Result<Void, ApplicationError> handle(RequestPasswordResetCommand command);
 

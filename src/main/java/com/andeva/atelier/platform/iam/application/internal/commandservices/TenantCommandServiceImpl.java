@@ -11,6 +11,7 @@ import com.andeva.atelier.platform.iam.domain.model.commands.UpdateTenantProfile
 import com.andeva.atelier.platform.iam.domain.model.entities.Permission;
 import com.andeva.atelier.platform.iam.domain.model.enums.RoleTemplate;
 import com.andeva.atelier.platform.iam.domain.model.enums.SalaryType;
+import com.andeva.atelier.platform.iam.domain.model.enums.TokenType;
 import com.andeva.atelier.platform.iam.domain.repositories.PermissionRepository;
 import com.andeva.atelier.platform.iam.domain.repositories.RoleRepository;
 import com.andeva.atelier.platform.iam.domain.repositories.TenantMembershipRepository;
@@ -24,6 +25,7 @@ import com.andeva.atelier.platform.shared.domain.model.valueobjects.Money;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -41,6 +43,7 @@ public class TenantCommandServiceImpl implements TenantCommandService {
     private static final double DEFAULT_LIMA_LATITUDE = -12.046374;
     private static final double DEFAULT_LIMA_LONGITUDE = -77.042793;
     private static final int DEFAULT_GEOFENCE_RADIUS_METERS = 500;
+    private static final Duration EMAIL_VERIFICATION_VALIDITY = Duration.ofMinutes(15);
     private static final String DEFAULT_SUNAT_ESTABLISHMENT_CODE = "0000";
     private static final String DEFAULT_MAIN_BRANCH_NAME = "Sede Principal";
 
@@ -83,14 +86,14 @@ public class TenantCommandServiceImpl implements TenantCommandService {
                     "A user account with the specified email address already exists: " + command.adminEmail().value()));
         }
 
-        // 3. Create administrator account in ACTIVE state
+        // 3. Create the owner account pending email verification: the one-time code is emailed after commit
         User adminUser = User.registerWithLocalCredentials(
                 command.adminEmail(),
                 command.adminPassword(),
                 command.adminName(),
                 command.adminPhone()
         );
-        adminUser.activate();
+        adminUser.issueVerificationToken(TokenType.EMAIL_VERIFICATION, EMAIL_VERIFICATION_VALIDITY);
         User savedAdmin = userRepository.save(adminUser);
 
         // 4. Create Tenant aggregate and provision default main branch

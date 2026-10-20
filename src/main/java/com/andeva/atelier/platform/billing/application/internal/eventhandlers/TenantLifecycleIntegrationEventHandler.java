@@ -9,8 +9,13 @@ import com.andeva.atelier.platform.iam.interfaces.events.TenantCreatedIntegratio
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionOperations;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.Objects;
@@ -30,13 +35,34 @@ public class TenantLifecycleIntegrationEventHandler {
 
     private final TenantSubscriptionCommandService tenantSubscriptionCommandService;
     private final SubscriptionPlanRepository planRepository;
+    private final TransactionOperations trialTransaction;
+
+    @Autowired
+    public TenantLifecycleIntegrationEventHandler(
+            TenantSubscriptionCommandService tenantSubscriptionCommandService,
+            SubscriptionPlanRepository planRepository,
+            PlatformTransactionManager transactionManager
+    ) {
+        this(tenantSubscriptionCommandService, planRepository, requiresNewTransaction(transactionManager));
+    }
 
     public TenantLifecycleIntegrationEventHandler(
             TenantSubscriptionCommandService tenantSubscriptionCommandService,
-            SubscriptionPlanRepository planRepository
+            SubscriptionPlanRepository planRepository,
+            TransactionOperations trialTransaction
     ) {
         this.tenantSubscriptionCommandService = Objects.requireNonNull(tenantSubscriptionCommandService, "TenantSubscriptionCommandService cannot be null");
         this.planRepository = Objects.requireNonNull(planRepository, "SubscriptionPlanRepository cannot be null");
+        this.trialTransaction = Objects.requireNonNull(trialTransaction, "TransactionOperations cannot be null");
+    }
+
+    // The event arrives after the IAM sign-up commit: the trial needs a transaction of its own to persist,
+    // and a failure there (e.g. Stripe unavailable) must roll back only the trial, never the registered tenant
+    private static TransactionOperations requiresNewTransaction(PlatformTransactionManager transactionManager) {
+        TransactionTemplate template = new TransactionTemplate(
+                Objects.requireNonNull(transactionManager, "PlatformTransactionManager cannot be null"));
+        template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        return template;
     }
 
     @EventListener
@@ -45,6 +71,16 @@ public class TenantLifecycleIntegrationEventHandler {
         TenantId tenantId = new TenantId(event.tenantId());
         log.info("Processing TenantCreatedIntegrationEvent for new tenant: {} ({})", tenantId.value(), event.name());
 
+        try {
+            trialTransaction.executeWithoutResult(status -> startTrial(tenantId));
+        } catch (DuplicateActiveSubscriptionException e) {
+            log.warn("Trial provision skipped for tenant {}: already has an active subscription", tenantId.value());
+        } catch (Exception e) {
+            log.error("Failed to provision free trial for tenant {}: {}", tenantId.value(), e.getMessage(), e);
+        }
+    }
+
+    private void startTrial(TenantId tenantId) {
         List<SubscriptionPlan> activePlans = planRepository.findAllActive();
         Optional<SubscriptionPlan> defaultPlanOpt = activePlans.stream()
                 .filter(p -> p.tier() == PlanTier.GO)
@@ -57,15 +93,8 @@ public class TenantLifecycleIntegrationEventHandler {
         }
 
         SubscriptionPlan defaultPlan = defaultPlanOpt.get();
-
-        try {
-            tenantSubscriptionCommandService.handleStartTrial(tenantId, defaultPlan.id(), DEFAULT_FREE_TRIAL_DAYS);
-            log.info("Successfully provisioned {}-day trial on plan '{}' for tenant {}",
-                    DEFAULT_FREE_TRIAL_DAYS, defaultPlan.name(), tenantId.value());
-        } catch (DuplicateActiveSubscriptionException e) {
-            log.warn("Trial provision skipped for tenant {}: already has an active subscription", tenantId.value());
-        } catch (Exception e) {
-            log.error("Failed to provision free trial for tenant {}: {}", tenantId.value(), e.getMessage(), e);
-        }
+        tenantSubscriptionCommandService.handleStartTrial(tenantId, defaultPlan.id(), DEFAULT_FREE_TRIAL_DAYS);
+        log.info("Successfully provisioned {}-day trial on plan '{}' for tenant {}",
+                DEFAULT_FREE_TRIAL_DAYS, defaultPlan.name(), tenantId.value());
     }
 }

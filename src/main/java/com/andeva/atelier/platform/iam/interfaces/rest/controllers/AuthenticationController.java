@@ -9,11 +9,13 @@ import com.andeva.atelier.platform.iam.domain.model.commands.AuthenticateUserCom
 import com.andeva.atelier.platform.iam.domain.model.commands.AuthenticateWithGoogleCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.CreateTenantCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.RequestPasswordResetCommand;
+import com.andeva.atelier.platform.iam.domain.model.commands.ResendEmailVerificationCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.ResetPasswordCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.VerifyEmailTokenCommand;
 import com.andeva.atelier.platform.iam.domain.model.queries.GetTenantByIdQuery;
 import com.andeva.atelier.platform.iam.interfaces.rest.resources.requests.CreateTenantResource;
 import com.andeva.atelier.platform.iam.interfaces.rest.resources.requests.ForgotPasswordResource;
+import com.andeva.atelier.platform.iam.interfaces.rest.resources.requests.ResendVerificationResource;
 import com.andeva.atelier.platform.iam.interfaces.rest.resources.requests.GoogleSignInResource;
 import com.andeva.atelier.platform.iam.interfaces.rest.resources.requests.ResetPasswordResource;
 import com.andeva.atelier.platform.iam.interfaces.rest.resources.requests.SignInResource;
@@ -176,6 +178,26 @@ public class AuthenticationController {
         return ResponseEntityAssembler.toResponseEntityFromResult(
                 result,
                 unused -> new MessageResponseResource(resolveMessage("iam.auth.email_verified", "Email successfully verified")),
+                HttpStatus.OK
+        );
+    }
+
+    /**
+     * Issues and emails a fresh verification code to an account still pending verification.
+     */
+    @Operation(summary = "Re-send the email verification code")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "A new code was emailed if the account exists and is pending verification"),
+            @ApiResponse(responseCode = "400", description = "Invalid email format")
+    })
+    @PostMapping("/resend-verification")
+    public ResponseEntity<?> resendVerification(@Valid @RequestBody ResendVerificationResource resource) {
+        ResendEmailVerificationCommand command = new ResendEmailVerificationCommand(EmailAddress.of(resource.email()));
+        Result<Void, ApplicationError> result = userCommandService.handle(command);
+
+        return ResponseEntityAssembler.toResponseEntityFromResult(
+                result,
+                unused -> new MessageResponseResource(resolveMessage("iam.auth.verification_resent", "If the account is pending verification, a new code has been emailed")),
                 HttpStatus.OK
         );
     }

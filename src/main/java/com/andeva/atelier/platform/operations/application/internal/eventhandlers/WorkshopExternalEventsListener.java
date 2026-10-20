@@ -13,6 +13,8 @@ import com.andeva.atelier.platform.shared.domain.model.valueobjects.VehicleId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -29,7 +31,9 @@ public class WorkshopExternalEventsListener {
         this.workOrderCommandService = Objects.requireNonNull(workOrderCommandService);
     }
 
+    // Delivered after the publisher's commit: a transaction of its own is required for these writes to persist
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(AppointmentArrivedIntegrationEvent event) {
         log.info("Received AppointmentArrivedIntegrationEvent for appointment: {}", event.appointmentId());
         CreateWorkOrderCommand command = new CreateWorkOrderCommand(

@@ -12,6 +12,7 @@ import com.andeva.atelier.platform.iam.domain.model.commands.AuthenticateUserCom
 import com.andeva.atelier.platform.iam.domain.model.commands.AuthenticateWithGoogleCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.RegisterUserCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.RequestPasswordResetCommand;
+import com.andeva.atelier.platform.iam.domain.model.commands.ResendEmailVerificationCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.ResetPasswordCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.VerifyEmailTokenCommand;
 import com.andeva.atelier.platform.iam.domain.model.entities.Permission;
@@ -44,6 +45,8 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class UserCommandServiceImpl implements UserCommandService {
+
+    private static final String EMAIL_NOT_VERIFIED = "EMAIL_NOT_VERIFIED";
 
     private final UserRepository userRepository;
     private final TenantMembershipRepository membershipRepository;
@@ -100,6 +103,12 @@ public class UserCommandServiceImpl implements UserCommandService {
             return Result.failure(ApplicationError.unauthorized("Invalid email or password credentials"));
         }
 
+        // Dedicated code so clients can route the user to the verification code step
+        if (user.status() == UserStatus.PENDING_VERIFICATION) {
+            return Result.failure(new ApplicationError(EMAIL_NOT_VERIFIED,
+                    "The account email is not verified yet: enter the code sent by email or request a new one", List.of()));
+        }
+
         if (user.status() != UserStatus.ACTIVE) {
             return Result.failure(ApplicationError.forbidden(
                     "User account is not active. Current status: " + user.status()));
@@ -130,6 +139,12 @@ public class UserCommandServiceImpl implements UserCommandService {
             return userRepository.save(newUser);
         });
 
+        // Google already proved ownership of the address: a local account still pending verification is activated
+        if (user.status() == UserStatus.PENDING_VERIFICATION && payload.emailVerified()) {
+            user.verifyEmail();
+            user = userRepository.save(user);
+        }
+
         if (user.status() != UserStatus.ACTIVE) {
             return Result.failure(ApplicationError.forbidden(
                     "User account is not active. Current status: " + user.status()));
@@ -158,6 +173,21 @@ public class UserCommandServiceImpl implements UserCommandService {
 
         user.verifyEmail();
         userRepository.save(user);
+
+        return Result.success(null);
+    }
+
+    @Override
+    public Result<Void, ApplicationError> handle(ResendEmailVerificationCommand command) {
+        Objects.requireNonNull(command, "ResendEmailVerificationCommand cannot be null");
+
+        // Same answer whether or not the account exists, so the endpoint cannot be used to probe emails
+        userRepository.findByEmail(command.email())
+                .filter(user -> user.status() == UserStatus.PENDING_VERIFICATION)
+                .ifPresent(user -> {
+                    user.issueVerificationToken(TokenType.EMAIL_VERIFICATION, Duration.ofMinutes(15));
+                    userRepository.save(user);
+                });
 
         return Result.success(null);
     }
