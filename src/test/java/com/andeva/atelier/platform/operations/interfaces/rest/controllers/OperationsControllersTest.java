@@ -158,7 +158,7 @@ class OperationsControllersTest {
             when(workOrderCommandService.handle(any(HoldWorkOrderTaskCommand.class)))
                     .thenReturn(Result.success(sampleOrder));
             HoldTaskResource holdReq = new HoldTaskResource("Falta repuesto", UUID.randomUUID());
-            ResponseEntity<?> holdRes = tasksController.holdTask(sampleTask.getId().value(), holdReq);
+            ResponseEntity<?> holdRes = tasksController.holdTask(sampleTask.getId().value(), holdReq, null);
             assertThat(holdRes.getStatusCode()).isEqualTo(HttpStatus.OK);
 
             when(workOrderCommandService.handle(any(ResumeWorkOrderTaskCommand.class)))

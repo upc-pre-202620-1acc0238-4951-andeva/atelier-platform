@@ -38,6 +38,7 @@ public final class WorkOrderTaskPersistenceAssembler {
                 entity.getStartedAt(),
                 entity.getCompletedAt()
         );
+        task.restoreSuspensionRequest(entity.getSuspensionRequestReason(), entity.getSuspensionRequestedBy(), entity.getSuspensionRequestedAt());
 
         if (entity.getProducts() != null) {
             entity.getProducts().forEach(p -> task.addProduct(WorkOrderTaskProductPersistenceAssembler.toDomain(p)));
@@ -66,6 +67,9 @@ public final class WorkOrderTaskPersistenceAssembler {
         entity.setHoldReason(domain.getHoldReason().orElse(null));
         entity.setMissingItemDescription(domain.getMissingItemDescription().orElse(null));
         entity.setPausedAt(domain.getPausedAt().orElse(null));
+        entity.setSuspensionRequestReason(domain.getSuspensionRequestReason().orElse(null));
+        entity.setSuspensionRequestedBy(domain.getSuspensionRequestedBy().orElse(null));
+        entity.setSuspensionRequestedAt(domain.getSuspensionRequestedAt().orElse(null));
         entity.setTotalPausedSeconds(domain.getTotalPausedSeconds());
         entity.setStartedAt(domain.getStartedAt().orElse(null));
         entity.setCompletedAt(domain.getCompletedAt().orElse(null));
@@ -93,6 +97,9 @@ public final class WorkOrderTaskPersistenceAssembler {
         entity.setHoldReason(domain.getHoldReason().orElse(null));
         entity.setMissingItemDescription(domain.getMissingItemDescription().orElse(null));
         entity.setPausedAt(domain.getPausedAt().orElse(null));
+        entity.setSuspensionRequestReason(domain.getSuspensionRequestReason().orElse(null));
+        entity.setSuspensionRequestedBy(domain.getSuspensionRequestedBy().orElse(null));
+        entity.setSuspensionRequestedAt(domain.getSuspensionRequestedAt().orElse(null));
         entity.setTotalPausedSeconds(domain.getTotalPausedSeconds());
         entity.setStartedAt(domain.getStartedAt().orElse(null));
         entity.setCompletedAt(domain.getCompletedAt().orElse(null));

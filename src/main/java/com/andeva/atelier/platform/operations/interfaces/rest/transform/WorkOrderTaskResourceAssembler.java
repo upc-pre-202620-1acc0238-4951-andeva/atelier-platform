@@ -67,6 +67,8 @@ public final class WorkOrderTaskResourceAssembler {
                 task.getTotalPausedSeconds(),
                 task.getStartedAt().orElse(null),
                 task.getCompletedAt().orElse(null),
+                task.getSuspensionRequestReason().orElse(null),
+                task.getSuspensionRequestedAt().orElse(null),
                 productResources,
                 imageResources
         );

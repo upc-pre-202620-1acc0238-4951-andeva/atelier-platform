@@ -11,6 +11,7 @@ import com.andeva.atelier.platform.operations.domain.model.aggregates.WorkOrder;
 import com.andeva.atelier.platform.operations.domain.model.commands.*;
 import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTask;
 import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTaskProduct;
+import com.andeva.atelier.platform.operations.domain.model.enums.HoldReason;
 import com.andeva.atelier.platform.operations.domain.model.ids.WorkOrderTaskId;
 import com.andeva.atelier.platform.operations.domain.model.ids.WorkOrderTaskProductId;
 import com.andeva.atelier.platform.operations.domain.model.queries.GetWorkOrderTaskByIdQuery;
@@ -130,20 +131,49 @@ public class TasksController {
         return findTaskAndBuildResponse(result.getOrThrow(), taskId);
     }
 
+    @PostMapping("/{taskId}/pause")
+    @PreAuthorize("hasAuthority('operations:tasks:track_time')")
+    @Operation(summary = "Pause the labor clock for a break or the end of the shift (resume with /start)")
+    public ResponseEntity<?> pauseTask(
+            @PathVariable UUID taskId,
+            @Valid @RequestBody PauseTaskResource resource
+    ) {
+        PauseWorkOrderTaskCommand command = new PauseWorkOrderTaskCommand(new WorkOrderTaskId(taskId), HoldReason.valueOf(resource.reason()));
+        return taskResponse(workOrderCommandService.handle(command), taskId);
+    }
+
     @PostMapping("/{taskId}/hold")
     @PreAuthorize("hasAuthority('operations:tasks:hold_request')")
-    @Operation(summary = "Put task on hold due to missing parts or technical inspection")
+    @Operation(summary = "Request suspension of the task for a defective or missing part (awaits administrative approval)")
     public ResponseEntity<?> holdTask(
             @PathVariable UUID taskId,
-            @Valid @RequestBody HoldTaskResource resource
+            @Valid @RequestBody HoldTaskResource resource,
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        HoldWorkOrderTaskCommand command = HoldTaskCommandFromResourceAssembler.toCommandFromResource(taskId, resource);
-        Result<WorkOrder, ApplicationError> result = workOrderCommandService.handle(command);
+        HoldWorkOrderTaskCommand base = HoldTaskCommandFromResourceAssembler.toCommandFromResource(taskId, resource);
+        HoldWorkOrderTaskCommand command = new HoldWorkOrderTaskCommand(base.taskId(), base.missingItemDescription(),
+                base.inventoryItemId(), userDetails != null ? userDetails.getUserId() : null);
+        return taskResponse(workOrderCommandService.handle(command), taskId);
+    }
 
+    @PostMapping("/{taskId}/hold/approve")
+    @PreAuthorize("hasAuthority('operations:tasks:hold_validate')")
+    @Operation(summary = "Approve the suspension request: the task goes ON_HOLD until the part arrives")
+    public ResponseEntity<?> approveHold(@PathVariable UUID taskId) {
+        return taskResponse(workOrderCommandService.handle(new ApproveTaskSuspensionCommand(new WorkOrderTaskId(taskId))), taskId);
+    }
+
+    @PostMapping("/{taskId}/hold/reject")
+    @PreAuthorize("hasAuthority('operations:tasks:hold_validate')")
+    @Operation(summary = "Dismiss the suspension request: the task stays IN_PROGRESS")
+    public ResponseEntity<?> rejectHold(@PathVariable UUID taskId) {
+        return taskResponse(workOrderCommandService.handle(new RejectTaskSuspensionCommand(new WorkOrderTaskId(taskId))), taskId);
+    }
+
+    private ResponseEntity<?> taskResponse(Result<WorkOrder, ApplicationError> result, UUID taskId) {
         if (result.isFailure()) {
             return ErrorResponseAssembler.toErrorResponseFromApplicationError(result.getError());
         }
-
         return findTaskAndBuildResponse(result.getOrThrow(), taskId);
     }
 

@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * @author Joel Huamani Estefanero
@@ -55,5 +56,13 @@ public class TenancyGeofenceAclServiceImpl implements TenancyGeofenceAclService 
             }
         }
         return true;
+    }
+
+    @Override
+    public Optional<TenantMembershipId> resolveActiveMembership(TenantId tenantId, UUID userId) {
+        if (tenantId == null || userId == null || this.tenancyContextFacade == null) {
+            return Optional.empty();
+        }
+        return this.tenancyContextFacade.fetchActiveMembershipId(userId, tenantId.value()).map(TenantMembershipId::of);
     }
 }

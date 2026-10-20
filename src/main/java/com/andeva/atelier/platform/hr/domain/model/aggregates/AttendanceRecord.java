@@ -4,6 +4,7 @@ import com.andeva.atelier.platform.hr.domain.exceptions.AttendanceNotJustifiable
 import com.andeva.atelier.platform.hr.domain.exceptions.GeofenceViolationException;
 import com.andeva.atelier.platform.hr.domain.exceptions.InvalidAttendanceClockOutException;
 import com.andeva.atelier.platform.hr.domain.model.enums.AttendanceStatus;
+import com.andeva.atelier.platform.hr.domain.model.enums.JustificationStatus;
 import com.andeva.atelier.platform.hr.domain.model.events.*;
 import com.andeva.atelier.platform.hr.domain.model.ids.AttendanceRecordId;
 import com.andeva.atelier.platform.hr.domain.model.ids.WorkShiftId;
@@ -36,6 +37,9 @@ public class AttendanceRecord extends AbstractDomainAggregateRoot<AttendanceReco
     private final GeoCoordinates coordinates;
     private final HaversineDistance distanceToBranch;
     private AttendanceJustification justification;
+    private JustificationStatus justificationStatus;
+    private TenantMembershipId justificationReviewedBy;
+    private Instant justificationReviewedAt;
 
     public AttendanceRecord(
             AttendanceRecordId id,
@@ -130,16 +134,92 @@ public class AttendanceRecord extends AbstractDomainAggregateRoot<AttendanceReco
         ));
     }
 
+    /**
+     * Administrative excuse issued directly (no prior submission by the employee).
+     */
     public void justify(String reason, TenantMembershipId justifiedBy) {
         if (this.status == AttendanceStatus.ON_TIME) {
             throw new AttendanceNotJustifiableException("No es posible justificar una asistencia que fue puntual");
         }
         this.justification = AttendanceJustification.of(reason, justifiedBy, Instant.now());
         this.status = AttendanceStatus.EXCUSED;
+        this.justificationStatus = JustificationStatus.APPROVED;
+        this.justificationReviewedBy = justifiedBy;
+        this.justificationReviewedAt = Instant.now();
 
         registerEvent(AttendanceJustifiedEvent.now(
                 this.id, this.tenantId, this.membershipId, justifiedBy, reason
         ));
+    }
+
+    /**
+     * The employee submits the reason of a late or missed attendance for administrative review.
+     */
+    public void submitJustification(String reason, TenantMembershipId submittedBy) {
+        if (!this.membershipId.equals(submittedBy)) {
+            throw new AttendanceNotJustifiableException("Solo el colaborador de la marcación puede enviar su descargo");
+        }
+        if (this.status == AttendanceStatus.ON_TIME) {
+            throw new AttendanceNotJustifiableException("No es posible justificar una asistencia que fue puntual");
+        }
+        if (this.justificationStatus == JustificationStatus.APPROVED) {
+            throw new AttendanceNotJustifiableException("La marcación ya fue justificada");
+        }
+        this.justification = AttendanceJustification.of(reason, submittedBy, Instant.now());
+        this.justificationStatus = JustificationStatus.PENDING;
+        this.justificationReviewedBy = null;
+        this.justificationReviewedAt = null;
+    }
+
+    public void approveJustification(TenantMembershipId reviewer) {
+        requirePendingJustification();
+        this.status = AttendanceStatus.EXCUSED;
+        closeReview(JustificationStatus.APPROVED, reviewer);
+        registerEvent(AttendanceJustifiedEvent.now(
+                this.id, this.tenantId, this.membershipId, reviewer, this.justification.reason()
+        ));
+    }
+
+    /**
+     * The administration dismisses the justification: the record keeps its late or absent status.
+     */
+    public void rejectJustification(TenantMembershipId reviewer) {
+        requirePendingJustification();
+        closeReview(JustificationStatus.REJECTED, reviewer);
+    }
+
+    /**
+     * Rehydrates the review state (persistence only).
+     */
+    public void restoreJustificationReview(JustificationStatus status, TenantMembershipId reviewedBy, Instant reviewedAt) {
+        this.justificationStatus = status;
+        this.justificationReviewedBy = reviewedBy;
+        this.justificationReviewedAt = reviewedAt;
+    }
+
+    private void requirePendingJustification() {
+        if (this.justificationStatus != JustificationStatus.PENDING) {
+            throw new AttendanceNotJustifiableException("La marcación no tiene un descargo pendiente de revisión");
+        }
+    }
+
+    private void closeReview(JustificationStatus verdict, TenantMembershipId reviewer) {
+        this.justificationStatus = verdict;
+        this.justificationReviewedBy = reviewer;
+        this.justificationReviewedAt = Instant.now();
+        registerEvent(AttendanceJustificationReviewedEvent.now(this.id, this.tenantId, this.membershipId, reviewer, verdict));
+    }
+
+    public Optional<JustificationStatus> getJustificationStatus() {
+        return Optional.ofNullable(justificationStatus);
+    }
+
+    public Optional<TenantMembershipId> getJustificationReviewedBy() {
+        return Optional.ofNullable(justificationReviewedBy);
+    }
+
+    public Optional<Instant> getJustificationReviewedAt() {
+        return Optional.ofNullable(justificationReviewedAt);
     }
 
     public long totalWorkedMinutes() {

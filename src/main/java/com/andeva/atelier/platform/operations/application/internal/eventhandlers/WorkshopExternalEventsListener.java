@@ -3,7 +3,9 @@ package com.andeva.atelier.platform.operations.application.internal.eventhandler
 import com.andeva.atelier.platform.crm.domain.model.ids.AppointmentId;
 import com.andeva.atelier.platform.crm.interfaces.events.AppointmentArrivedIntegrationEvent;
 import com.andeva.atelier.platform.operations.application.commandservices.WorkOrderCommandService;
+import com.andeva.atelier.platform.hr.interfaces.events.MechanicClockedOutIntegrationEvent;
 import com.andeva.atelier.platform.operations.domain.model.commands.CreateWorkOrderCommand;
+import com.andeva.atelier.platform.operations.domain.model.commands.PauseTasksOnClockOutCommand;
 import com.andeva.atelier.platform.operations.domain.model.valueobjects.DiagnosticSummary;
 import com.andeva.atelier.platform.operations.domain.model.valueobjects.Mileage;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.BranchId;
@@ -12,6 +14,7 @@ import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.VehicleId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,5 +49,23 @@ public class WorkshopExternalEventsListener {
                 DiagnosticSummary.of("Ingreso por cita programada: " + event.appointmentId())
         );
         workOrderCommandService.handle(command);
+    }
+
+    /**
+     * A mechanic who clocks out stops the labor clock of every running task (US27, end of shift).
+     * Runs in its own transaction so a failure here never undoes the clock-out.
+     */
+    @EventListener
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void on(MechanicClockedOutIntegrationEvent event) {
+        try {
+            int paused = workOrderCommandService.handle(new PauseTasksOnClockOutCommand(
+                    TenantId.of(event.tenantId()), event.membershipId()));
+            if (paused > 0) {
+                log.info("Paused {} running task(s) of mechanic {} after clock-out", paused, event.membershipId());
+            }
+        } catch (RuntimeException e) {
+            log.error("Could not pause the tasks of mechanic {} after clock-out: {}", event.membershipId(), e.getMessage(), e);
+        }
     }
 }

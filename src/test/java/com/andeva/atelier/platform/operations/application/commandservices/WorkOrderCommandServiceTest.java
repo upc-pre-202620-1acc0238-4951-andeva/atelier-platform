@@ -214,9 +214,14 @@ class WorkOrderCommandServiceTest {
         assertThat(startResult.isSuccess()).isTrue();
         assertThat(task.getStatus()).isEqualTo(WorkOrderTaskStatus.IN_PROGRESS);
 
-        // 2. Hold task
+        // 2. Request suspension (task keeps running) and approve it (task goes on hold)
         Result<WorkOrder, ApplicationError> holdResult = commandService.handle(new HoldWorkOrderTaskCommand(task.getId(), "Falta terminal de dirección", UUID.randomUUID()));
         assertThat(holdResult.isSuccess()).isTrue();
+        assertThat(task.getStatus()).isEqualTo(WorkOrderTaskStatus.IN_PROGRESS);
+        assertThat(task.hasPendingSuspensionRequest()).isTrue();
+
+        Result<WorkOrder, ApplicationError> approveResult = commandService.handle(new ApproveTaskSuspensionCommand(task.getId()));
+        assertThat(approveResult.isSuccess()).isTrue();
         assertThat(task.getStatus()).isEqualTo(WorkOrderTaskStatus.ON_HOLD);
 
         // 3. Resume task

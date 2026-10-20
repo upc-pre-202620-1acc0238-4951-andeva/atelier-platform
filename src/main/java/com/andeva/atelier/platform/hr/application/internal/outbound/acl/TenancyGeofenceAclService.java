@@ -6,10 +6,16 @@ import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantMember
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 
 import java.util.Optional;
+import java.util.UUID;
 
 public interface TenancyGeofenceAclService {
     Optional<BranchGeofenceDto> getBranchGeofence(TenantId tenantId, BranchId branchId);
     boolean isValidActiveMembership(TenantId tenantId, TenantMembershipId membershipId);
+
+    /**
+     * Active staff membership of a user inside the tenant (attendance and payroll are kept per membership).
+     */
+    Optional<TenantMembershipId> resolveActiveMembership(TenantId tenantId, UUID userId);
 
     record BranchGeofenceDto(GeoCoordinates centroid, double allowedRadiusMeters) {}
 }

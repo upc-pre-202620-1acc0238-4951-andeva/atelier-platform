@@ -27,6 +27,17 @@ public interface WorkOrderCommandService {
 
     Result<WorkOrder, ApplicationError> handle(ResumeWorkOrderTaskCommand command);
 
+    Result<WorkOrder, ApplicationError> handle(PauseWorkOrderTaskCommand command);
+
+    /**
+     * @return number of tasks paused
+     */
+    int handle(PauseTasksOnClockOutCommand command);
+
+    Result<WorkOrder, ApplicationError> handle(ApproveTaskSuspensionCommand command);
+
+    Result<WorkOrder, ApplicationError> handle(RejectTaskSuspensionCommand command);
+
     Result<WorkOrder, ApplicationError> handle(CompleteWorkOrderTaskCommand command);
 
     Result<WorkOrder, ApplicationError> handle(ReopenWorkOrderTaskCommand command);

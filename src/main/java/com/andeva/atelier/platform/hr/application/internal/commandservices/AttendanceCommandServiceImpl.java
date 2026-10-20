@@ -6,6 +6,8 @@ import com.andeva.atelier.platform.hr.domain.exceptions.GeofenceViolationExcepti
 import com.andeva.atelier.platform.hr.domain.model.aggregates.AttendanceRecord;
 import com.andeva.atelier.platform.hr.domain.model.aggregates.WorkShift;
 import com.andeva.atelier.platform.hr.domain.model.commands.JustifyAttendanceCommand;
+import com.andeva.atelier.platform.hr.domain.model.commands.ReviewAttendanceJustificationCommand;
+import com.andeva.atelier.platform.hr.domain.model.commands.SubmitAttendanceJustificationCommand;
 import com.andeva.atelier.platform.hr.domain.model.commands.RecordClockInCommand;
 import com.andeva.atelier.platform.hr.domain.model.commands.RecordClockOutCommand;
 import com.andeva.atelier.platform.hr.domain.repositories.AttendanceRecordRepository;
@@ -20,6 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.ZoneId;
 import java.util.Objects;
 import java.util.Optional;
+import com.andeva.atelier.platform.hr.domain.exceptions.AttendanceNotJustifiableException;
+import com.andeva.atelier.platform.hr.domain.model.ids.AttendanceRecordId;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 
 @Service
 @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
@@ -129,6 +134,38 @@ public class AttendanceCommandServiceImpl implements AttendanceCommandService {
             return Result.success(saved);
         } catch (Exception ex) {
             return Result.failure(ApplicationError.badRequest(ex.getMessage()));
+        }
+    }
+
+    @Override
+    public Result<AttendanceRecord, ApplicationError> handle(SubmitAttendanceJustificationCommand command) {
+        return changeRecord(command.tenantId(), command.attendanceRecordId(),
+                record -> record.submitJustification(command.reason(), command.employeeMembershipId()));
+    }
+
+    @Override
+    public Result<AttendanceRecord, ApplicationError> handle(ReviewAttendanceJustificationCommand command) {
+        return changeRecord(command.tenantId(), command.attendanceRecordId(), record -> {
+            if (command.approved()) {
+                record.approveJustification(command.reviewerMembershipId());
+            } else {
+                record.rejectJustification(command.reviewerMembershipId());
+            }
+        });
+    }
+
+    private Result<AttendanceRecord, ApplicationError> changeRecord(TenantId tenantId, AttendanceRecordId recordId,
+                                                                    java.util.function.Consumer<AttendanceRecord> change) {
+        Optional<AttendanceRecord> recordOpt = attendanceRepository.findById(recordId);
+        if (recordOpt.isEmpty() || !recordOpt.get().getTenantId().equals(tenantId)) {
+            return Result.failure(ApplicationError.notFound("No se encontró la marcación de asistencia"));
+        }
+        AttendanceRecord record = recordOpt.get();
+        try {
+            change.accept(record);
+            return Result.success(attendanceRepository.save(record));
+        } catch (AttendanceNotJustifiableException ex) {
+            return Result.failure(ApplicationError.unprocessableEntity(ex.getMessage()));
         }
     }
 }

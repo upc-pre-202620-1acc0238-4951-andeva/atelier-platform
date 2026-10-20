@@ -2,6 +2,8 @@ package com.andeva.atelier.platform.hr.application.commandservices;
 
 import com.andeva.atelier.platform.hr.domain.model.aggregates.AttendanceRecord;
 import com.andeva.atelier.platform.hr.domain.model.commands.JustifyAttendanceCommand;
+import com.andeva.atelier.platform.hr.domain.model.commands.ReviewAttendanceJustificationCommand;
+import com.andeva.atelier.platform.hr.domain.model.commands.SubmitAttendanceJustificationCommand;
 import com.andeva.atelier.platform.hr.domain.model.commands.RecordClockInCommand;
 import com.andeva.atelier.platform.hr.domain.model.commands.RecordClockOutCommand;
 import com.andeva.atelier.platform.shared.application.result.ApplicationError;
@@ -11,4 +13,8 @@ public interface AttendanceCommandService {
     Result<AttendanceRecord, ApplicationError> handle(RecordClockInCommand command);
     Result<AttendanceRecord, ApplicationError> handle(RecordClockOutCommand command);
     Result<AttendanceRecord, ApplicationError> handle(JustifyAttendanceCommand command);
+
+    Result<AttendanceRecord, ApplicationError> handle(SubmitAttendanceJustificationCommand command);
+
+    Result<AttendanceRecord, ApplicationError> handle(ReviewAttendanceJustificationCommand command);
 }
