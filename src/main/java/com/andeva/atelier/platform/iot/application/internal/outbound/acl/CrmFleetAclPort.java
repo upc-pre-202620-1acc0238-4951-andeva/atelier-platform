@@ -60,6 +60,18 @@ public interface CrmFleetAclPort {
     /**
      * Vehicle technical and ownership metadata for reporting.
      */
+    /**
+     * Vehicles currently owned by a customer (a corporate fleet or a private owner).
+     */
+    java.util.List<FleetVehicleDto> listCustomerFleet(java.util.UUID customerId);
+
+    /**
+     * Display name of a customer, only when it belongs to the tenant.
+     */
+    java.util.Optional<String> getCustomerName(java.util.UUID tenantId, java.util.UUID customerId);
+
+    record FleetVehicleDto(VehicleId vehicleId, String licensePlate, String brand, String model) {}
+
     record VehicleMetadataDto(
             String licensePlate,
             String vin,

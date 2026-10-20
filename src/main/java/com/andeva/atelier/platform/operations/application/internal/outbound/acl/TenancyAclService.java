@@ -15,4 +15,9 @@ public interface TenancyAclService {
      * Active staff membership of a user in the tenant (tasks are assigned to memberships, not users).
      */
     Optional<UUID> resolveActiveMembershipId(UUID userId, UUID tenantId);
+
+    /**
+     * Fiscal identity of the workshop (trade name, legal name, RUC).
+     */
+    Optional<WorkshopProfileDto> fetchWorkshopProfile(UUID tenantId);
 }

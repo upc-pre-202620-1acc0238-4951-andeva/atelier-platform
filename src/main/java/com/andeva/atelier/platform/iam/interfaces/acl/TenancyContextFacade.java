@@ -42,6 +42,11 @@ public interface TenancyContextFacade {
     Optional<UserAclDto> fetchUserById(UUID userId);
 
     /**
+     * Platform account registered with the email, if any (e.g. a driver app user).
+     */
+    Optional<UserAclDto> fetchUserByEmail(String email);
+
+    /**
      * Resolves the user account holding the active workshop owner role in a tenant.
      *
      * @param tenantId the tenant UUID

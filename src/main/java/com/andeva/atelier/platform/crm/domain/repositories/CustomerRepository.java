@@ -22,6 +22,8 @@ public interface CustomerRepository {
 
     Optional<Customer> findByTenantIdAndTaxId(TenantId tenantId, String taxId);
 
+    Optional<Customer> findByTenantIdAndEmail(TenantId tenantId, String email);
+
     List<Customer> search(TenantId tenantId, CustomerType type, String searchTerm, CustomerStatus status);
 
     boolean existsByTenantIdAndTaxId(TenantId tenantId, String taxId);

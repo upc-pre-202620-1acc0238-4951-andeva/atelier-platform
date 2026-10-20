@@ -8,6 +8,7 @@ import com.andeva.atelier.platform.iot.domain.exceptions.VehicleHealthReportNotF
 import com.andeva.atelier.platform.iot.domain.model.commands.GenerateVehicleHealthReportCommand;
 import com.andeva.atelier.platform.iot.domain.model.aggregates.VehicleHealthReport;
 import com.andeva.atelier.platform.iot.domain.model.ids.HealthReportId;
+import com.andeva.atelier.platform.iot.domain.model.queries.ExportFleetHealthReportPdfQuery;
 import com.andeva.atelier.platform.iot.domain.model.queries.ExportVehicleHealthReportPdfQuery;
 import com.andeva.atelier.platform.iot.domain.model.queries.GetLatestVehicleHealthReportQuery;
 import com.andeva.atelier.platform.iot.domain.model.queries.GetVehicleHealthReportByIdQuery;
@@ -199,6 +200,26 @@ public class VehicleHealthReportsController {
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"vehicle-health-report-" + reportId + ".pdf\"")
+                .body(pdfBytes);
+    }
+
+    @Operation(summary = "Download the consolidated health report of a customer's fleet, critical units first")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Fleet PDF generated"),
+            @ApiResponse(responseCode = "404", description = "Customer not found in the workshop")
+    })
+    @GetMapping("/fleet/pdf")
+    @PreAuthorize("hasAuthority('iot:health_reports:read')")
+    public ResponseEntity<byte[]> downloadFleetReportPdf(
+            @RequestParam UUID customerId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        TenantId tenantId = resolveTenantId(userDetails);
+        byte[] pdfBytes = reportQueryService.handle(new ExportFleetHealthReportPdfQuery(tenantId, customerId));
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"fleet-health-report-" + customerId + ".pdf\"")
                 .body(pdfBytes);
     }
 

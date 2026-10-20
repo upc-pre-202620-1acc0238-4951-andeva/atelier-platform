@@ -3,6 +3,7 @@ package com.andeva.atelier.platform.operations.infrastructure.external.acl.iam;
 import com.andeva.atelier.platform.iam.interfaces.acl.TenancyContextFacade;
 import com.andeva.atelier.platform.operations.application.internal.outbound.acl.MechanicStaffDto;
 import com.andeva.atelier.platform.operations.application.internal.outbound.acl.TenancyAclService;
+import com.andeva.atelier.platform.operations.application.internal.outbound.acl.WorkshopProfileDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -53,6 +54,15 @@ public class TenancyAclAdapter implements TenancyAclService {
             return tenancyContextFacade.isActiveMembershipOfTenant(mechanicMembershipId, tenantId);
         }
         return tenancyContextFacade.fetchUserById(mechanicMembershipId).isPresent();
+    }
+
+    @Override
+    public Optional<WorkshopProfileDto> fetchWorkshopProfile(UUID tenantId) {
+        if (tenancyContextFacade == null || tenantId == null) {
+            return Optional.empty();
+        }
+        return tenancyContextFacade.fetchTenantById(tenantId)
+                .map(t -> new WorkshopProfileDto(t.name(), t.legalName(), t.taxId()));
     }
 
     @Override

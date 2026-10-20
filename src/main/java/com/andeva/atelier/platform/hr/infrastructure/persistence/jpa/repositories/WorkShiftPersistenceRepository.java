@@ -12,5 +12,7 @@ import java.util.UUID;
 public interface WorkShiftPersistenceRepository extends JpaRepository<WorkShiftPersistenceEntity, UUID> {
     Optional<WorkShiftPersistenceEntity> findByTenantIdAndName(UUID tenantId, String name);
     List<WorkShiftPersistenceEntity> findAllByTenantId(UUID tenantId);
+
+    List<WorkShiftPersistenceEntity> findAllByIsActiveTrueAndStartTimeGreaterThanEqualAndStartTimeLessThan(java.time.LocalTime from, java.time.LocalTime to);
     boolean existsByTenantIdAndName(UUID tenantId, String name);
 }

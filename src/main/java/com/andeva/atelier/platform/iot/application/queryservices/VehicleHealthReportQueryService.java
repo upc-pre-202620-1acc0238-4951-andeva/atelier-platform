@@ -1,6 +1,7 @@
 package com.andeva.atelier.platform.iot.application.queryservices;
 
 import com.andeva.atelier.platform.iot.domain.model.aggregates.VehicleHealthReport;
+import com.andeva.atelier.platform.iot.domain.model.queries.ExportFleetHealthReportPdfQuery;
 import com.andeva.atelier.platform.iot.domain.model.queries.ExportVehicleHealthReportPdfQuery;
 import com.andeva.atelier.platform.iot.domain.model.queries.GetLatestVehicleHealthReportQuery;
 import com.andeva.atelier.platform.iot.domain.model.queries.GetVehicleHealthReportByIdQuery;
@@ -37,4 +38,9 @@ public interface VehicleHealthReportQueryService {
      * @return raw binary PDF byte array
      */
     byte[] handle(ExportVehicleHealthReportPdfQuery query);
+
+    /**
+     * Renders the consolidated fleet PDF of a corporate customer (US43).
+     */
+    byte[] handle(ExportFleetHealthReportPdfQuery query);
 }

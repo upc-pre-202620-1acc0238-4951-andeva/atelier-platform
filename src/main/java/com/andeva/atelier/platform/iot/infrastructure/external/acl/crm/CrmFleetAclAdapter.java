@@ -165,4 +165,24 @@ public class CrmFleetAclAdapter implements CrmFleetAclPort {
     public void registerDriverFcmToken(UUID vehicleId, String token) {
         this.mockDeviceTokens.put(vehicleId, token);
     }
+
+    @Override
+    public java.util.List<FleetVehicleDto> listCustomerFleet(java.util.UUID customerId) {
+        if (customerId == null || customerFleetContextFacade == null) {
+            return java.util.List.of();
+        }
+        return customerFleetContextFacade.fetchVehiclesByCustomerId(customerId).stream()
+                .map(v -> new FleetVehicleDto(VehicleId.of(v.id()), v.plate(), v.brand(), v.model()))
+                .toList();
+    }
+
+    @Override
+    public Optional<String> getCustomerName(java.util.UUID tenantId, java.util.UUID customerId) {
+        if (tenantId == null || customerId == null || customerFleetContextFacade == null) {
+            return Optional.empty();
+        }
+        return customerFleetContextFacade.fetchCustomerById(customerId)
+                .filter(customer -> tenantId.equals(customer.tenantId()))
+                .map(CustomerAclDto::displayName);
+    }
 }

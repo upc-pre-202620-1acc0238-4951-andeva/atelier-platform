@@ -11,6 +11,8 @@ import com.andeva.atelier.platform.iam.domain.model.ids.TenantMembershipId;
 import com.andeva.atelier.platform.iam.domain.model.queries.GetMembershipByIdQuery;
 import com.andeva.atelier.platform.iam.domain.model.queries.GetMembershipByTenantAndUserQuery;
 import com.andeva.atelier.platform.iam.domain.model.queries.GetMembershipsByTenantIdQuery;
+import com.andeva.atelier.platform.iam.domain.model.queries.GetUserByEmailQuery;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.EmailAddress;
 import com.andeva.atelier.platform.iam.domain.model.queries.GetTenantByIdQuery;
 import com.andeva.atelier.platform.iam.domain.model.queries.GetUserByIdQuery;
 import com.andeva.atelier.platform.iam.interfaces.acl.TenancyContextFacade;
@@ -91,6 +93,20 @@ public class TenancyContextFacadeImpl implements TenancyContextFacade {
             return Optional.empty();
         }
         return userQueryService.handle(new GetUserByIdQuery(UserId.of(userId)))
+                .map(user -> new UserAclDto(
+                        user.id().value(),
+                        user.email().value(),
+                        user.profile().getFullName(),
+                        user.status().name()
+                ));
+    }
+
+    @Override
+    public Optional<UserAclDto> fetchUserByEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return Optional.empty();
+        }
+        return userQueryService.handle(new GetUserByEmailQuery(EmailAddress.of(email.trim())))
                 .map(user -> new UserAclDto(
                         user.id().value(),
                         user.email().value(),
