@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -71,8 +72,9 @@ public class VehicleLifecycleIntegrationEventHandler {
         handleWorkOrderFaultResolution(VehicleId.of(event.vehicleId()), event.workOrderId(), event.resolvedDtcCodes(), event.occurredOn());
     }
 
+    // Delivered after the publisher's commit: a transaction of its own is required for these writes to persist
     @EventListener
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void on(com.andeva.atelier.platform.operations.interfaces.events.WorkOrderCompletedIntegrationEvent event) {
         log.info("Handling Operations WorkOrderCompletedIntegrationEvent for vehicleId: {}, workOrderId: {}",
                 event.vehicleId(), event.workOrderId());

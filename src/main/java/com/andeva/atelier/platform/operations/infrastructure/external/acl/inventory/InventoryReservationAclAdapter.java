@@ -86,7 +86,8 @@ public class InventoryReservationAclAdapter implements InventoryReservationAclSe
                     new BigDecimal("50.00"),
                     new BigDecimal("5.00"),
                     "LITROS",
-                    "PEN"
+                    "PEN",
+                    new BigDecimal("45.00")
             ));
         }
         return inventoryContextFacade.getPartSummary(tenantId, inventoryItemId)
@@ -97,7 +98,8 @@ public class InventoryReservationAclAdapter implements InventoryReservationAclSe
                         p.totalStock(),
                         BigDecimal.ZERO,
                         "UNIDADES",
-                        "PEN"
+                        "PEN",
+                        p.basePrice()
                 ));
     }
 }

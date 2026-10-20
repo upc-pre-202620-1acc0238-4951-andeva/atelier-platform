@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionOperations;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -47,7 +48,8 @@ class TenantLifecycleIntegrationEventHandlerTest {
 
     @BeforeEach
     void setUp() {
-        handler = new TenantLifecycleIntegrationEventHandler(tenantSubscriptionCommandService, planRepository);
+        handler = new TenantLifecycleIntegrationEventHandler(
+                tenantSubscriptionCommandService, planRepository, TransactionOperations.withoutTransaction());
     }
 
     @Test
@@ -113,5 +115,47 @@ class TenantLifecycleIntegrationEventHandlerTest {
         handler.on(event);
 
         verify(tenantSubscriptionCommandService).handleStartTrial(new TenantId(tenantUuid), planId, 14);
+    }
+
+    private static SubscriptionPlan plan(PlanTier tier, String priceId) {
+        return new SubscriptionPlan(
+                PlanId.generate(),
+                new StripePriceId(priceId),
+                tier.name(),
+                tier,
+                PlanPricing.of(Money.of(new BigDecimal("139.00"), Currency.PEN), BillingCycle.MONTHLY),
+                TenantQuotaLimits.goPlanPreset(),
+                true
+        );
+    }
+
+    @Test
+    @DisplayName("Should start the trial on the self-service plan chosen at sign-up")
+    void shouldStartTrialOnRequestedPlan() {
+        UUID tenantUuid = UUID.randomUUID();
+        SubscriptionPlan go = plan(PlanTier.GO, "price_go");
+        SubscriptionPlan pro = plan(PlanTier.PRO, "price_pro");
+        when(planRepository.findAllActive()).thenReturn(List.of(go, pro));
+
+        handler.on(new TenantCreatedIntegrationEvent(tenantUuid, "Taller Veloz", "Taller Veloz SAC", "20601234567",
+                Instant.now(), pro.id().value()));
+
+        verify(tenantSubscriptionCommandService).handleStartTrial(new TenantId(tenantUuid), pro.id(), 14);
+    }
+
+    @Test
+    @DisplayName("Should fall back to Go when the chosen plan is Enterprise or unknown")
+    void shouldFallBackToGoForEnterpriseOrUnknownPlan() {
+        UUID tenantUuid = UUID.randomUUID();
+        SubscriptionPlan go = plan(PlanTier.GO, "price_go");
+        SubscriptionPlan enterprise = plan(PlanTier.ENTERPRISE, "price_enterprise_custom");
+        when(planRepository.findAllActive()).thenReturn(List.of(go, enterprise));
+
+        handler.on(new TenantCreatedIntegrationEvent(tenantUuid, "Taller Veloz", "Taller Veloz SAC", "20601234567",
+                Instant.now(), enterprise.id().value()));
+        handler.on(new TenantCreatedIntegrationEvent(tenantUuid, "Taller Veloz", "Taller Veloz SAC", "20601234567",
+                Instant.now(), UUID.randomUUID()));
+
+        verify(tenantSubscriptionCommandService, times(2)).handleStartTrial(new TenantId(tenantUuid), go.id(), 14);
     }
 }

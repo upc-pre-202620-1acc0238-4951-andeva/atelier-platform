@@ -12,5 +12,10 @@ public interface WorkShiftRepository {
     Optional<WorkShift> findById(WorkShiftId id);
     Optional<WorkShift> findByTenantIdAndName(TenantId tenantId, String name);
     List<WorkShift> findAllByTenantId(TenantId tenantId);
+
+    /**
+     * Active shifts of every workshop starting in [from, to) (reminders before the start).
+     */
+    List<WorkShift> findActiveStartingBetween(java.time.LocalTime from, java.time.LocalTime to);
     boolean existsByTenantIdAndName(TenantId tenantId, String name);
 }

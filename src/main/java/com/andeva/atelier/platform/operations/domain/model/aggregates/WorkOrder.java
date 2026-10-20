@@ -4,6 +4,7 @@ import com.andeva.atelier.platform.operations.domain.model.entities.TaskProposal
 import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderImage;
 import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTask;
 import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTaskProduct;
+import com.andeva.atelier.platform.operations.domain.model.enums.HoldReason;
 import com.andeva.atelier.platform.operations.domain.model.enums.ProposalSeverity;
 import com.andeva.atelier.platform.operations.domain.model.enums.WorkOrderStatus;
 import com.andeva.atelier.platform.operations.domain.model.enums.WorkOrderTaskStatus;
@@ -12,6 +13,8 @@ import com.andeva.atelier.platform.operations.domain.model.enums.EvidenceType;
 import com.andeva.atelier.platform.operations.domain.model.events.ProductStockReservationCancelledEvent;
 import com.andeva.atelier.platform.operations.domain.model.events.ProductStockReservationRequestedEvent;
 import com.andeva.atelier.platform.operations.domain.model.events.TaskProposalApprovedEvent;
+import com.andeva.atelier.platform.operations.domain.model.events.TaskSuspensionRequestedEvent;
+import com.andeva.atelier.platform.operations.domain.model.events.WorkOrderTaskPausedEvent;
 import com.andeva.atelier.platform.operations.domain.model.events.TaskProposalRejectedEvent;
 import com.andeva.atelier.platform.operations.domain.model.events.TaskProposalSubmittedEvent;
 import com.andeva.atelier.platform.operations.domain.model.events.WorkBayAssignedEvent;
@@ -173,6 +176,9 @@ public class WorkOrder extends AbstractDomainAggregateRoot<WorkOrder> {
         WorkOrderTask task = WorkOrderTask.create(this.id, serviceId, mechanicId, description, price, estimatedHours);
         this.tasks.add(task);
         recalculateTotalAmount();
+        if (mechanicId != null) {
+            registerDomainEvent(WorkOrderTaskAssignedEvent.of(this.id, task.getId(), mechanicId));
+        }
         return task;
     }
 
@@ -220,6 +226,32 @@ public class WorkOrder extends AbstractDomainAggregateRoot<WorkOrder> {
         WorkOrderTask task = findTask(taskId);
         task.holdForWaitingParts(missingDesc, missingItemId);
         registerDomainEvent(WorkOrderTaskHoldEvent.of(this.id, taskId, task.getMechanicId().orElse(null), missingDesc));
+    }
+
+    public void pauseTask(WorkOrderTaskId taskId, HoldReason reason) {
+        validateMutable("Cannot pause task");
+        WorkOrderTask task = findTask(taskId);
+        task.pause(reason);
+        registerDomainEvent(WorkOrderTaskPausedEvent.of(this.tenantId, this.id, taskId, task.getMechanicId().orElse(null), reason));
+    }
+
+    public void requestTaskSuspension(WorkOrderTaskId taskId, String reason, UUID requestedBy) {
+        validateMutable("Cannot request task suspension");
+        WorkOrderTask task = findTask(taskId);
+        task.requestSuspension(reason, requestedBy);
+        registerDomainEvent(TaskSuspensionRequestedEvent.of(this.tenantId, this.id, taskId, requestedBy, reason.trim()));
+    }
+
+    public void approveTaskSuspension(WorkOrderTaskId taskId) {
+        validateMutable("Cannot approve task suspension");
+        WorkOrderTask task = findTask(taskId);
+        task.approveSuspension();
+        registerDomainEvent(WorkOrderTaskHoldEvent.of(this.id, taskId, task.getMechanicId().orElse(null), task.getMissingItemDescription().orElse(null)));
+    }
+
+    public void rejectTaskSuspension(WorkOrderTaskId taskId) {
+        validateMutable("Cannot reject task suspension");
+        findTask(taskId).rejectSuspension();
     }
 
     public void resumeTask(WorkOrderTaskId taskId) {

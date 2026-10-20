@@ -1,11 +1,17 @@
 package com.andeva.atelier.platform.operations.interfaces.rest.controllers;
 
 import com.andeva.atelier.platform.operations.application.commandservices.WorkOrderCommandService;
+import com.andeva.atelier.platform.iam.infrastructure.security.model.CustomUserDetails;
+import com.andeva.atelier.platform.operations.application.queryservices.AssignedTaskView;
 import com.andeva.atelier.platform.operations.application.queryservices.WorkOrderQueryService;
+import com.andeva.atelier.platform.operations.domain.model.queries.GetTasksAssignedToMechanicQuery;
+import com.andeva.atelier.platform.operations.interfaces.rest.resources.responses.AssignedTaskResource;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import com.andeva.atelier.platform.operations.domain.model.aggregates.WorkOrder;
 import com.andeva.atelier.platform.operations.domain.model.commands.*;
 import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTask;
 import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTaskProduct;
+import com.andeva.atelier.platform.operations.domain.model.enums.HoldReason;
 import com.andeva.atelier.platform.operations.domain.model.ids.WorkOrderTaskId;
 import com.andeva.atelier.platform.operations.domain.model.ids.WorkOrderTaskProductId;
 import com.andeva.atelier.platform.operations.domain.model.queries.GetWorkOrderTaskByIdQuery;
@@ -23,11 +29,13 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.math.BigDecimal;
 import java.net.URI;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -47,6 +55,18 @@ public class TasksController {
     public TasksController(WorkOrderCommandService workOrderCommandService, WorkOrderQueryService workOrderQueryService) {
         this.workOrderCommandService = Objects.requireNonNull(workOrderCommandService, "workOrderCommandService cannot be null");
         this.workOrderQueryService = Objects.requireNonNull(workOrderQueryService, "workOrderQueryService cannot be null");
+    }
+
+    @GetMapping("/my")
+    @PreAuthorize("hasAuthority('operations:tasks:read')")
+    @Operation(summary = "List the open tasks assigned to the authenticated mechanic, in progress first")
+    public ResponseEntity<List<AssignedTaskResource>> getMyTasks(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (userDetails == null || userDetails.getTenantId() == null || userDetails.getUserId() == null) {
+            throw new org.springframework.security.access.AccessDeniedException("Active tenant context is required");
+        }
+        List<AssignedTaskView> tasks = workOrderQueryService.handle(new GetTasksAssignedToMechanicQuery(
+                TenantId.of(userDetails.getTenantId()), userDetails.getUserId()));
+        return ResponseEntity.ok(AssignedTaskResourceAssembler.toResources(tasks));
     }
 
     @GetMapping("/{taskId}")
@@ -111,20 +131,49 @@ public class TasksController {
         return findTaskAndBuildResponse(result.getOrThrow(), taskId);
     }
 
+    @PostMapping("/{taskId}/pause")
+    @PreAuthorize("hasAuthority('operations:tasks:track_time')")
+    @Operation(summary = "Pause the labor clock for a break or the end of the shift (resume with /start)")
+    public ResponseEntity<?> pauseTask(
+            @PathVariable UUID taskId,
+            @Valid @RequestBody PauseTaskResource resource
+    ) {
+        PauseWorkOrderTaskCommand command = new PauseWorkOrderTaskCommand(new WorkOrderTaskId(taskId), HoldReason.valueOf(resource.reason()));
+        return taskResponse(workOrderCommandService.handle(command), taskId);
+    }
+
     @PostMapping("/{taskId}/hold")
     @PreAuthorize("hasAuthority('operations:tasks:hold_request')")
-    @Operation(summary = "Put task on hold due to missing parts or technical inspection")
+    @Operation(summary = "Request suspension of the task for a defective or missing part (awaits administrative approval)")
     public ResponseEntity<?> holdTask(
             @PathVariable UUID taskId,
-            @Valid @RequestBody HoldTaskResource resource
+            @Valid @RequestBody HoldTaskResource resource,
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        HoldWorkOrderTaskCommand command = HoldTaskCommandFromResourceAssembler.toCommandFromResource(taskId, resource);
-        Result<WorkOrder, ApplicationError> result = workOrderCommandService.handle(command);
+        HoldWorkOrderTaskCommand base = HoldTaskCommandFromResourceAssembler.toCommandFromResource(taskId, resource);
+        HoldWorkOrderTaskCommand command = new HoldWorkOrderTaskCommand(base.taskId(), base.missingItemDescription(),
+                base.inventoryItemId(), userDetails != null ? userDetails.getUserId() : null);
+        return taskResponse(workOrderCommandService.handle(command), taskId);
+    }
 
+    @PostMapping("/{taskId}/hold/approve")
+    @PreAuthorize("hasAuthority('operations:tasks:hold_validate')")
+    @Operation(summary = "Approve the suspension request: the task goes ON_HOLD until the part arrives")
+    public ResponseEntity<?> approveHold(@PathVariable UUID taskId) {
+        return taskResponse(workOrderCommandService.handle(new ApproveTaskSuspensionCommand(new WorkOrderTaskId(taskId))), taskId);
+    }
+
+    @PostMapping("/{taskId}/hold/reject")
+    @PreAuthorize("hasAuthority('operations:tasks:hold_validate')")
+    @Operation(summary = "Dismiss the suspension request: the task stays IN_PROGRESS")
+    public ResponseEntity<?> rejectHold(@PathVariable UUID taskId) {
+        return taskResponse(workOrderCommandService.handle(new RejectTaskSuspensionCommand(new WorkOrderTaskId(taskId))), taskId);
+    }
+
+    private ResponseEntity<?> taskResponse(Result<WorkOrder, ApplicationError> result, UUID taskId) {
         if (result.isFailure()) {
             return ErrorResponseAssembler.toErrorResponseFromApplicationError(result.getError());
         }
-
         return findTaskAndBuildResponse(result.getOrThrow(), taskId);
     }
 
@@ -191,15 +240,22 @@ public class TasksController {
             return ErrorResponseAssembler.toErrorResponseFromApplicationError(result.getError());
         }
 
+        // Answer with the stored line: its unit price may have been copied from the catalog
+        var line = result.getOrThrow().getTasks().stream()
+                .filter(t -> t.getId().value().equals(taskId))
+                .flatMap(t -> t.getConsumedProducts().stream())
+                .filter(p -> p.getProductId().equals(resource.productId()))
+                .reduce((first, second) -> second)
+                .orElseThrow();
         TaskProductResource productResource = new TaskProductResource(
-                UUID.randomUUID(),
+                line.getId().value(),
                 taskId,
                 resource.productId(),
                 "Product " + resource.productId(),
-                resource.quantity(),
-                resource.unitPrice(),
-                resource.unitPrice().multiply(resource.quantity()),
-                resource.currency() != null ? resource.currency() : "PEN"
+                line.getQuantity().value(),
+                line.getUnitPrice().amount(),
+                line.getTotalAmount().amount(),
+                line.getUnitPrice().currency().name()
         );
 
         URI location = ucb.path("/api/v1/tasks/{taskId}/products/{productId}")

@@ -8,12 +8,17 @@ import com.andeva.atelier.platform.iam.domain.model.aggregates.Tenant;
 import com.andeva.atelier.platform.iam.domain.model.commands.AuthenticateUserCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.AuthenticateWithGoogleCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.CreateTenantCommand;
+import com.andeva.atelier.platform.iam.domain.model.commands.RefreshAccessTokenCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.RequestPasswordResetCommand;
+import com.andeva.atelier.platform.iam.domain.model.commands.SignOutCommand;
+import com.andeva.atelier.platform.iam.domain.model.commands.ResendEmailVerificationCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.ResetPasswordCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.VerifyEmailTokenCommand;
 import com.andeva.atelier.platform.iam.domain.model.queries.GetTenantByIdQuery;
 import com.andeva.atelier.platform.iam.interfaces.rest.resources.requests.CreateTenantResource;
 import com.andeva.atelier.platform.iam.interfaces.rest.resources.requests.ForgotPasswordResource;
+import com.andeva.atelier.platform.iam.interfaces.rest.resources.requests.RefreshTokenResource;
+import com.andeva.atelier.platform.iam.interfaces.rest.resources.requests.ResendVerificationResource;
 import com.andeva.atelier.platform.iam.interfaces.rest.resources.requests.GoogleSignInResource;
 import com.andeva.atelier.platform.iam.interfaces.rest.resources.requests.ResetPasswordResource;
 import com.andeva.atelier.platform.iam.interfaces.rest.resources.requests.SignInResource;
@@ -181,6 +186,63 @@ public class AuthenticationController {
     }
 
     /**
+     * Exchanges the device's refresh token for a new access token and a rotated refresh token.
+     */
+    @Operation(summary = "Renew the session with the refresh token (the token is rotated)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "New access and refresh tokens issued"),
+            @ApiResponse(responseCode = "401", description = "Refresh token invalid, expired or revoked")
+    })
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refresh(@Valid @RequestBody RefreshTokenResource resource) {
+        Result<AuthenticatedUser, ApplicationError> result = userCommandService.handle(new RefreshAccessTokenCommand(resource.refreshToken()));
+
+        return ResponseEntityAssembler.toResponseEntityFromResult(
+                result,
+                this::toAuthenticatedUserResource,
+                HttpStatus.OK
+        );
+    }
+
+    /**
+     * Revokes the device's refresh token on sign-out.
+     */
+    @Operation(summary = "Sign out the device, revoking its refresh token")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Session closed (also when the token was already invalid)")
+    })
+    @PostMapping("/sign-out")
+    public ResponseEntity<?> signOut(@Valid @RequestBody RefreshTokenResource resource) {
+        Result<Void, ApplicationError> result = userCommandService.handle(new SignOutCommand(resource.refreshToken()));
+
+        return ResponseEntityAssembler.toResponseEntityFromResult(
+                result,
+                unused -> new MessageResponseResource(resolveMessage("iam.auth.signed_out", "Session closed")),
+                HttpStatus.OK
+        );
+    }
+
+    /**
+     * Issues and emails a fresh verification code to an account still pending verification.
+     */
+    @Operation(summary = "Re-send the email verification code")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "A new code was emailed if the account exists and is pending verification"),
+            @ApiResponse(responseCode = "400", description = "Invalid email format")
+    })
+    @PostMapping("/resend-verification")
+    public ResponseEntity<?> resendVerification(@Valid @RequestBody ResendVerificationResource resource) {
+        ResendEmailVerificationCommand command = new ResendEmailVerificationCommand(EmailAddress.of(resource.email()));
+        Result<Void, ApplicationError> result = userCommandService.handle(command);
+
+        return ResponseEntityAssembler.toResponseEntityFromResult(
+                result,
+                unused -> new MessageResponseResource(resolveMessage("iam.auth.verification_resent", "If the account is pending verification, a new code has been emailed")),
+                HttpStatus.OK
+        );
+    }
+
+    /**
      * Dispatches a secure password recovery token link via Resend HTTPS API.
      */
     @Operation(summary = "Request password reset token via email")
@@ -250,7 +312,8 @@ public class AuthenticationController {
                 authUser.token(),
                 "Bearer",
                 tenantSummary,
-                authUser.permissions().stream().sorted().toList()
+                authUser.permissions().stream().sorted().toList(),
+                authUser.refreshToken()
         );
     }
 }

@@ -72,7 +72,10 @@ public final class AttendanceResourceAssembler {
                 domain.getDistanceToBranch().meters(),
                 reason,
                 justifiedBy,
-                justifiedAt
+                justifiedAt,
+                domain.getJustificationStatus().map(Enum::name).orElse(null),
+                domain.getJustificationReviewedBy().map(TenantMembershipId::value).orElse(null),
+                domain.getJustificationReviewedAt().orElse(null)
         );
     }
 

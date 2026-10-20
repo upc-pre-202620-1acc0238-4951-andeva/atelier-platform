@@ -21,6 +21,8 @@ public record WorkOrderTaskResource(
         Long totalPausedSeconds,
         Instant startedAt,
         Instant completedAt,
+        String pendingSuspensionReason,
+        Instant pendingSuspensionRequestedAt,
         List<TaskProductResource> products,
         List<WorkOrderTaskImageResource> evidenceImages
 ) {}

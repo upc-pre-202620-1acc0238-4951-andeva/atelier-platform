@@ -2,6 +2,7 @@ package com.andeva.atelier.platform.hr.infrastructure.persistence.jpa.entities;
 
 import com.andeva.atelier.platform.hr.domain.model.enums.AttendanceStatus;
 import com.andeva.atelier.platform.hr.infrastructure.persistence.jpa.converters.AttendanceStatusAttributeConverter;
+import com.andeva.atelier.platform.hr.domain.model.enums.JustificationStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -64,6 +65,16 @@ public class AttendanceRecordPersistenceEntity extends HrAuditableAbstractPersis
 
     @Column(name = "justified_at")
     private Instant justifiedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "justification_status", length = 20)
+    private JustificationStatus justificationStatus;
+
+    @Column(name = "justification_reviewed_by", columnDefinition = "uuid")
+    private UUID justificationReviewedBy;
+
+    @Column(name = "justification_reviewed_at")
+    private Instant justificationReviewedAt;
 
     public AttendanceRecordPersistenceEntity(UUID id) {
         super(id);

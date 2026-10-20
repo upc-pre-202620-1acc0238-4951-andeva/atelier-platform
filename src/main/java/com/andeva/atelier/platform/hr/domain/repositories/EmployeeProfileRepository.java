@@ -2,6 +2,7 @@ package com.andeva.atelier.platform.hr.domain.repositories;
 
 import com.andeva.atelier.platform.hr.domain.model.aggregates.EmployeeProfile;
 import com.andeva.atelier.platform.hr.domain.model.ids.EmployeeProfileId;
+import com.andeva.atelier.platform.hr.domain.model.ids.WorkShiftId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.BranchId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantMembershipId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
@@ -15,5 +16,7 @@ public interface EmployeeProfileRepository {
     Optional<EmployeeProfile> findByMembershipId(TenantMembershipId membershipId);
     List<EmployeeProfile> findAllByBranchId(BranchId branchId);
     List<EmployeeProfile> findAllActiveByTenantId(TenantId tenantId);
+
+    List<EmployeeProfile> findAllActiveByAssignedShiftId(WorkShiftId shiftId);
     boolean existsByMembershipId(TenantMembershipId membershipId);
 }

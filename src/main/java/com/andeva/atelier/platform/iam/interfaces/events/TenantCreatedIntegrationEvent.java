@@ -12,6 +12,7 @@ import java.util.UUID;
  * @param legalName  Official legal business name registered with SUNAT
  * @param taxId      Valid 11-digit Peruvian RUC
  * @param occurredOn Timestamp of when the tenant was provisioned
+ * @param trialPlanId Plan chosen at sign-up for the free trial, or null for the default plan
  * @author Joel Huamani Estefanero
  */
 public record TenantCreatedIntegrationEvent(
@@ -19,7 +20,8 @@ public record TenantCreatedIntegrationEvent(
         String name,
         String legalName,
         String taxId,
-        Instant occurredOn
+        Instant occurredOn,
+        UUID trialPlanId
 ) {
     public TenantCreatedIntegrationEvent {
         Objects.requireNonNull(tenantId, "tenantId cannot be null");
@@ -29,5 +31,9 @@ public record TenantCreatedIntegrationEvent(
         if (occurredOn == null) {
             occurredOn = Instant.now();
         }
+    }
+
+    public TenantCreatedIntegrationEvent(UUID tenantId, String name, String legalName, String taxId, Instant occurredOn) {
+        this(tenantId, name, legalName, taxId, occurredOn, null);
     }
 }

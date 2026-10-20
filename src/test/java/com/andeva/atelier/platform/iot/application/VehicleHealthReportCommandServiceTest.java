@@ -4,8 +4,10 @@ import com.andeva.atelier.platform.iot.application.commandservices.VehicleHealth
 import com.andeva.atelier.platform.iot.application.internal.commandservices.VehicleHealthReportCommandServiceImpl;
 import com.andeva.atelier.platform.iot.application.internal.outbound.acl.AiInferenceDiagnosticPort;
 import com.andeva.atelier.platform.iot.application.internal.outbound.acl.IoTSubscriptionQuotaPort;
+import com.andeva.atelier.platform.iot.domain.model.aggregates.VehicleHealthReport;
 import com.andeva.atelier.platform.iot.domain.model.commands.GenerateVehicleHealthReportCommand;
 import com.andeva.atelier.platform.iot.domain.model.dto.ai.VehicleHealthReportAiDto;
+import com.andeva.atelier.platform.iot.domain.repositories.VehicleHealthReportRepository;
 import com.andeva.atelier.platform.iot.interfaces.events.VehicleHealthReportGeneratedIntegrationEvent;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.VehicleId;
@@ -37,6 +39,8 @@ class VehicleHealthReportCommandServiceTest {
     @Mock
     private AiInferenceDiagnosticPort aiInferenceDiagnosticPort;
     @Mock
+    private VehicleHealthReportRepository reportRepository;
+    @Mock
     private ApplicationEventPublisher eventPublisher;
 
     private VehicleHealthReportCommandService service;
@@ -49,12 +53,13 @@ class VehicleHealthReportCommandServiceTest {
         service = new VehicleHealthReportCommandServiceImpl(
                 subscriptionQuotaPort,
                 aiInferenceDiagnosticPort,
+                reportRepository,
                 eventPublisher
         );
     }
 
     @Test
-    @DisplayName("Should validate quota, generate diagnostic via AI port and publish integration event")
+    @DisplayName("Should count this month reports for the quota, persist the diagnosis and publish the integration event")
     void shouldSuccessfullyGenerateHealthReport() {
         GenerateVehicleHealthReportCommand command = new GenerateVehicleHealthReportCommand(
                 tenantId, vehicleId, 30, true
@@ -73,13 +78,18 @@ class VehicleHealthReportCommandServiceTest {
         when(aiInferenceDiagnosticPort.generateVehicleDiagnostic(tenantId, vehicleId, 30, true))
                 .thenReturn(expectedReport);
 
-        VehicleHealthReportAiDto result = service.handle(command);
+        when(reportRepository.countByTenantIdGeneratedSince(eq(tenantId), any())).thenReturn(7L);
+        when(reportRepository.save(any(VehicleHealthReport.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        assertThat(result).isNotNull();
-        assertThat(result.healthScore()).isEqualTo(92);
-        assertThat(result.overallCondition()).isEqualTo("EXCELLENT");
+        VehicleHealthReport result = service.handle(command);
 
-        verify(subscriptionQuotaPort).validateAiReportGenerationAllowed(tenantId, 0);
+        assertThat(result.getDiagnosis()).isEqualTo(expectedReport);
+        assertThat(result.getTenantId()).isEqualTo(tenantId);
+        assertThat(result.getVehicleId()).isEqualTo(vehicleId);
+        assertThat(result.getDaysAnalyzed()).isEqualTo(30);
+
+        verify(subscriptionQuotaPort).validateAiReportGenerationAllowed(tenantId, 7);
+        verify(reportRepository).save(result);
 
         ArgumentCaptor<VehicleHealthReportGeneratedIntegrationEvent> captor =
                 ArgumentCaptor.forClass(VehicleHealthReportGeneratedIntegrationEvent.class);

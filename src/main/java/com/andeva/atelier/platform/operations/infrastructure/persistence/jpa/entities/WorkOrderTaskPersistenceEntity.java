@@ -73,6 +73,15 @@ public class WorkOrderTaskPersistenceEntity extends OperationsChildPersistenceEn
     @Column(name = "paused_at")
     private Instant pausedAt;
 
+    @Column(name = "suspension_request_reason", columnDefinition = "TEXT")
+    private String suspensionRequestReason;
+
+    @Column(name = "suspension_requested_by")
+    private UUID suspensionRequestedBy;
+
+    @Column(name = "suspension_requested_at")
+    private Instant suspensionRequestedAt;
+
     @Column(name = "total_paused_seconds", nullable = false)
     private Long totalPausedSeconds = 0L;
 

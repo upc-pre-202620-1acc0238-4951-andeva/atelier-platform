@@ -61,7 +61,8 @@ public class CreateTenantCommandFromResourceAssembler {
                 EmailAddress.of(resource.adminEmail()),
                 Password.of(hashedPassword),
                 PersonName.of(resource.adminFirstName(), resource.adminLastName()),
-                phone
+                phone,
+                resource.planId()
         );
     }
 }

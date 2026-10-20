@@ -12,6 +12,8 @@ import com.andeva.atelier.platform.iam.domain.model.commands.UpdateTenantProfile
 import com.andeva.atelier.platform.iam.domain.model.entities.Permission;
 import com.andeva.atelier.platform.iam.domain.model.enums.RoleTemplate;
 import com.andeva.atelier.platform.iam.domain.model.enums.TenantStatus;
+import com.andeva.atelier.platform.iam.domain.model.enums.TokenType;
+import com.andeva.atelier.platform.iam.domain.model.enums.UserStatus;
 import com.andeva.atelier.platform.iam.domain.model.valueobjects.Password;
 import com.andeva.atelier.platform.iam.domain.model.valueobjects.PersonName;
 import com.andeva.atelier.platform.iam.domain.repositories.PermissionRepository;
@@ -19,6 +21,7 @@ import com.andeva.atelier.platform.iam.domain.repositories.RoleRepository;
 import com.andeva.atelier.platform.iam.domain.repositories.TenantMembershipRepository;
 import com.andeva.atelier.platform.iam.domain.repositories.TenantRepository;
 import com.andeva.atelier.platform.iam.domain.repositories.UserRepository;
+import com.andeva.atelier.platform.iam.interfaces.events.TenantCreatedIntegrationEvent;
 import com.andeva.atelier.platform.shared.application.result.ApplicationError;
 import com.andeva.atelier.platform.shared.application.result.Result;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.EmailAddress;
@@ -32,6 +35,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Optional;
@@ -62,6 +66,8 @@ class TenantCommandServiceTest {
     private TenantMembershipRepository membershipRepository;
     @Mock
     private BCryptHashingService hashingService;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     private TenantCommandService tenantCommandService;
 
@@ -79,7 +85,8 @@ class TenantCommandServiceTest {
                 roleRepository,
                 permissionRepository,
                 membershipRepository,
-                hashingService
+                hashingService,
+                eventPublisher
         );
     }
 
@@ -117,7 +124,12 @@ class TenantCommandServiceTest {
         assertThat(tenant.branches()).hasSize(1);
         assertThat(tenant.branches().get(0).name()).isEqualTo("Sede Principal");
 
-        verify(userRepository).save(any(User.class));
+        ArgumentCaptor<User> ownerAccount = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(ownerAccount.capture());
+        assertThat(ownerAccount.getValue().status()).isEqualTo(UserStatus.PENDING_VERIFICATION);
+        assertThat(ownerAccount.getValue().verificationTokens())
+                .singleElement()
+                .satisfies(token -> assertThat(token.type()).isEqualTo(TokenType.EMAIL_VERIFICATION));
         verify(tenantRepository).save(any(Tenant.class));
         ArgumentCaptor<Role> roles = ArgumentCaptor.forClass(Role.class);
         verify(roleRepository, times(RoleTemplate.values().length)).save(roles.capture());
@@ -133,6 +145,11 @@ class TenantCommandServiceTest {
         assertThat(membership.getValue().assignedRoles())
                 .extracting(Role::code)
                 .containsExactly(RoleTemplate.ROLE_WORKSHOP_OWNER.code());
+
+        ArgumentCaptor<TenantCreatedIntegrationEvent> announced = ArgumentCaptor.forClass(TenantCreatedIntegrationEvent.class);
+        verify(eventPublisher).publishEvent(announced.capture());
+        assertThat(announced.getValue().tenantId()).isEqualTo(tenant.id().value());
+        assertThat(announced.getValue().taxId()).isEqualTo(validRuc.value());
     }
 
     @Test

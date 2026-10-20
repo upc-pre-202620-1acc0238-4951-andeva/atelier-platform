@@ -2,6 +2,7 @@ package com.andeva.atelier.platform.iot.infrastructure.external.ai.groq;
 
 import com.andeva.atelier.platform.iot.application.internal.outbound.acl.AiInferenceDiagnosticPort;
 import com.andeva.atelier.platform.iot.application.internal.outbound.acl.OperationsAclPort;
+import com.andeva.atelier.platform.iot.domain.exceptions.InsufficientTelemetryException;
 import com.andeva.atelier.platform.iot.domain.model.dto.TelemetryStatisticalSummary;
 import com.andeva.atelier.platform.iot.domain.model.dto.ai.DtcTelemetryCorrelationDto;
 import com.andeva.atelier.platform.iot.domain.model.dto.ai.PredictiveRiskDto;
@@ -76,6 +77,11 @@ public class GroqSpringAiDiagnosticAdapter implements AiInferenceDiagnosticPort 
         List<VehicleFaultPersistenceEntity> faults = includeResolvedDtcHistory
                 ? vehicleFaultPersistenceRepository.findAllByVehicleIdOrderByDetectedAtDesc(vehicleId.value())
                 : vehicleFaultPersistenceRepository.findAllByVehicleIdAndIsResolvedFalse(vehicleId.value());
+
+        // Without any sensor reading or trouble code there is nothing to base a prediction on
+        if (telemetryStats.isEmpty() && faults.isEmpty()) {
+            throw new InsufficientTelemetryException(vehicleId, daysToAnalyze);
+        }
 
         // 3. Anchor to workshop MRO service catalog
         var availableServices = operationsAclPort.getAvailableWorkshopServices(tenantId);

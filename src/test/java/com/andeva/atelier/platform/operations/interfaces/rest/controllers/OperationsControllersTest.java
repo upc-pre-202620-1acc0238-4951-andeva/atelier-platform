@@ -158,7 +158,7 @@ class OperationsControllersTest {
             when(workOrderCommandService.handle(any(HoldWorkOrderTaskCommand.class)))
                     .thenReturn(Result.success(sampleOrder));
             HoldTaskResource holdReq = new HoldTaskResource("Falta repuesto", UUID.randomUUID());
-            ResponseEntity<?> holdRes = tasksController.holdTask(sampleTask.getId().value(), holdReq);
+            ResponseEntity<?> holdRes = tasksController.holdTask(sampleTask.getId().value(), holdReq, null);
             assertThat(holdRes.getStatusCode()).isEqualTo(HttpStatus.OK);
 
             when(workOrderCommandService.handle(any(ResumeWorkOrderTaskCommand.class)))
@@ -206,6 +206,10 @@ class OperationsControllersTest {
             when(workOrderCommandService.handle(any(AddProductToTaskCommand.class)))
                     .thenReturn(Result.success(sampleOrder));
             AddTaskProductResource addReq = new AddTaskProductResource(UUID.randomUUID(), new BigDecimal("2.0"), new BigDecimal("45.00"), "PEN");
+            // The service answers with the order holding the stored line
+            sampleOrder.addProductToTask(sampleTask.getId(), addReq.productId(),
+                    com.andeva.atelier.platform.operations.domain.model.valueobjects.Quantity.of(new BigDecimal("2.0")),
+                    com.andeva.atelier.platform.shared.domain.model.valueobjects.Money.soles(new BigDecimal("45.00")));
             ResponseEntity<?> addRes = tasksController.addProduct(sampleTask.getId().value(), addReq, UriComponentsBuilder.newInstance());
             assertThat(addRes.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 

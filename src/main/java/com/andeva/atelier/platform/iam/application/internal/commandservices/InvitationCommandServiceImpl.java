@@ -12,7 +12,9 @@ import com.andeva.atelier.platform.iam.domain.model.aggregates.User;
 import com.andeva.atelier.platform.iam.domain.model.commands.AcceptInvitationCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.InviteStaffCommand;
 import com.andeva.atelier.platform.iam.domain.model.entities.Permission;
+import com.andeva.atelier.platform.iam.domain.model.enums.MembershipStatus;
 import com.andeva.atelier.platform.iam.domain.model.enums.SalaryType;
+import com.andeva.atelier.platform.iam.domain.model.enums.UserStatus;
 import com.andeva.atelier.platform.iam.domain.model.valueobjects.Password;
 import com.andeva.atelier.platform.iam.domain.model.valueobjects.PersonName;
 import com.andeva.atelier.platform.iam.domain.repositories.InvitationRepository;
@@ -122,38 +124,65 @@ public class InvitationCommandServiceImpl implements InvitationCommandService {
                     "Staff invitation is no longer pending or has expired"));
         }
 
-        // 2. Verify email uniqueness for new account
-        if (userRepository.existsByEmail(invitation.email())) {
-            return Result.failure(ApplicationError.conflict(
-                    "A user account with email address " + invitation.email().value() + " already exists"));
+        Role role = roleRepository.findById(invitation.targetRoleId()).orElseThrow();
+        Optional<User> existingUser = userRepository.findByEmail(invitation.email());
+        User savedUser;
+        if (existingUser.isPresent()) {
+            // 2a. The person already has a platform account: they prove it with their current password
+            User user = existingUser.get();
+            if (user.password() == null || !hashingService.matches(command.rawPassword(), user.password().hashedValue())) {
+                return Result.failure(ApplicationError.unauthorized(
+                        "An account already exists for " + invitation.email().value() + ": enter its current password to join the workshop"));
+            }
+            // Labor exclusivity: one active workshop at a time
+            boolean worksElsewhere = membershipRepository.findByUserId(user.id()).stream()
+                    .anyMatch(m -> m.status() == MembershipStatus.ACTIVE && !m.tenantId().equals(invitation.tenantId()));
+            if (worksElsewhere) {
+                return Result.failure(ApplicationError.conflict(
+                        "The user has an active membership in another workshop: it must be ended before joining a new one"));
+            }
+            if (user.status() == UserStatus.PENDING_VERIFICATION) {
+                // The invitation link arrived at this mailbox, which proves the address
+                user.verifyEmail();
+            }
+            savedUser = userRepository.save(user);
+        } else {
+            // 2b. New collaborator account, active at once (the emailed link already proved the address)
+            String passwordHash = hashingService.hash(command.rawPassword());
+            Password password = Password.of(passwordHash);
+            PersonName name = PersonName.of(command.firstName(), command.lastName());
+            PhoneNumber phone = (command.phone() != null && !command.phone().isBlank())
+                    ? PhoneNumber.of(command.phone())
+                    : null;
+
+            User user = User.registerWithLocalCredentials(invitation.email(), password, name, phone);
+            user.activate();
+            savedUser = userRepository.save(user);
         }
 
-        // 3. Register user in ACTIVE state
-        String passwordHash = hashingService.hash(command.rawPassword());
-        Password password = Password.of(passwordHash);
-        PersonName name = PersonName.of(command.firstName(), command.lastName());
-        PhoneNumber phone = (command.phone() != null && !command.phone().isBlank())
-                ? PhoneNumber.of(command.phone())
-                : null;
-
-        User user = User.registerWithLocalCredentials(invitation.email(), password, name, phone);
-        user.activate();
-        User savedUser = userRepository.save(user);
-
-        // 4. Mark invitation as accepted
+        // 3. Mark invitation as accepted
         invitation.accept(savedUser.id());
         invitationRepository.save(invitation);
 
-        // 5. Create membership in tenant with invited role
-        Role role = roleRepository.findById(invitation.targetRoleId()).orElseThrow();
-        TenantMembership membership = TenantMembership.create(
-                invitation.tenantId(),
-                savedUser.id(),
-                SalaryType.FIXED,
-                Money.soles(0.00),
-                Set.of(role)
-        );
-        membershipRepository.save(membership);
+        // 4. Membership in the tenant with the invited role (a former membership here is reactivated)
+        Optional<TenantMembership> previous = membershipRepository.findByTenantIdAndUserId(invitation.tenantId(), savedUser.id());
+        if (previous.isPresent()) {
+            TenantMembership membership = previous.get();
+            if (membership.status() == MembershipStatus.ACTIVE) {
+                return Result.failure(ApplicationError.conflict("The user is already an active member of this workshop"));
+            }
+            membership.assignRole(role);
+            membership.activate();
+            membershipRepository.save(membership);
+        } else {
+            membershipRepository.save(TenantMembership.create(
+                    invitation.tenantId(),
+                    savedUser.id(),
+                    SalaryType.FIXED,
+                    Money.soles(0.00),
+                    Set.of(role)
+            ));
+        }
 
         // 6. Generate authenticated session
         Set<String> permissions = role.permissions().stream()

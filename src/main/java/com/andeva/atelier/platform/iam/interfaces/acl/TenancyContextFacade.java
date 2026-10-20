@@ -5,6 +5,7 @@ import com.andeva.atelier.platform.iam.interfaces.acl.dto.BranchGeofenceAclDto;
 import com.andeva.atelier.platform.iam.interfaces.acl.dto.TenantAclDto;
 import com.andeva.atelier.platform.iam.interfaces.acl.dto.UserAclDto;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -41,6 +42,11 @@ public interface TenancyContextFacade {
     Optional<UserAclDto> fetchUserById(UUID userId);
 
     /**
+     * Platform account registered with the email, if any (e.g. a driver app user).
+     */
+    Optional<UserAclDto> fetchUserByEmail(String email);
+
+    /**
      * Resolves the user account holding the active workshop owner role in a tenant.
      *
      * @param tenantId the tenant UUID
@@ -73,6 +79,32 @@ public interface TenancyContextFacade {
      * @return true if an active membership exists, false otherwise
      */
     boolean isUserStaffMemberOfTenant(UUID userId, UUID tenantId);
+
+    /**
+     * Resolves the active staff membership of a user inside a workshop tenant.
+     *
+     * @param userId the user UUID
+     * @param tenantId the tenant UUID
+     * @return the active membership UUID, if the user works in the tenant
+     */
+    Optional<UUID> fetchActiveMembershipId(UUID userId, UUID tenantId);
+
+    /**
+     * Resolves the user account behind a staff membership (e.g. to reach the person's device).
+     *
+     * @param membershipId the tenant membership UUID
+     * @return the user UUID, if the membership exists
+     */
+    Optional<UUID> fetchUserIdOfMembership(UUID membershipId);
+
+    /**
+     * Users with an active membership in the tenant whose roles grant the permission (e.g. supervisors to alert).
+     *
+     * @param tenantId the tenant UUID
+     * @param permissionName catalog permission name, e.g. operations:tasks:hold_validate
+     * @return user UUIDs
+     */
+    List<UUID> fetchActiveUserIdsWithPermission(UUID tenantId, String permissionName);
 
     /**
      * Evaluates whether a given geographic coordinate falls within the branch's operational geofence.

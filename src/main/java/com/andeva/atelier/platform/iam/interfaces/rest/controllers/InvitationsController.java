@@ -62,6 +62,9 @@ import java.util.UUID;
 @Tag(name = "Staff Invitations", description = "Endpoints for issuing, validating, and accepting staff onboarding invitations")
 public class InvitationsController {
 
+    // Invitation links expire after 48 hours (US01)
+    private static final java.time.Duration INVITATION_VALIDITY = java.time.Duration.ofHours(48);
+
     private final InvitationCommandService invitationCommandService;
     private final InvitationQueryService invitationQueryService;
     private final TenantQueryService tenantQueryService;
@@ -106,7 +109,7 @@ public class InvitationsController {
                 TenantId.of(tenantId),
                 EmailAddress.of(resource.email()),
                 RoleId.of(resource.roleId()),
-                java.time.Duration.ofDays(7)
+                INVITATION_VALIDITY
         );
         Result<Invitation, ApplicationError> result = invitationCommandService.handle(command);
 
@@ -125,7 +128,7 @@ public class InvitationsController {
             @ApiResponse(responseCode = "200", description = "Token is authentic, active, and redeemable"),
             @ApiResponse(responseCode = "400", description = "Missing or empty token parameter"),
             @ApiResponse(responseCode = "404", description = "Invitation token does not exist or was revoked"),
-            @ApiResponse(responseCode = "410", description = "Invitation token has expired past its 7-day validity")
+            @ApiResponse(responseCode = "410", description = "Invitation token has expired past its 48-hour validity")
     })
     @GetMapping("/validate")
     public ResponseEntity<?> validateInvitationToken(@RequestParam String token) {

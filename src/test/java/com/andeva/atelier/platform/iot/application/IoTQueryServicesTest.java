@@ -1,11 +1,14 @@
 package com.andeva.atelier.platform.iot.application;
 
-import com.andeva.atelier.platform.iot.application.internal.outbound.acl.AiInferenceDiagnosticPort;
 import com.andeva.atelier.platform.iot.application.internal.outbound.acl.CrmFleetAclPort;
 import com.andeva.atelier.platform.iot.application.internal.outbound.acl.VehicleHealthReportPdfGeneratorPort;
 import com.andeva.atelier.platform.iot.application.internal.queryservices.*;
 import com.andeva.atelier.platform.iot.domain.model.aggregates.*;
+import com.andeva.atelier.platform.iot.domain.exceptions.VehicleHealthReportNotFoundException;
+import com.andeva.atelier.platform.iot.domain.model.aggregates.VehicleHealthReport;
 import com.andeva.atelier.platform.iot.domain.model.dto.ai.VehicleHealthReportAiDto;
+import com.andeva.atelier.platform.iot.domain.model.queries.GetVehicleHealthReportByIdQuery;
+import com.andeva.atelier.platform.iot.domain.repositories.VehicleHealthReportRepository;
 import com.andeva.atelier.platform.iot.domain.model.enums.*;
 import com.andeva.atelier.platform.iot.domain.model.ids.*;
 import com.andeva.atelier.platform.iot.domain.model.queries.*;
@@ -26,6 +29,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 /**
@@ -165,32 +169,46 @@ class IoTQueryServicesTest {
     @DisplayName("VehicleHealthReportQueryService Tests")
     class VehicleHealthReportQueryServiceTests {
         @Mock
-        private AiInferenceDiagnosticPort aiPort;
+        private VehicleHealthReportRepository reportRepository;
         @Mock
         private VehicleHealthReportPdfGeneratorPort pdfPort;
         @Mock
         private CrmFleetAclPort crmPort;
 
         @Test
-        @DisplayName("Should query latest health report and export PDF")
+        @DisplayName("Should serve the stored latest report and export its PDF without re-running inference")
         void shouldQueryReportAndExportPdf() {
-            var service = new VehicleHealthReportQueryServiceImpl(aiPort, pdfPort, crmPort);
-            VehicleHealthReportAiDto report = new VehicleHealthReportAiDto(
+            var service = new VehicleHealthReportQueryServiceImpl(reportRepository, pdfPort, crmPort);
+            VehicleHealthReport report = VehicleHealthReport.issue(tenantId, vehicleId, 30, new VehicleHealthReportAiDto(
                     95, "EXCELLENT", "Summary", List.of(), List.of(), List.of(), List.of()
-            );
+            ));
 
-            when(aiPort.generateVehicleDiagnostic(tenantId, vehicleId, 30, true)).thenReturn(report);
+            when(reportRepository.findLatestByTenantIdAndVehicleId(tenantId, vehicleId)).thenReturn(Optional.of(report));
+            when(reportRepository.findById(report.getId())).thenReturn(Optional.of(report));
             when(crmPort.getVehicleMetadata(vehicleId)).thenReturn(Optional.of(
                     new CrmFleetAclPort.VehicleMetadataDto("ABC-123", "VIN123", "Toyota", "Corolla", 2022, "John Doe")
             ));
-            when(pdfPort.generateHealthReportPdf(eq(report), any())).thenReturn(new byte[]{1, 2, 3});
+            when(pdfPort.generateHealthReportPdf(eq(report.getDiagnosis()), any())).thenReturn(new byte[]{1, 2, 3});
 
-            Optional<VehicleHealthReportAiDto> fetched =
-                    service.handle(new GetLatestVehicleHealthReportQuery(tenantId, vehicleId));
-            assertThat(fetched).contains(report);
+            assertThat(service.handle(new GetLatestVehicleHealthReportQuery(tenantId, vehicleId))).contains(report);
 
-            byte[] pdfBytes = service.handle(new ExportVehicleHealthReportPdfQuery(tenantId, vehicleId, UUID.randomUUID()));
+            byte[] pdfBytes = service.handle(new ExportVehicleHealthReportPdfQuery(tenantId, report.getId()));
             assertThat(pdfBytes).isEqualTo(new byte[]{1, 2, 3});
+        }
+
+        @Test
+        @DisplayName("Should hide reports issued by another workshop")
+        void shouldHideReportsOfOtherTenants() {
+            var service = new VehicleHealthReportQueryServiceImpl(reportRepository, pdfPort, crmPort);
+            VehicleHealthReport foreign = VehicleHealthReport.issue(TenantId.generate(), vehicleId, 30, new VehicleHealthReportAiDto(
+                    80, "GOOD", "Summary", List.of(), List.of(), List.of(), List.of()
+            ));
+            when(reportRepository.findById(foreign.getId())).thenReturn(Optional.of(foreign));
+
+            assertThat(service.handle(new GetVehicleHealthReportByIdQuery(tenantId, foreign.getId()))).isEmpty();
+            assertThatThrownBy(() -> service.handle(new ExportVehicleHealthReportPdfQuery(tenantId, foreign.getId())))
+                    .isInstanceOf(VehicleHealthReportNotFoundException.class);
+            verifyNoInteractions(pdfPort);
         }
     }
 }

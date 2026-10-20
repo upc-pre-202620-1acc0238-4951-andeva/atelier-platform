@@ -151,6 +151,56 @@ public class OpenPdfVehicleHealthReportGeneratorAdapter implements VehicleHealth
         }
     }
 
+    @Override
+    public byte[] generateFleetReportPdf(String customerName, java.util.List<FleetEntry> entries) {
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Document document = new Document(PageSize.A4.rotate(), 30, 30, 36, 36);
+            PdfWriter.getInstance(document, out);
+            document.open();
+
+            Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, new Color(44, 62, 80));
+            Font sectionFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11, new Color(22, 160, 133));
+            Font bodyFont = FontFactory.getFont(FontFactory.HELVETICA, 9, Color.DARK_GRAY);
+            Font criticalFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, new Color(192, 57, 43));
+
+            Paragraph title = new Paragraph("CONSOLIDADO EJECUTIVO DE SALUD DE FLOTA", titleFont);
+            title.setAlignment(Element.ALIGN_CENTER);
+            document.add(title);
+            Paragraph owner = new Paragraph(customerName, sectionFont);
+            owner.setAlignment(Element.ALIGN_CENTER);
+            owner.setSpacingAfter(10);
+            document.add(owner);
+
+            long critical = entries.stream().filter(FleetEntry::isCritical).count();
+            java.math.BigDecimal criticalBudget = entries.stream().filter(FleetEntry::isCritical)
+                    .map(FleetEntry::preventiveBudget).reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+            document.add(new Paragraph("Unidades: " + entries.size() + "   ·   En estado crítico: " + critical
+                    + "   ·   Presupuesto preventivo de unidades críticas: S/ " + criticalBudget.setScale(2, java.math.RoundingMode.HALF_EVEN), bodyFont));
+
+            PdfPTable table = new PdfPTable(new float[]{1.6f, 2.6f, 1.2f, 1.8f, 6f, 1.8f});
+            table.setWidthPercentage(100);
+            table.setSpacingBefore(10);
+            for (String header : new String[]{"Placa", "Vehículo", "Índice", "Condición", "Resumen", "Presupuesto (S/)"}) {
+                addCell(table, header, true, bodyFont);
+            }
+            for (FleetEntry entry : entries) {
+                Font font = entry.isCritical() ? criticalFont : bodyFont;
+                addCell(table, entry.licensePlate(), false, font);
+                addCell(table, entry.vehicle(), false, bodyFont);
+                addCell(table, entry.healthScore() != null ? entry.healthScore() + "/100" : "-", false, font);
+                addCell(table, entry.overallCondition(), false, font);
+                addCell(table, entry.executiveSummary(), false, bodyFont);
+                addCell(table, entry.preventiveBudget().setScale(2, java.math.RoundingMode.HALF_EVEN).toPlainString(), false, bodyFont);
+            }
+            document.add(table);
+
+            document.close();
+            return out.toByteArray();
+        } catch (Exception e) {
+            throw new IllegalStateException("Could not render the fleet health report", e);
+        }
+    }
+
     private void addCell(PdfPTable table, String text, boolean isHeader, Font font) {
         PdfPCell cell = new PdfPCell(new Paragraph(text != null ? text : "", font));
         if (isHeader) {
