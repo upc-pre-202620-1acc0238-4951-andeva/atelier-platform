@@ -148,7 +148,6 @@ class InvitationCommandServiceTest {
         );
 
         when(invitationRepository.findByToken(token)).thenReturn(Optional.of(invitation));
-        when(userRepository.existsByEmail(email)).thenReturn(false);
         when(hashingService.hash("RawPassword123!")).thenReturn("$2a$12$abcdefghijklmnopqrstuvwxABCDEFGHIJKLMNOPQRSTUVWXYZ012");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(roleRepository.findById(role.id())).thenReturn(Optional.of(role));
@@ -179,5 +178,61 @@ class InvitationCommandServiceTest {
 
         assertThat(result.isFailure()).isTrue();
         assertThat(result.getError().code()).isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    @DisplayName("Should link an existing account that proves its password and has no other active workshop")
+    void shouldLinkExistingAccountToWorkshop() {
+        Role role = Role.createCustom(tenantId, "Mechanic", "Workshop mechanic", Set.of(Permission.create("mro:exec", "Exec", "OPS")));
+        Invitation invitation = Invitation.issue(tenantId, email, role.id(), Duration.ofHours(48));
+        User existing = User.registerWithLocalCredentials(email,
+                com.andeva.atelier.platform.iam.domain.model.valueobjects.Password.of("$2a$12$abcdefghijklmnopqrstuvwxABCDEFGHIJKLMNOPQRSTUVWXYZ012"),
+                com.andeva.atelier.platform.iam.domain.model.valueobjects.PersonName.of("Pedro", "Gómez"), null);
+        existing.activate();
+
+        when(invitationRepository.findByToken(invitation.token())).thenReturn(Optional.of(invitation));
+        when(roleRepository.findById(role.id())).thenReturn(Optional.of(role));
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(existing));
+        when(hashingService.matches(eq("CurrentPassword1!"), any())).thenReturn(true);
+        when(membershipRepository.findByUserId(existing.id())).thenReturn(java.util.List.of());
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(bearerTokenService.generateToken(any(), eq(tenantId), any())).thenReturn("staff.jwt.token");
+
+        Result<AuthenticatedUser, ApplicationError> result = invitationCommandService.handle(
+                new AcceptInvitationCommand(invitation.token(), "CurrentPassword1!", "Pedro", "Gómez", null));
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.getOrThrow().user().id()).isEqualTo(existing.id());
+        verify(hashingService, never()).hash(any());
+        verify(membershipRepository).save(any(TenantMembership.class));
+    }
+
+    @Test
+    @DisplayName("Should reject an existing account that still works in another workshop (labor exclusivity)")
+    void shouldRejectAccountActiveInAnotherWorkshop() {
+        Role role = Role.createCustom(tenantId, "Mechanic", "Workshop mechanic", Set.of(Permission.create("mro:exec", "Exec", "OPS")));
+        Invitation invitation = Invitation.issue(tenantId, email, role.id(), Duration.ofHours(48));
+        User existing = User.registerWithLocalCredentials(email,
+                com.andeva.atelier.platform.iam.domain.model.valueobjects.Password.of("$2a$12$abcdefghijklmnopqrstuvwxABCDEFGHIJKLMNOPQRSTUVWXYZ012"),
+                com.andeva.atelier.platform.iam.domain.model.valueobjects.PersonName.of("Pedro", "Gómez"), null);
+        existing.activate();
+        TenantId otherWorkshop = TenantId.generate();
+        Role otherRole = Role.createCustom(otherWorkshop, "Mechanic", "x", Set.of(Permission.create("mro:exec", "Exec", "OPS")));
+        TenantMembership elsewhere = TenantMembership.create(otherWorkshop, existing.id(),
+                com.andeva.atelier.platform.iam.domain.model.enums.SalaryType.FIXED,
+                com.andeva.atelier.platform.shared.domain.model.valueobjects.Money.soles(0.00), Set.of(otherRole));
+
+        when(invitationRepository.findByToken(invitation.token())).thenReturn(Optional.of(invitation));
+        when(roleRepository.findById(role.id())).thenReturn(Optional.of(role));
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(existing));
+        when(hashingService.matches(any(), any())).thenReturn(true);
+        when(membershipRepository.findByUserId(existing.id())).thenReturn(java.util.List.of(elsewhere));
+
+        Result<AuthenticatedUser, ApplicationError> result = invitationCommandService.handle(
+                new AcceptInvitationCommand(invitation.token(), "CurrentPassword1!", "Pedro", "Gómez", null));
+
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getError().code()).isEqualTo("CONFLICT");
+        verify(membershipRepository, never()).save(any());
     }
 }

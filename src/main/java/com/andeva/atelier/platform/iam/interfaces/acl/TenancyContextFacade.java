@@ -5,6 +5,7 @@ import com.andeva.atelier.platform.iam.interfaces.acl.dto.BranchGeofenceAclDto;
 import com.andeva.atelier.platform.iam.interfaces.acl.dto.TenantAclDto;
 import com.andeva.atelier.platform.iam.interfaces.acl.dto.UserAclDto;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -90,6 +91,15 @@ public interface TenancyContextFacade {
      * @return the user UUID, if the membership exists
      */
     Optional<UUID> fetchUserIdOfMembership(UUID membershipId);
+
+    /**
+     * Users with an active membership in the tenant whose roles grant the permission (e.g. supervisors to alert).
+     *
+     * @param tenantId the tenant UUID
+     * @param permissionName catalog permission name, e.g. operations:tasks:hold_validate
+     * @return user UUIDs
+     */
+    List<UUID> fetchActiveUserIdsWithPermission(UUID tenantId, String permissionName);
 
     /**
      * Evaluates whether a given geographic coordinate falls within the branch's operational geofence.

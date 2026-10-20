@@ -100,7 +100,7 @@ public class ResendEmailAdapter implements ResendEmailService {
                     <div style="text-align: center; margin: 30px 0;">
                         <a href="%s" style="background-color: #059669; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Accept Invitation</a>
                     </div>
-                    <p style="color: #64748b; font-size: 14px;">This invitation link will expire in 7 days.</p>
+                    <p style="color: #64748b; font-size: 14px;">This invitation link will expire in 48 hours.</p>
                 </div>
                 """.formatted(tenantName, inviteUrl);
 

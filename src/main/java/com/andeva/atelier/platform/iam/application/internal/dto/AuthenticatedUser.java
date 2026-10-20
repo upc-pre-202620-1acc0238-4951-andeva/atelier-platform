@@ -16,12 +16,21 @@ public record AuthenticatedUser(
         User user,
         String token,
         TenantId tenantId,
-        Set<String> permissions
+        Set<String> permissions,
+        String refreshToken
 ) implements Serializable {
 
     public AuthenticatedUser {
         Objects.requireNonNull(user, "User cannot be null");
         Objects.requireNonNull(token, "Bearer token cannot be null");
         permissions = permissions == null ? Set.of() : Set.copyOf(permissions);
+    }
+
+    public AuthenticatedUser(User user, String token, TenantId tenantId, Set<String> permissions) {
+        this(user, token, tenantId, permissions, null);
+    }
+
+    public AuthenticatedUser withRefreshToken(String newRefreshToken) {
+        return new AuthenticatedUser(user, token, tenantId, permissions, newRefreshToken);
     }
 }

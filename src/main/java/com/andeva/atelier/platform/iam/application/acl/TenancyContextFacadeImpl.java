@@ -24,6 +24,7 @@ import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.UserId;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -159,6 +160,18 @@ public class TenancyContextFacadeImpl implements TenancyContextFacade {
         }
         return membershipQueryService.handle(new GetMembershipByIdQuery(TenantMembershipId.of(membershipId)))
                 .map(membership -> membership.userId().value());
+    }
+
+    @Override
+    public List<UUID> fetchActiveUserIdsWithPermission(UUID tenantId, String permissionName) {
+        if (tenantId == null || permissionName == null) {
+            return List.of();
+        }
+        return membershipQueryService.handle(new GetMembershipsByTenantIdQuery(TenantId.of(tenantId))).stream()
+                .filter(membership -> membership.status() == MembershipStatus.ACTIVE)
+                .filter(membership -> membership.hasPermission(permissionName))
+                .map(membership -> membership.userId().value())
+                .toList();
     }
 
     @Override

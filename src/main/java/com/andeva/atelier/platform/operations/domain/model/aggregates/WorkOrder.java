@@ -176,6 +176,9 @@ public class WorkOrder extends AbstractDomainAggregateRoot<WorkOrder> {
         WorkOrderTask task = WorkOrderTask.create(this.id, serviceId, mechanicId, description, price, estimatedHours);
         this.tasks.add(task);
         recalculateTotalAmount();
+        if (mechanicId != null) {
+            registerDomainEvent(WorkOrderTaskAssignedEvent.of(this.id, task.getId(), mechanicId));
+        }
         return task;
     }
 
