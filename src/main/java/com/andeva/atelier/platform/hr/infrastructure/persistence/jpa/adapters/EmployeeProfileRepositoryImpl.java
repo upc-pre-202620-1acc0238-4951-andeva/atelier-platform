@@ -3,6 +3,7 @@ package com.andeva.atelier.platform.hr.infrastructure.persistence.jpa.adapters;
 import com.andeva.atelier.platform.hr.domain.model.aggregates.EmployeeProfile;
 import com.andeva.atelier.platform.hr.domain.model.enums.EmploymentStatus;
 import com.andeva.atelier.platform.hr.domain.model.ids.EmployeeProfileId;
+import com.andeva.atelier.platform.hr.domain.model.ids.WorkShiftId;
 import com.andeva.atelier.platform.hr.domain.repositories.EmployeeProfileRepository;
 import com.andeva.atelier.platform.hr.infrastructure.persistence.jpa.assemblers.EmployeeProfilePersistenceAssembler;
 import com.andeva.atelier.platform.hr.infrastructure.persistence.jpa.entities.EmployeeProfilePersistenceEntity;
@@ -50,6 +51,15 @@ public class EmployeeProfileRepositoryImpl implements EmployeeProfileRepository 
     public List<EmployeeProfile> findAllByBranchId(BranchId branchId) {
         Objects.requireNonNull(branchId, "branchId cannot be null");
         return persistenceRepository.findAllByBranchId(branchId.value()).stream()
+                .map(assembler::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<EmployeeProfile> findAllActiveByAssignedShiftId(WorkShiftId shiftId) {
+        Objects.requireNonNull(shiftId, "shiftId cannot be null");
+        return persistenceRepository.findAllByAssignedShiftIdAndEmploymentStatus(shiftId.value(), EmploymentStatus.ACTIVE)
+                .stream()
                 .map(assembler::toDomain)
                 .toList();
     }

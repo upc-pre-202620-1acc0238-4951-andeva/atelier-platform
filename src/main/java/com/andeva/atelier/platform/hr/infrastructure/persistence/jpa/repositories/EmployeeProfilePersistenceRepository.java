@@ -14,5 +14,7 @@ public interface EmployeeProfilePersistenceRepository extends JpaRepository<Empl
     Optional<EmployeeProfilePersistenceEntity> findByMembershipId(UUID membershipId);
     List<EmployeeProfilePersistenceEntity> findAllByBranchId(UUID branchId);
     List<EmployeeProfilePersistenceEntity> findAllByTenantIdAndEmploymentStatus(UUID tenantId, EmploymentStatus status);
+
+    List<EmployeeProfilePersistenceEntity> findAllByAssignedShiftIdAndEmploymentStatus(UUID assignedShiftId, EmploymentStatus status);
     boolean existsByMembershipId(UUID membershipId);
 }

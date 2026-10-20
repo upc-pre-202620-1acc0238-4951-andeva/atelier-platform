@@ -1,7 +1,7 @@
 package com.andeva.atelier.platform.iot.application.commandservices;
 
 import com.andeva.atelier.platform.iot.domain.model.commands.GenerateVehicleHealthReportCommand;
-import com.andeva.atelier.platform.iot.domain.model.dto.ai.VehicleHealthReportAiDto;
+import com.andeva.atelier.platform.iot.domain.model.aggregates.VehicleHealthReport;
 
 /**
  * Command Service for orchestrating AI-assisted vehicle health diagnostic evaluations.
@@ -10,5 +10,5 @@ import com.andeva.atelier.platform.iot.domain.model.dto.ai.VehicleHealthReportAi
  */
 public interface VehicleHealthReportCommandService {
 
-    VehicleHealthReportAiDto handle(GenerateVehicleHealthReportCommand command);
+    VehicleHealthReport handle(GenerateVehicleHealthReportCommand command);
 }

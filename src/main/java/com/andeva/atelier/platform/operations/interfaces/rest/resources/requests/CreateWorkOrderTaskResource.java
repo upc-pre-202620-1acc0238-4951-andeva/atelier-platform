@@ -16,10 +16,9 @@ public record CreateWorkOrderTaskResource(
         @NotBlank(message = "La descripción de la tarea es obligatoria")
         @Size(max = 1000, message = "La descripción no puede exceder 1000 caracteres")
         String description,
-        @NotNull(message = "El precio de mano de obra es mandatorio")
+        // Optional: when omitted the catalog base price of the service is applied
         @Positive(message = "El precio de mano de obra debe ser estrictamente positivo")
         BigDecimal price,
-        @NotBlank(message = "La divisa es obligatoria")
         @Pattern(regexp = "PEN|USD", message = "La divisa debe ser PEN o USD")
         String currency
 ) {}

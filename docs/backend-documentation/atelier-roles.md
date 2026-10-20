@@ -172,17 +172,17 @@ Cada permiso atómico se define con precisión funcional y corresponde a los con
 | `operations:work_orders:cancel` | Cancelar órdenes de trabajo por desistimiento o inviabilidad | `POST /api/v1/work-orders/{workOrderId}/cancel` |
 | `operations:inspections:create` | Registrar el checklist pericial de recepción e inventario 360° | *Sin endpoint implementado* |
 | `operations:inspections:upload_photos` | Cargar fotografías de evidencias de daños con URLs firmadas S3 | `POST /api/v1/work-orders/{workOrderId}/intake-images` |
-| `operations:quotations:read` | Consultar cotizaciones y proformas de mantenimiento | *Sin endpoint implementado* |
+| `operations:quotations:read` | Consultar cotizaciones y proformas de mantenimiento | `GET /api/v1/work-orders/{workOrderId}/quotation/pdf` |
 | `operations:quotations:create` | Elaborar presupuestos con cómputo en cascada de mano de obra | *Sin endpoint implementado* |
-| `operations:quotations:send` | Generar y enviar proformas comerciales en PDF al cliente | *Sin endpoint implementado* |
-| `operations:quotations:approve` | Registrar la resolución formal de aprobación del presupuesto | *Sin endpoint implementado* |
+| `operations:quotations:send` | Generar y enviar proformas comerciales en PDF al cliente | `POST /api/v1/work-orders/{workOrderId}/quotation/send` |
+| `operations:quotations:approve` | Registrar la resolución formal de aprobación del presupuesto | `POST /api/v1/work-orders/{workOrderId}/quotation/approve`, `POST /api/v1/work-orders/{workOrderId}/quotation/reject` |
 | `operations:proposals:create` | Proponer tareas adicionales por averías detectadas en foso | `POST /api/v1/work-orders/{workOrderId}/proposals` |
-| `operations:proposals:notify` | Remitir propuesta adicional al cliente para autorización técnica | *Sin endpoint implementado* |
-| `operations:tasks:read` | Consultar tareas mecánicas asignadas a bahías | `GET /api/v1/tasks/{taskId}` |
-| `operations:tasks:track_time` | Iniciar, pausar y reanudar cronómetros de labor efectiva | `POST /api/v1/tasks/{taskId}/start` |
+| `operations:proposals:notify` | Remitir propuesta adicional al cliente para autorización técnica | `POST /api/v1/work-orders/{workOrderId}/proposals/{proposalId}/notify` |
+| `operations:tasks:read` | Consultar tareas mecánicas asignadas a bahías | `GET /api/v1/tasks/my`, `GET /api/v1/tasks/{taskId}` |
+| `operations:tasks:track_time` | Iniciar, pausar y reanudar cronómetros de labor efectiva | `POST /api/v1/tasks/{taskId}/start`, `POST /api/v1/tasks/{taskId}/pause` |
 | `operations:tasks:upload_photos` | Adjuntar fotografías periciales de desmontaje y montaje | `POST /api/v1/tasks/{taskId}/evidence-images` |
 | `operations:tasks:hold_request` | Solicitar suspensión de tarea por repuesto defectuoso o faltante | `POST /api/v1/tasks/{taskId}/hold` |
-| `operations:tasks:hold_validate` | Aprobar o resolver administrativamente la suspensión de tarea | `POST /api/v1/tasks/{taskId}/resume` |
+| `operations:tasks:hold_validate` | Aprobar o resolver administrativamente la suspensión de tarea | `POST /api/v1/tasks/{taskId}/hold/approve`, `POST /api/v1/tasks/{taskId}/hold/reject`, `POST /api/v1/tasks/{taskId}/resume` |
 | `operations:tasks:complete` | Registrar el cierre técnico de la labor con cómputo de horas | `POST /api/v1/tasks/{taskId}/complete` |
 | `operations:bays:read` | Consultar disponibilidad y ocupación de bahías en tiempo real | `GET /api/v1/work-bays`, `GET /api/v1/work-bays/{bayId}` |
 | `operations:bays:reassign` | Reasignar mecánicos y vehículos entre bahías operativas | `PUT /api/v1/tasks/{taskId}/mechanic`, `PUT /api/v1/work-orders/{workOrderId}/bay`, `DELETE /api/v1/work-orders/{workOrderId}/bay` |
@@ -219,8 +219,8 @@ Cada permiso atómico se define con precisión funcional y corresponde a los con
 | `hr:attendance:audit_all` | Auditar marcaciones, anomalías perimétricas y asistencias del taller | `GET /api/v1/hr/attendances/branch/{branchId}/daily`, `GET /api/v1/hr/attendances/employee/{membershipId}/history`, `GET /api/v1/hr/attendances/employee/{membershipId}/status-today` |
 | `hr:shifts:read` | Consultar programación semanal de turnos y tolerancias | `GET /api/v1/hr/work-shifts`, `GET /api/v1/hr/work-shifts/{shiftId}` |
 | `hr:shifts:manage` | Configurar turnos, horarios laborales y márgenes de gracia | `PUT /api/v1/hr/employees/{profileId}/shift`, `POST /api/v1/hr/work-shifts`, `PUT /api/v1/hr/work-shifts/{shiftId}`, `PATCH /api/v1/hr/work-shifts/{shiftId}/activate`, `PATCH /api/v1/hr/work-shifts/{shiftId}/deactivate` |
-| `hr:justifications:create` | Enviar descargo justificatorio de tardanza o ausencia | *Sin endpoint implementado* |
-| `hr:justifications:approve` | Aprobar o rechazar descargos de tardanza de colaboradores | `POST /api/v1/hr/attendances/{attendanceId}/justify` |
+| `hr:justifications:create` | Enviar descargo justificatorio de tardanza o ausencia | `POST /api/v1/hr/attendances/{attendanceId}/justification` |
+| `hr:justifications:approve` | Aprobar o rechazar descargos de tardanza de colaboradores | `POST /api/v1/hr/attendances/{attendanceId}/justification/approve`, `.../justification/reject`, `.../justify` |
 | `hr:plame:export` | Exportar reportes de jornada laboral compatibles con SUNAT PLAME | `GET /api/v1/hr/payrolls/export/sunat-rem` |
 | `hr:employees:manage` | Registrar perfiles laborales y cambiar el estado de empleo del personal *(nuevo)* | `POST /api/v1/hr/employees`, `PATCH /api/v1/hr/employees/{profileId}/status` |
 | `hr:payroll:manage` | Generar, ajustar, aprobar y desembolsar planillas de pago *(nuevo)* | `POST /api/v1/hr/payrolls/generate`, `GET /api/v1/hr/payrolls`, `GET /api/v1/hr/payrolls/{payrollId}`, `POST /api/v1/hr/payrolls/{payrollId}/deductions`, `POST /api/v1/hr/payrolls/{payrollId}/bonuses`, `POST /api/v1/hr/payrolls/{payrollId}/approve`, `POST /api/v1/hr/payrolls/{payrollId}/disburse` |
@@ -233,7 +233,7 @@ Cada permiso atómico se define con precisión funcional y corresponde a los con
 | `invoicing:invoices:settle` | Preliquidar económicamente órdenes de trabajo finalizadas | *Sin endpoint implementado* |
 | `invoicing:invoices:issue_sunat` | Emitir comprobantes tributarios electrónicos UBL 2.1 ante SUNAT vía PSE | `POST /api/v1/invoicing/vouchers`, `POST /api/v1/invoicing/vouchers/credit-notes`, `POST /api/v1/invoicing/vouchers/{id}/void`, `GET /api/v1/invoicing/series-configurations/branch/{branchId}` |
 | `invoicing:payments:create` | Registrar cobros y amortizaciones multimoneda y multimedio | `POST /api/v1/invoicing/payments`, `POST /api/v1/work-orders/{workOrderId}/mark-as-paid` |
-| `invoicing:exit_passes:issue` | Emitir pase digital de salida del vehículo tras orden pagada | *Sin endpoint implementado* |
+| `invoicing:exit_passes:issue` | Emitir pase digital de salida del vehículo tras orden pagada | `GET /api/v1/work-orders/{workOrderId}/exit-pass/pdf` |
 | `invoicing:cashflow:export_pdf` | Generar y exportar reporte contable de flujo de caja en PDF | `GET /api/v1/invoicing/financial-reports/cash-flow`, `GET /api/v1/invoicing/financial-reports/cash-flow/pdf` |
 | `invoicing:fiscal_config:manage` | Configurar certificados digitales, enlace PSE y series SUNAT | `POST /api/v1/invoicing/series-configurations`, `GET /api/v1/invoicing/series-configurations/branch/{branchId}`, `PUT /api/v1/invoicing/series-configurations/{id}/status` |
 

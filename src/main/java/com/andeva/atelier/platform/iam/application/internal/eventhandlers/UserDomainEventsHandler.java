@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.Objects;
 
@@ -31,7 +33,8 @@ public class UserDomainEventsHandler {
         this.userRepository = Objects.requireNonNull(userRepository, "UserRepository cannot be null");
     }
 
-    @EventListener
+    // After commit, so a sign-up that rolls back never emails a code for an account that does not exist
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Async
     public void on(VerificationTokenIssuedEvent event) {
         log.info("Processing VerificationTokenIssuedEvent for user: {}", event.userId());

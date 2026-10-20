@@ -1,6 +1,7 @@
 package com.andeva.atelier.platform.hr.interfaces.rest.controllers;
 
 import com.andeva.atelier.platform.hr.application.commandservices.PayrollPaymentCommandService;
+import com.andeva.atelier.platform.hr.application.queryservices.StaffMembershipQueryService;
 import com.andeva.atelier.platform.hr.application.queryservices.PayrollPaymentQueryService;
 import com.andeva.atelier.platform.hr.domain.model.aggregates.PayrollPayment;
 import com.andeva.atelier.platform.hr.domain.model.commands.*;
@@ -56,11 +57,14 @@ public class PayrollPaymentsController {
 
     private final PayrollPaymentCommandService payrollPaymentCommandService;
     private final PayrollPaymentQueryService payrollPaymentQueryService;
+    private final StaffMembershipQueryService staffMembershipQueryService;
 
     public PayrollPaymentsController(
             PayrollPaymentCommandService payrollPaymentCommandService,
-            PayrollPaymentQueryService payrollPaymentQueryService
+            PayrollPaymentQueryService payrollPaymentQueryService,
+            StaffMembershipQueryService staffMembershipQueryService
     ) {
+        this.staffMembershipQueryService = Objects.requireNonNull(staffMembershipQueryService, "staffMembershipQueryService cannot be null");
         this.payrollPaymentCommandService = Objects.requireNonNull(payrollPaymentCommandService, "payrollPaymentCommandService cannot be null");
         this.payrollPaymentQueryService = Objects.requireNonNull(payrollPaymentQueryService, "payrollPaymentQueryService cannot be null");
     }
@@ -78,9 +82,11 @@ public class PayrollPaymentsController {
         throw new org.springframework.security.access.AccessDeniedException("Active tenant context is required");
     }
 
+    // Records belong to the staff membership, never to the raw user account id
     private TenantMembershipId resolveMembershipId(CustomUserDetails userDetails) {
-        if (userDetails != null && userDetails.getUserId() != null) {
-            return TenantMembershipId.of(userDetails.getUserId());
+        if (userDetails != null && userDetails.getUserId() != null && userDetails.getTenantId() != null) {
+            return staffMembershipQueryService.resolveActiveMembership(TenantId.of(userDetails.getTenantId()), userDetails.getUserId())
+                    .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("No active staff membership in this workshop"));
         }
         throw new org.springframework.security.access.AccessDeniedException("Authenticated user membership context is required");
     }

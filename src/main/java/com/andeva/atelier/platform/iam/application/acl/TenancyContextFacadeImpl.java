@@ -11,6 +11,8 @@ import com.andeva.atelier.platform.iam.domain.model.ids.TenantMembershipId;
 import com.andeva.atelier.platform.iam.domain.model.queries.GetMembershipByIdQuery;
 import com.andeva.atelier.platform.iam.domain.model.queries.GetMembershipByTenantAndUserQuery;
 import com.andeva.atelier.platform.iam.domain.model.queries.GetMembershipsByTenantIdQuery;
+import com.andeva.atelier.platform.iam.domain.model.queries.GetUserByEmailQuery;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.EmailAddress;
 import com.andeva.atelier.platform.iam.domain.model.queries.GetTenantByIdQuery;
 import com.andeva.atelier.platform.iam.domain.model.queries.GetUserByIdQuery;
 import com.andeva.atelier.platform.iam.interfaces.acl.TenancyContextFacade;
@@ -24,6 +26,7 @@ import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.UserId;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -99,6 +102,20 @@ public class TenancyContextFacadeImpl implements TenancyContextFacade {
     }
 
     @Override
+    public Optional<UserAclDto> fetchUserByEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return Optional.empty();
+        }
+        return userQueryService.handle(new GetUserByEmailQuery(EmailAddress.of(email.trim())))
+                .map(user -> new UserAclDto(
+                        user.id().value(),
+                        user.email().value(),
+                        user.profile().getFullName(),
+                        user.status().name()
+                ));
+    }
+
+    @Override
     public Optional<UserAclDto> fetchTenantOwner(UUID tenantId) {
         if (tenantId == null) {
             return Optional.empty();
@@ -140,6 +157,37 @@ public class TenancyContextFacadeImpl implements TenancyContextFacade {
         return membershipQueryService.handle(new GetMembershipByTenantAndUserQuery(TenantId.of(tenantId), UserId.of(userId)))
                 .map(membership -> membership.status() == MembershipStatus.ACTIVE)
                 .orElse(false);
+    }
+
+    @Override
+    public Optional<UUID> fetchActiveMembershipId(UUID userId, UUID tenantId) {
+        if (userId == null || tenantId == null) {
+            return Optional.empty();
+        }
+        return membershipQueryService.handle(new GetMembershipByTenantAndUserQuery(TenantId.of(tenantId), UserId.of(userId)))
+                .filter(membership -> membership.status() == MembershipStatus.ACTIVE)
+                .map(membership -> membership.id().value());
+    }
+
+    @Override
+    public Optional<UUID> fetchUserIdOfMembership(UUID membershipId) {
+        if (membershipId == null) {
+            return Optional.empty();
+        }
+        return membershipQueryService.handle(new GetMembershipByIdQuery(TenantMembershipId.of(membershipId)))
+                .map(membership -> membership.userId().value());
+    }
+
+    @Override
+    public List<UUID> fetchActiveUserIdsWithPermission(UUID tenantId, String permissionName) {
+        if (tenantId == null || permissionName == null) {
+            return List.of();
+        }
+        return membershipQueryService.handle(new GetMembershipsByTenantIdQuery(TenantId.of(tenantId))).stream()
+                .filter(membership -> membership.status() == MembershipStatus.ACTIVE)
+                .filter(membership -> membership.hasPermission(permissionName))
+                .map(membership -> membership.userId().value())
+                .toList();
     }
 
     @Override

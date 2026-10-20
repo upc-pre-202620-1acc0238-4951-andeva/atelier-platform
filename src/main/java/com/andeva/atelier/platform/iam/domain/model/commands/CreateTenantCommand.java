@@ -7,6 +7,7 @@ import com.andeva.atelier.platform.shared.domain.model.valueobjects.PhoneNumber;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TaxId;
 
 import java.util.Objects;
+import java.util.UUID;
 
 /**
  * Domain command to register and provision an automotive workshop Tenant with its initial administrator.
@@ -20,7 +21,8 @@ public record CreateTenantCommand(
         EmailAddress adminEmail,
         Password adminPassword,
         PersonName adminName,
-        PhoneNumber adminPhone
+        PhoneNumber adminPhone,
+        UUID trialPlanId
 ) {
     public CreateTenantCommand {
         Objects.requireNonNull(name, "Workshop commercial name cannot be null");
@@ -29,5 +31,10 @@ public record CreateTenantCommand(
         Objects.requireNonNull(adminEmail, "Administrator email cannot be null");
         Objects.requireNonNull(adminPassword, "Administrator password cannot be null");
         Objects.requireNonNull(adminName, "Administrator name cannot be null");
+    }
+
+    public CreateTenantCommand(String name, String legalName, TaxId taxId, EmailAddress adminEmail,
+                               Password adminPassword, PersonName adminName, PhoneNumber adminPhone) {
+        this(name, legalName, taxId, adminEmail, adminPassword, adminName, adminPhone, null);
     }
 }

@@ -1,9 +1,12 @@
 package com.andeva.atelier.platform.hr.interfaces.rest.controllers;
 
 import com.andeva.atelier.platform.hr.application.commandservices.AttendanceCommandService;
+import com.andeva.atelier.platform.hr.application.queryservices.StaffMembershipQueryService;
 import com.andeva.atelier.platform.hr.application.queryservices.AttendanceQueryService;
 import com.andeva.atelier.platform.hr.domain.model.aggregates.AttendanceRecord;
 import com.andeva.atelier.platform.hr.domain.model.commands.JustifyAttendanceCommand;
+import com.andeva.atelier.platform.hr.domain.model.commands.ReviewAttendanceJustificationCommand;
+import com.andeva.atelier.platform.hr.domain.model.commands.SubmitAttendanceJustificationCommand;
 import com.andeva.atelier.platform.hr.domain.model.commands.RecordClockInCommand;
 import com.andeva.atelier.platform.hr.domain.model.commands.RecordClockOutCommand;
 import com.andeva.atelier.platform.hr.domain.model.ids.AttendanceRecordId;
@@ -49,11 +52,14 @@ public class AttendanceController {
 
     private final AttendanceCommandService attendanceCommandService;
     private final AttendanceQueryService attendanceQueryService;
+    private final StaffMembershipQueryService staffMembershipQueryService;
 
     public AttendanceController(
             AttendanceCommandService attendanceCommandService,
-            AttendanceQueryService attendanceQueryService
+            AttendanceQueryService attendanceQueryService,
+            StaffMembershipQueryService staffMembershipQueryService
     ) {
+        this.staffMembershipQueryService = Objects.requireNonNull(staffMembershipQueryService, "staffMembershipQueryService cannot be null");
         this.attendanceCommandService = Objects.requireNonNull(attendanceCommandService, "attendanceCommandService cannot be null");
         this.attendanceQueryService = Objects.requireNonNull(attendanceQueryService, "attendanceQueryService cannot be null");
     }
@@ -71,9 +77,11 @@ public class AttendanceController {
         throw new org.springframework.security.access.AccessDeniedException("Active tenant context is required");
     }
 
+    // Records belong to the staff membership, never to the raw user account id
     private TenantMembershipId resolveMembershipId(CustomUserDetails userDetails) {
-        if (userDetails != null && userDetails.getUserId() != null) {
-            return TenantMembershipId.of(userDetails.getUserId());
+        if (userDetails != null && userDetails.getUserId() != null && userDetails.getTenantId() != null) {
+            return staffMembershipQueryService.resolveActiveMembership(TenantId.of(userDetails.getTenantId()), userDetails.getUserId())
+                    .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("No active staff membership in this workshop"));
         }
         throw new org.springframework.security.access.AccessDeniedException("Authenticated user membership context is required");
     }
@@ -123,9 +131,60 @@ public class AttendanceController {
         return ResponseEntity.ok(AttendanceResourceAssembler.toResource(result.getOrThrow()));
     }
 
+    @PostMapping("/{attendanceId}/justification")
+    @PreAuthorize("hasAuthority('hr:justifications:create')")
+    @Operation(summary = "Submit the reason of an own late or absent attendance for administrative review")
+    public ResponseEntity<?> submitJustification(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestHeader(value = "X-Tenant-Id", required = false) UUID tenantHeader,
+            @PathVariable UUID attendanceId,
+            @Valid @RequestBody JustifyAttendanceRequest request
+    ) {
+        TenantId tenantId = resolveTenantId(userDetails, tenantHeader);
+        Result<AttendanceRecord, ApplicationError> result = attendanceCommandService.handle(new SubmitAttendanceJustificationCommand(
+                tenantId, AttendanceRecordId.of(attendanceId), resolveMembershipId(userDetails), request.reason()));
+        return attendanceResponse(result);
+    }
+
+    @PostMapping("/{attendanceId}/justification/approve")
+    @PreAuthorize("hasAuthority('hr:justifications:approve')")
+    @Operation(summary = "Approve a submitted justification: the attendance becomes EXCUSED")
+    public ResponseEntity<?> approveJustification(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestHeader(value = "X-Tenant-Id", required = false) UUID tenantHeader,
+            @PathVariable UUID attendanceId
+    ) {
+        return reviewJustification(userDetails, tenantHeader, attendanceId, true);
+    }
+
+    @PostMapping("/{attendanceId}/justification/reject")
+    @PreAuthorize("hasAuthority('hr:justifications:approve')")
+    @Operation(summary = "Dismiss a submitted justification: the attendance keeps its late or absent status")
+    public ResponseEntity<?> rejectJustification(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestHeader(value = "X-Tenant-Id", required = false) UUID tenantHeader,
+            @PathVariable UUID attendanceId
+    ) {
+        return reviewJustification(userDetails, tenantHeader, attendanceId, false);
+    }
+
+    private ResponseEntity<?> reviewJustification(CustomUserDetails userDetails, UUID tenantHeader, UUID attendanceId, boolean approved) {
+        TenantId tenantId = resolveTenantId(userDetails, tenantHeader);
+        Result<AttendanceRecord, ApplicationError> result = attendanceCommandService.handle(new ReviewAttendanceJustificationCommand(
+                tenantId, AttendanceRecordId.of(attendanceId), resolveMembershipId(userDetails), approved));
+        return attendanceResponse(result);
+    }
+
+    private ResponseEntity<?> attendanceResponse(Result<AttendanceRecord, ApplicationError> result) {
+        if (result.isFailure()) {
+            return ErrorResponseAssembler.toErrorResponseFromApplicationError(result.getError());
+        }
+        return ResponseEntity.ok(AttendanceResourceAssembler.toResource(result.getOrThrow()));
+    }
+
     @PostMapping("/{attendanceId}/justify")
     @PreAuthorize("hasAuthority('hr:justifications:approve')")
-    @Operation(summary = "Justify a late or absent attendance record")
+    @Operation(summary = "Excuse a late or absent attendance directly (administrative justification)")
     public ResponseEntity<?> justifyAttendance(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestHeader(value = "X-Tenant-Id", required = false) UUID tenantHeader,

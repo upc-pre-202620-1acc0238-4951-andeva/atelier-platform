@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+import java.util.UUID;
+
 /**
  * Request payload for creating and provisioning a new workshop tenant and its initial admin account.
  *
@@ -50,6 +52,13 @@ public record CreateTenantResource(
 
         @NotBlank(message = "{iam.validation.tenant.admin_phone.required}")
         @Pattern(regexp = "^\\+?[0-9]{9,15}$", message = "{iam.validation.user.phone.format}")
-        String adminPhone
+        String adminPhone,
+
+        // Optional plan chosen on the website: the free trial starts on it (defaults to Go)
+        UUID planId
 ) {
+    public CreateTenantResource(String name, String legalName, String taxId, String adminEmail, String adminPassword,
+                                String adminFirstName, String adminLastName, String adminPhone) {
+        this(name, legalName, taxId, adminEmail, adminPassword, adminFirstName, adminLastName, adminPhone, null);
+    }
 }

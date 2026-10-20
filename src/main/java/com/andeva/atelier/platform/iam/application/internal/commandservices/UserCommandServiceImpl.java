@@ -11,7 +11,11 @@ import com.andeva.atelier.platform.iam.domain.model.aggregates.User;
 import com.andeva.atelier.platform.iam.domain.model.commands.AuthenticateUserCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.AuthenticateWithGoogleCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.RegisterUserCommand;
+import com.andeva.atelier.platform.iam.domain.model.commands.RefreshAccessTokenCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.RequestPasswordResetCommand;
+import com.andeva.atelier.platform.iam.domain.model.commands.SignOutCommand;
+import com.andeva.atelier.platform.iam.domain.model.aggregates.RefreshSession;
+import com.andeva.atelier.platform.iam.domain.model.commands.ResendEmailVerificationCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.ResetPasswordCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.VerifyEmailTokenCommand;
 import com.andeva.atelier.platform.iam.domain.model.entities.Permission;
@@ -25,6 +29,7 @@ import com.andeva.atelier.platform.shared.application.result.ApplicationError;
 import com.andeva.atelier.platform.shared.application.result.Result;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.EmailAddress;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,11 +50,14 @@ import java.util.stream.Collectors;
 @Transactional
 public class UserCommandServiceImpl implements UserCommandService {
 
+    private static final String EMAIL_NOT_VERIFIED = "EMAIL_NOT_VERIFIED";
+
     private final UserRepository userRepository;
     private final TenantMembershipRepository membershipRepository;
     private final BCryptHashingService hashingService;
     private final BearerTokenService bearerTokenService;
     private final GoogleIdentityGateway googleIdentityGateway;
+    private final RefreshSessionManager refreshSessionManager;
 
     public UserCommandServiceImpl(
             UserRepository userRepository,
@@ -58,6 +66,19 @@ public class UserCommandServiceImpl implements UserCommandService {
             BearerTokenService bearerTokenService,
             GoogleIdentityGateway googleIdentityGateway
     ) {
+        this(userRepository, membershipRepository, hashingService, bearerTokenService, googleIdentityGateway, null);
+    }
+
+    @Autowired
+    public UserCommandServiceImpl(
+            UserRepository userRepository,
+            TenantMembershipRepository membershipRepository,
+            BCryptHashingService hashingService,
+            BearerTokenService bearerTokenService,
+            GoogleIdentityGateway googleIdentityGateway,
+            RefreshSessionManager refreshSessionManager
+    ) {
+        this.refreshSessionManager = refreshSessionManager;
         this.userRepository = Objects.requireNonNull(userRepository, "UserRepository cannot be null");
         this.membershipRepository = Objects.requireNonNull(membershipRepository, "TenantMembershipRepository cannot be null");
         this.hashingService = Objects.requireNonNull(hashingService, "BCryptHashingService cannot be null");
@@ -100,6 +121,12 @@ public class UserCommandServiceImpl implements UserCommandService {
             return Result.failure(ApplicationError.unauthorized("Invalid email or password credentials"));
         }
 
+        // Dedicated code so clients can route the user to the verification code step
+        if (user.status() == UserStatus.PENDING_VERIFICATION) {
+            return Result.failure(new ApplicationError(EMAIL_NOT_VERIFIED,
+                    "The account email is not verified yet: enter the code sent by email or request a new one", List.of()));
+        }
+
         if (user.status() != UserStatus.ACTIVE) {
             return Result.failure(ApplicationError.forbidden(
                     "User account is not active. Current status: " + user.status()));
@@ -130,6 +157,12 @@ public class UserCommandServiceImpl implements UserCommandService {
             return userRepository.save(newUser);
         });
 
+        // Google already proved ownership of the address: a local account still pending verification is activated
+        if (user.status() == UserStatus.PENDING_VERIFICATION && payload.emailVerified()) {
+            user.verifyEmail();
+            user = userRepository.save(user);
+        }
+
         if (user.status() != UserStatus.ACTIVE) {
             return Result.failure(ApplicationError.forbidden(
                     "User account is not active. Current status: " + user.status()));
@@ -158,6 +191,21 @@ public class UserCommandServiceImpl implements UserCommandService {
 
         user.verifyEmail();
         userRepository.save(user);
+
+        return Result.success(null);
+    }
+
+    @Override
+    public Result<Void, ApplicationError> handle(ResendEmailVerificationCommand command) {
+        Objects.requireNonNull(command, "ResendEmailVerificationCommand cannot be null");
+
+        // Same answer whether or not the account exists, so the endpoint cannot be used to probe emails
+        userRepository.findByEmail(command.email())
+                .filter(user -> user.status() == UserStatus.PENDING_VERIFICATION)
+                .ifPresent(user -> {
+                    user.issueVerificationToken(TokenType.EMAIL_VERIFICATION, Duration.ofMinutes(15));
+                    userRepository.save(user);
+                });
 
         return Result.success(null);
     }
@@ -198,6 +246,35 @@ public class UserCommandServiceImpl implements UserCommandService {
         return Result.success(null);
     }
 
+    @Override
+    public Result<AuthenticatedUser, ApplicationError> handle(RefreshAccessTokenCommand command) {
+        Objects.requireNonNull(command, "RefreshAccessTokenCommand cannot be null");
+        if (refreshSessionManager == null) {
+            return Result.failure(ApplicationError.unauthorized("Session renewal is not available"));
+        }
+        Optional<RefreshSession> session = refreshSessionManager.findUsable(command.refreshToken());
+        if (session.isEmpty()) {
+            return Result.failure(ApplicationError.unauthorized("The refresh token is invalid, expired or revoked: sign in again"));
+        }
+        Optional<User> user = userRepository.findById(session.get().userId());
+        if (user.isEmpty() || user.get().status() != UserStatus.ACTIVE) {
+            refreshSessionManager.revoke(session.get());
+            return Result.failure(ApplicationError.unauthorized("The account is no longer active"));
+        }
+        // Rotation: the presented token is spent and a new one is issued with the fresh access token
+        refreshSessionManager.revoke(session.get());
+        return Result.success(buildAuthenticatedUser(user.get()));
+    }
+
+    @Override
+    public Result<Void, ApplicationError> handle(SignOutCommand command) {
+        Objects.requireNonNull(command, "SignOutCommand cannot be null");
+        if (refreshSessionManager != null) {
+            refreshSessionManager.findUsable(command.refreshToken()).ifPresent(refreshSessionManager::revoke);
+        }
+        return Result.success(null);
+    }
+
     private AuthenticatedUser buildAuthenticatedUser(User user) {
         List<TenantMembership> memberships = membershipRepository.findByUserId(user.id());
         TenantMembership activeMembership = memberships.stream()
@@ -222,7 +299,8 @@ public class UserCommandServiceImpl implements UserCommandService {
         }
 
         String token = bearerTokenService.generateToken(user, tenantId, permissions);
-        return new AuthenticatedUser(user, token, tenantId, permissions);
+        AuthenticatedUser session = new AuthenticatedUser(user, token, tenantId, permissions);
+        return refreshSessionManager != null ? session.withRefreshToken(refreshSessionManager.issue(user.id())) : session;
     }
 
     @Override

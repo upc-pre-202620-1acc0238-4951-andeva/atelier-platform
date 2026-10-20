@@ -5,6 +5,7 @@ import com.andeva.atelier.platform.iot.domain.model.aggregates.Obd2Device;
 import com.andeva.atelier.platform.iot.domain.model.aggregates.PredictiveAlert;
 import com.andeva.atelier.platform.iot.domain.model.aggregates.TelemetryRecord;
 import com.andeva.atelier.platform.iot.domain.model.aggregates.VehicleFault;
+import com.andeva.atelier.platform.iot.domain.model.aggregates.VehicleHealthReport;
 import com.andeva.atelier.platform.iot.domain.model.dto.ai.DtcTelemetryCorrelationDto;
 import com.andeva.atelier.platform.iot.domain.model.dto.ai.PredictiveRiskDto;
 import com.andeva.atelier.platform.iot.domain.model.dto.ai.RecommendedServiceActionDto;
@@ -192,11 +193,8 @@ class IoTResourceAssemblersTest {
     @DisplayName("VehicleHealthReportResourceAssembler should map AI DTO to response accurately")
     void testVehicleHealthReportResourceAssembler() {
         VehicleHealthReportResourceAssembler assembler = new VehicleHealthReportResourceAssembler();
-        assertThat(assembler.toResponse(UUID.randomUUID(), UUID.randomUUID(), null, Instant.now())).isNull();
-
-        UUID reportId = UUID.randomUUID();
-        UUID vehicleId = UUID.randomUUID();
-        Instant generatedAt = Instant.now();
+        assertThat(assembler.toResponse(null)).isNull();
+        assertThat(assembler.toDetailResponse(null)).isNull();
 
         VehicleHealthReportAiDto reportDto = new VehicleHealthReportAiDto(
                 92,
@@ -208,7 +206,11 @@ class IoTResourceAssemblersTest {
                 List.of(new DtcTelemetryCorrelationDto("P0000", "N/A", "No anomalies"))
         );
 
-        HealthReportCreatedResponse response = assembler.toResponse(reportId, vehicleId, reportDto, generatedAt);
+        VehicleHealthReport report = VehicleHealthReport.issue(TenantId.generate(), VehicleId.generate(), 30, reportDto);
+        UUID reportId = report.getId().value();
+        UUID vehicleId = report.getVehicleId().value();
+
+        HealthReportCreatedResponse response = assembler.toResponse(report);
         assertThat(response).isNotNull();
         assertThat(response.reportId()).isEqualTo(reportId);
         assertThat(response.vehicleId()).isEqualTo(vehicleId);
@@ -216,5 +218,7 @@ class IoTResourceAssemblersTest {
         assertThat(response.executiveSummary()).isEqualTo("Vehicle operates within normal thermodynamic tolerances.");
         assertThat(response.totalRisksDetected()).isEqualTo(1);
         assertThat(response.pdfDownloadUrl()).contains(reportId.toString());
+        assertThat(response.generatedAt()).isEqualTo(report.getGeneratedAt());
+        assertThat(assembler.toDetailResponse(report).diagnosis()).isEqualTo(reportDto);
     }
 }

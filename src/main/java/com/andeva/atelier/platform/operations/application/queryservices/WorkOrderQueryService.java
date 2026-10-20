@@ -25,4 +25,9 @@ public interface WorkOrderQueryService {
     List<TaskProposal> handle(GetTaskProposalsByWorkOrderIdQuery query);
 
     Optional<WorkOrderTask> handle(GetWorkOrderTaskByIdQuery query);
+
+    /**
+     * Open tasks (pending, assigned, in progress, on hold) of the mechanic, in progress first.
+     */
+    List<AssignedTaskView> handle(GetTasksAssignedToMechanicQuery query);
 }

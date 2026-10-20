@@ -7,7 +7,7 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * Domain query to retrieve the latest computed AI vehicle health diagnostic report.
+ * Domain query to retrieve the latest issued AI vehicle health diagnostic report.
  *
  * @author Joel Huamani Estefanero
  */

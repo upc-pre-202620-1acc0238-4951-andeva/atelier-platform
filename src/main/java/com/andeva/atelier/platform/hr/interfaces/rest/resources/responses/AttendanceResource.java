@@ -16,5 +16,8 @@ public record AttendanceResource(
         Double distanceToBranchMeters,
         String justificationReason,
         UUID justifiedBy,
-        Instant justifiedAt
+        Instant justifiedAt,
+        String justificationStatus,
+        UUID justificationReviewedBy,
+        Instant justificationReviewedAt
 ) {}

@@ -45,6 +45,13 @@ public class WorkShiftRepositoryImpl implements WorkShiftRepository {
     }
 
     @Override
+    public List<WorkShift> findActiveStartingBetween(java.time.LocalTime from, java.time.LocalTime to) {
+        return persistenceRepository.findAllByIsActiveTrueAndStartTimeGreaterThanEqualAndStartTimeLessThan(from, to).stream()
+                .map(assembler::toDomain)
+                .toList();
+    }
+
+    @Override
     public List<WorkShift> findAllByTenantId(TenantId tenantId) {
         Objects.requireNonNull(tenantId, "tenantId cannot be null");
         return persistenceRepository.findAllByTenantId(tenantId.value()).stream()

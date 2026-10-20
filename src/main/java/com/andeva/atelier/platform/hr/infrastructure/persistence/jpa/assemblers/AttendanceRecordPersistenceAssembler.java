@@ -35,7 +35,7 @@ public class AttendanceRecordPersistenceAssembler {
             );
         }
 
-        return new AttendanceRecord(
+        AttendanceRecord record = new AttendanceRecord(
                 AttendanceRecordId.of(entity.getId()),
                 TenantId.of(entity.getTenantId()),
                 BranchId.of(entity.getBranchId()),
@@ -48,6 +48,12 @@ public class AttendanceRecordPersistenceAssembler {
                 distance,
                 justification
         );
+        record.restoreJustificationReview(
+                entity.getJustificationStatus(),
+                entity.getJustificationReviewedBy() != null ? TenantMembershipId.of(entity.getJustificationReviewedBy()) : null,
+                entity.getJustificationReviewedAt()
+        );
+        return record;
     }
 
     public AttendanceRecordPersistenceEntity toEntity(AttendanceRecord domain) {
@@ -69,6 +75,9 @@ public class AttendanceRecordPersistenceAssembler {
             entity.setJustifiedBy(j.justifiedBy().value());
             entity.setJustifiedAt(j.justifiedAt());
         });
+        entity.setJustificationStatus(domain.getJustificationStatus().orElse(null));
+        entity.setJustificationReviewedBy(domain.getJustificationReviewedBy().map(TenantMembershipId::value).orElse(null));
+        entity.setJustificationReviewedAt(domain.getJustificationReviewedAt().orElse(null));
 
         return entity;
     }

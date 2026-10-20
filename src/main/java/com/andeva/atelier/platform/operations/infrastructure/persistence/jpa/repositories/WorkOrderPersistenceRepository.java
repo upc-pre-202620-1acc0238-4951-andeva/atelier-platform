@@ -1,5 +1,6 @@
 package com.andeva.atelier.platform.operations.infrastructure.persistence.jpa.repositories;
 
+import com.andeva.atelier.platform.operations.domain.model.enums.WorkOrderStatus;
 import com.andeva.atelier.platform.operations.infrastructure.persistence.jpa.entities.WorkOrderPersistenceEntity;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
@@ -10,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,6 +35,8 @@ public interface WorkOrderPersistenceRepository extends JpaRepository<WorkOrderP
 
     Optional<WorkOrderPersistenceEntity> findByCurrentBayId(UUID currentBayId);
 
+    Optional<WorkOrderPersistenceEntity> findFirstByTenantIdAndVehicleIdAndStatusIn(UUID tenantId, UUID vehicleId, Collection<WorkOrderStatus> statuses);
+
     @Query("SELECT w FROM WorkOrderPersistenceEntity w " +
            "WHERE w.tenantId = :tenantId AND w.vehicleId = :vehicleId " +
            "AND w.status IN (com.andeva.atelier.platform.operations.domain.model.enums.WorkOrderStatus.DRAFT, com.andeva.atelier.platform.operations.domain.model.enums.WorkOrderStatus.IN_PROGRESS)")
@@ -53,6 +57,9 @@ public interface WorkOrderPersistenceRepository extends JpaRepository<WorkOrderP
         @Param("id") UUID id,
         @Param("tenantId") UUID tenantId
     );
+
+    @Query("SELECT DISTINCT w FROM WorkOrderPersistenceEntity w JOIN w.tasks t WHERE w.tenantId = :tenantId AND t.mechanicId = :mechanicId AND w.status IN :statuses")
+    List<WorkOrderPersistenceEntity> findWithTasksAssignedTo(@Param("tenantId") UUID tenantId, @Param("mechanicId") UUID mechanicId, @Param("statuses") Collection<WorkOrderStatus> statuses);
 
     @Query("SELECT w FROM WorkOrderPersistenceEntity w JOIN w.tasks t WHERE t.id = :taskId")
     Optional<WorkOrderPersistenceEntity> findByTaskId(@Param("taskId") UUID taskId);

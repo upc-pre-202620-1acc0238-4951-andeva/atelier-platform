@@ -6,12 +6,16 @@ import com.andeva.atelier.platform.iot.application.queryservices.VehicleHealthRe
 import com.andeva.atelier.platform.iot.domain.exceptions.IoTDomainException;
 import com.andeva.atelier.platform.iot.domain.exceptions.VehicleHealthReportNotFoundException;
 import com.andeva.atelier.platform.iot.domain.model.commands.GenerateVehicleHealthReportCommand;
-import com.andeva.atelier.platform.iot.domain.model.dto.ai.VehicleHealthReportAiDto;
+import com.andeva.atelier.platform.iot.domain.model.aggregates.VehicleHealthReport;
+import com.andeva.atelier.platform.iot.domain.model.ids.HealthReportId;
+import com.andeva.atelier.platform.iot.domain.model.queries.ExportFleetHealthReportPdfQuery;
 import com.andeva.atelier.platform.iot.domain.model.queries.ExportVehicleHealthReportPdfQuery;
 import com.andeva.atelier.platform.iot.domain.model.queries.GetLatestVehicleHealthReportQuery;
+import com.andeva.atelier.platform.iot.domain.model.queries.GetVehicleHealthReportByIdQuery;
 import com.andeva.atelier.platform.iot.interfaces.rest.resources.requests.GenerateHealthReportRequest;
 import com.andeva.atelier.platform.iot.interfaces.rest.resources.responses.AsyncJobResponse;
 import com.andeva.atelier.platform.iot.interfaces.rest.resources.responses.HealthReportCreatedResponse;
+import com.andeva.atelier.platform.iot.interfaces.rest.resources.responses.HealthReportDetailResponse;
 import com.andeva.atelier.platform.iot.interfaces.rest.transform.VehicleHealthReportResourceAssembler;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.VehicleId;
@@ -95,13 +99,10 @@ public class VehicleHealthReportsController {
                 includeResolved
         );
 
-        VehicleHealthReportAiDto reportDto = reportCommandService.handle(command);
-        UUID reportId = UUID.randomUUID();
-        Instant generatedAt = Instant.now();
+        VehicleHealthReport report = reportCommandService.handle(command);
+        HealthReportCreatedResponse response = reportAssembler.toResponse(report);
 
-        HealthReportCreatedResponse response = reportAssembler.toResponse(reportId, vehicleId, reportDto, generatedAt);
-
-        return ResponseEntity.created(URI.create("/api/v1/iot/health-reports/" + reportId))
+        return ResponseEntity.created(URI.create("/api/v1/iot/health-reports/" + report.getId().value()))
                 .body(response);
     }
 
@@ -150,13 +151,32 @@ public class VehicleHealthReportsController {
         TenantId tenantId = resolveTenantId(userDetails);
         VehicleId vId = VehicleId.of(vehicleId);
 
-        VehicleHealthReportAiDto reportDto = reportQueryService.handle(new GetLatestVehicleHealthReportQuery(tenantId, vId))
+        VehicleHealthReport report = reportQueryService.handle(new GetLatestVehicleHealthReportQuery(tenantId, vId))
                 .orElseThrow(() -> new VehicleHealthReportNotFoundException(vId));
 
-        UUID reportId = UUID.randomUUID();
-        HealthReportCreatedResponse response = reportAssembler.toResponse(reportId, vehicleId, reportDto, Instant.now());
+        return ResponseEntity.ok(reportAssembler.toResponse(report));
+    }
 
-        return ResponseEntity.ok(response);
+    @Operation(summary = "Get the full structured diagnosis of an issued health report")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Issued health report retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "403", description = "Forbidden"),
+            @ApiResponse(responseCode = "404", description = "Report not found")
+    })
+    @GetMapping("/{reportId}")
+    @PreAuthorize("hasAuthority('iot:health_reports:read')")
+    public ResponseEntity<HealthReportDetailResponse> getHealthReportById(
+            @PathVariable UUID reportId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        TenantId tenantId = resolveTenantId(userDetails);
+
+        VehicleHealthReport report = reportQueryService.handle(new GetVehicleHealthReportByIdQuery(tenantId, HealthReportId.of(reportId)))
+                .orElseThrow(() -> new VehicleHealthReportNotFoundException(
+                        "No existe un reporte pericial de salud vehicular con ID " + reportId));
+
+        return ResponseEntity.ok(reportAssembler.toDetailResponse(report));
     }
 
     @Operation(summary = "Download official institutional vehicle health diagnostic report in PDF format")
@@ -170,18 +190,36 @@ public class VehicleHealthReportsController {
     @PreAuthorize("hasAuthority('iot:health_reports:read')")
     public ResponseEntity<byte[]> downloadHealthReportPdf(
             @PathVariable UUID reportId,
-            @RequestParam(required = false) UUID vehicleId,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         TenantId tenantId = resolveTenantId(userDetails);
-        VehicleId vId = vehicleId != null ? VehicleId.of(vehicleId) : VehicleId.generate();
 
-        ExportVehicleHealthReportPdfQuery query = new ExportVehicleHealthReportPdfQuery(tenantId, vId, reportId);
+        ExportVehicleHealthReportPdfQuery query = new ExportVehicleHealthReportPdfQuery(tenantId, HealthReportId.of(reportId));
         byte[] pdfBytes = reportQueryService.handle(query);
 
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"vehicle-health-report-" + reportId + ".pdf\"")
+                .body(pdfBytes);
+    }
+
+    @Operation(summary = "Download the consolidated health report of a customer's fleet, critical units first")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Fleet PDF generated"),
+            @ApiResponse(responseCode = "404", description = "Customer not found in the workshop")
+    })
+    @GetMapping("/fleet/pdf")
+    @PreAuthorize("hasAuthority('iot:health_reports:read')")
+    public ResponseEntity<byte[]> downloadFleetReportPdf(
+            @RequestParam UUID customerId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        TenantId tenantId = resolveTenantId(userDetails);
+        byte[] pdfBytes = reportQueryService.handle(new ExportFleetHealthReportPdfQuery(tenantId, customerId));
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"fleet-health-report-" + customerId + ".pdf\"")
                 .body(pdfBytes);
     }
 

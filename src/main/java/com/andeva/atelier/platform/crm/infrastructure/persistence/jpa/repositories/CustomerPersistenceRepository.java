@@ -20,6 +20,8 @@ public interface CustomerPersistenceRepository extends JpaRepository<CustomerPer
 
     Optional<CustomerPersistenceEntity> findByTenantIdAndTaxId(UUID tenantId, String taxId);
 
+    Optional<CustomerPersistenceEntity> findFirstByTenantIdAndEmailIgnoreCase(UUID tenantId, String email);
+
     @Query("SELECT c FROM CustomerPersistenceEntity c " +
            "WHERE c.tenantId = :tenantId " +
            "AND (:type IS NULL OR c.type = :type) " +

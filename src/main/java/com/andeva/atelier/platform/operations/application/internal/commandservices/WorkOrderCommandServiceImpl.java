@@ -8,6 +8,9 @@ import com.andeva.atelier.platform.operations.domain.model.commands.*;
 import com.andeva.atelier.platform.operations.domain.model.entities.TaskProposal;
 import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTask;
 import com.andeva.atelier.platform.operations.domain.model.enums.BayStatus;
+import com.andeva.atelier.platform.operations.domain.model.enums.HoldReason;
+import com.andeva.atelier.platform.operations.domain.model.enums.WorkOrderTaskStatus;
+import com.andeva.atelier.platform.operations.domain.model.ids.WorkOrderTaskId;
 import com.andeva.atelier.platform.operations.domain.model.enums.WorkOrderStatus;
 import com.andeva.atelier.platform.operations.domain.model.valueobjects.LaborHours;
 import com.andeva.atelier.platform.operations.domain.model.valueobjects.Quantity;
@@ -24,17 +27,27 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
 import com.andeva.atelier.platform.operations.application.internal.outbound.acl.CustomerFleetAclService;
+import com.andeva.atelier.platform.operations.application.internal.outbound.acl.InventoryItemSummaryDto;
 import com.andeva.atelier.platform.operations.application.internal.outbound.acl.InventoryReservationAclService;
 import com.andeva.atelier.platform.operations.application.internal.outbound.acl.TenancyAclService;
+import com.andeva.atelier.platform.operations.application.internal.outbound.acl.WorkforceShiftAclService;
 
 @Service
 @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
 public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
+
+    private static final BigDecimal MINUTES_PER_HOUR = BigDecimal.valueOf(60);
+    private static final ZoneId WORKSHOP_ZONE = ZoneId.of("America/Lima");
 
     private final WorkOrderRepository workOrderRepository;
     private final WorkBayRepository workBayRepository;
@@ -43,6 +56,7 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
     private final CustomerFleetAclService customerFleetAclService;
     private final TenancyAclService tenancyAclService;
     private final InventoryReservationAclService inventoryAclService;
+    private final WorkforceShiftAclService workforceShiftAclService;
 
     public WorkOrderCommandServiceImpl(
             WorkOrderRepository workOrderRepository,
@@ -50,7 +64,20 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
             ServiceRepository serviceRepository,
             DirectToCloudStorageGateway storageGateway
     ) {
-        this(workOrderRepository, workBayRepository, serviceRepository, storageGateway, null, null, null);
+        this(workOrderRepository, workBayRepository, serviceRepository, storageGateway, null, null, null, null);
+    }
+
+    public WorkOrderCommandServiceImpl(
+            WorkOrderRepository workOrderRepository,
+            WorkBayRepository workBayRepository,
+            ServiceRepository serviceRepository,
+            DirectToCloudStorageGateway storageGateway,
+            CustomerFleetAclService customerFleetAclService,
+            TenancyAclService tenancyAclService,
+            InventoryReservationAclService inventoryAclService
+    ) {
+        this(workOrderRepository, workBayRepository, serviceRepository, storageGateway, customerFleetAclService,
+                tenancyAclService, inventoryAclService, null);
     }
 
     @Autowired
@@ -61,7 +88,8 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
             DirectToCloudStorageGateway storageGateway,
             CustomerFleetAclService customerFleetAclService,
             TenancyAclService tenancyAclService,
-            InventoryReservationAclService inventoryAclService
+            InventoryReservationAclService inventoryAclService,
+            WorkforceShiftAclService workforceShiftAclService
     ) {
         this.workOrderRepository = Objects.requireNonNull(workOrderRepository);
         this.workBayRepository = Objects.requireNonNull(workBayRepository);
@@ -70,12 +98,21 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
         this.customerFleetAclService = customerFleetAclService;
         this.tenancyAclService = tenancyAclService;
         this.inventoryAclService = inventoryAclService;
+        this.workforceShiftAclService = workforceShiftAclService;
     }
 
     @Override
     public Result<WorkOrder, ApplicationError> handle(CreateWorkOrderCommand command) {
         if (command == null) {
             return Result.failure(ApplicationError.badRequest("CreateWorkOrderCommand cannot be null"));
+        }
+
+        // A vehicle stays in custody until its order is paid or canceled: only one open order at a time
+        Optional<WorkOrder> openOrder = workOrderRepository.findOpenByVehicleId(command.tenantId(), command.vehicleId());
+        if (openOrder.isPresent()) {
+            return Result.failure(ApplicationError.conflict("Vehicle already has an open work order #"
+                    + openOrder.get().getInternalNumber().sequence() + " (" + openOrder.get().getStatus() + "): "
+                    + openOrder.get().getId().value()));
         }
 
         Integer nextSeq = workOrderRepository.findNextInternalSequence(command.tenantId());
@@ -178,9 +215,17 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
             return Result.failure(ApplicationError.notFound("WorkOrder with identifier " + command.workOrderId().value() + " was not found"));
         }
 
-        if (serviceRepository.findById(command.serviceId()).isEmpty()) {
+        Optional<com.andeva.atelier.platform.operations.domain.model.aggregates.Service> serviceOpt = serviceRepository.findById(command.serviceId());
+        if (serviceOpt.isEmpty()) {
             return Result.failure(ApplicationError.notFound("Service with identifier " + command.serviceId().value() + " was not found"));
         }
+
+        // Labor price and estimated hours default to the catalog service when not overridden
+        var service = serviceOpt.get();
+        BigDecimal price = command.price() != null ? command.price() : service.getBasePrice().amount();
+        BigDecimal estimatedHours = command.estimatedHours() != null
+                ? command.estimatedHours()
+                : BigDecimal.valueOf(Math.max(service.getEstimatedDurationMinutes(), 1)).divide(MINUTES_PER_HOUR, 2, RoundingMode.HALF_UP);
 
         WorkOrder workOrder = orderOpt.get();
         try {
@@ -188,8 +233,8 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
                     command.serviceId(),
                     command.mechanicId(),
                     command.description(),
-                    Money.soles(command.price()),
-                    LaborHours.of(command.estimatedHours())
+                    Money.soles(price),
+                    LaborHours.of(estimatedHours)
             );
             WorkOrder saved = workOrderRepository.save(workOrder);
             return Result.success(saved);
@@ -249,10 +294,94 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
             return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
         }
         WorkOrder order = orderOpt.get();
+        UUID requestedBy = command.requestedByUserId() != null && tenancyAclService != null
+                ? tenancyAclService.resolveActiveMembershipId(command.requestedByUserId(), order.getTenantId().value()).orElse(null)
+                : null;
         try {
-            order.holdTask(command.taskId(), command.missingItemDescription(), command.inventoryItemId());
+            // The head mechanic's request waits for administrative approval; the task keeps running meanwhile
+            order.requestTaskSuspension(command.taskId(), command.missingItemDescription(), requestedBy);
             WorkOrder saved = workOrderRepository.save(order);
             return Result.success(saved);
+        } catch (Exception e) {
+            return Result.failure(ApplicationError.unprocessableEntity(e.getMessage()));
+        }
+    }
+
+    @Override
+    public Result<WorkOrder, ApplicationError> handle(ApproveTaskSuspensionCommand command) {
+        return applyToTask(command == null ? null : command.taskId(), (order, taskId) -> order.approveTaskSuspension(taskId));
+    }
+
+    @Override
+    public Result<WorkOrder, ApplicationError> handle(RejectTaskSuspensionCommand command) {
+        return applyToTask(command == null ? null : command.taskId(), (order, taskId) -> order.rejectTaskSuspension(taskId));
+    }
+
+    @Override
+    public Result<WorkOrder, ApplicationError> handle(PauseWorkOrderTaskCommand command) {
+        if (command == null || command.taskId() == null || command.reason() == null) {
+            return Result.failure(ApplicationError.badRequest("taskId and reason are required"));
+        }
+        Optional<WorkOrder> orderOpt = workOrderRepository.findByTaskId(command.taskId());
+        if (orderOpt.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        }
+        WorkOrder order = orderOpt.get();
+
+        // An end-of-shift pause is refused while the mechanic's scheduled shift is still running
+        if (command.reason() == HoldReason.END_OF_SHIFT && workforceShiftAclService != null) {
+            Optional<UUID> mechanicId = order.getTasks().stream()
+                    .filter(t -> t.getId().equals(command.taskId()))
+                    .findFirst()
+                    .flatMap(WorkOrderTask::getMechanicId);
+            Optional<WorkforceShiftAclService.ShiftWindow> shift = mechanicId
+                    .flatMap(id -> workforceShiftAclService.findShift(order.getTenantId().value(), id));
+            LocalTime now = LocalTime.now(WORKSHOP_ZONE);
+            if (shift.isPresent() && !shift.get().end().isBefore(shift.get().start()) && now.isBefore(shift.get().end())) {
+                return Result.failure(ApplicationError.unprocessableEntity("The shift is still running until "
+                        + shift.get().end() + ": pause for a break instead of the end of the shift"));
+            }
+        }
+
+        try {
+            order.pauseTask(command.taskId(), command.reason());
+            return Result.success(workOrderRepository.save(order));
+        } catch (Exception e) {
+            return Result.failure(ApplicationError.unprocessableEntity(e.getMessage()));
+        }
+    }
+
+    @Override
+    public int handle(PauseTasksOnClockOutCommand command) {
+        int paused = 0;
+        for (WorkOrder order : workOrderRepository.findActiveWithTasksAssignedTo(command.tenantId(), command.mechanicMembershipId())) {
+            List<WorkOrderTaskId> running = order.getTasks().stream()
+                    .filter(t -> t.getStatus() == WorkOrderTaskStatus.IN_PROGRESS)
+                    .filter(t -> t.getMechanicId().filter(command.mechanicMembershipId()::equals).isPresent())
+                    .map(WorkOrderTask::getId)
+                    .toList();
+            if (running.isEmpty()) {
+                continue;
+            }
+            running.forEach(taskId -> order.pauseTask(taskId, HoldReason.END_OF_SHIFT));
+            workOrderRepository.save(order);
+            paused += running.size();
+        }
+        return paused;
+    }
+
+    private Result<WorkOrder, ApplicationError> applyToTask(WorkOrderTaskId taskId, java.util.function.BiConsumer<WorkOrder, WorkOrderTaskId> change) {
+        if (taskId == null) {
+            return Result.failure(ApplicationError.badRequest("taskId cannot be null"));
+        }
+        Optional<WorkOrder> orderOpt = workOrderRepository.findByTaskId(taskId);
+        if (orderOpt.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("Task with identifier " + taskId.value() + " was not found"));
+        }
+        WorkOrder order = orderOpt.get();
+        try {
+            change.accept(order, taskId);
+            return Result.success(workOrderRepository.save(order));
         } catch (Exception e) {
             return Result.failure(ApplicationError.unprocessableEntity(e.getMessage()));
         }
@@ -325,8 +454,28 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
             return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
         }
         WorkOrder order = orderOpt.get();
+        BigDecimal unitPrice = command.unitPrice();
+        if (inventoryAclService != null) {
+            UUID tenantId = order.getTenantId().value();
+            Optional<InventoryItemSummaryDto> item = inventoryAclService.fetchItemDetails(tenantId, command.productId());
+            if (item.isEmpty()) {
+                return Result.failure(ApplicationError.notFound("Inventory item with identifier " + command.productId() + " was not found"));
+            }
+            // Reject up front: the FIFO discount runs after commit and could no longer refuse the line
+            if (!inventoryAclService.checkItemStockAvailability(tenantId, command.productId(), command.quantity())) {
+                return Result.failure(ApplicationError.conflict("Insufficient stock for " + item.get().sku() + ": requested "
+                        + command.quantity().stripTrailingZeros().toPlainString() + ", available "
+                        + item.get().currentStock().stripTrailingZeros().toPlainString()));
+            }
+            if (unitPrice == null) {
+                unitPrice = item.get().basePrice();
+            }
+        }
+        if (unitPrice == null) {
+            return Result.failure(ApplicationError.badRequest("unitPrice is required when the catalog price cannot be resolved"));
+        }
         try {
-            order.addProductToTask(command.taskId(), command.productId(), Quantity.of(command.quantity()), Money.soles(command.unitPrice()));
+            order.addProductToTask(command.taskId(), command.productId(), Quantity.of(command.quantity()), Money.soles(unitPrice));
             WorkOrder saved = workOrderRepository.save(order);
             return Result.success(saved);
         } catch (Exception e) {

@@ -18,7 +18,7 @@ public final class CreateWorkOrderTaskCommandFromResourceAssembler {
                 resource.mechanicId(),
                 resource.description(),
                 resource.price(),
-                BigDecimal.ONE,
+                null,
                 resource.currency() != null ? resource.currency() : "PEN"
         );
     }

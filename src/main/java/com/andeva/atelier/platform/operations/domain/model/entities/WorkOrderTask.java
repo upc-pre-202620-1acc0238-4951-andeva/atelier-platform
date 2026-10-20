@@ -35,6 +35,9 @@ public class WorkOrderTask {
     private String missingItemDescription;
     private Instant pausedAt;
     private long totalPausedSeconds;
+    private String suspensionRequestReason;
+    private UUID suspensionRequestedBy;
+    private Instant suspensionRequestedAt;
     private Instant startedAt;
     private Instant completedAt;
     private final List<WorkOrderTaskProduct> consumedProducts = new ArrayList<>();
@@ -96,6 +99,14 @@ public class WorkOrderTask {
         if (this.status == WorkOrderTaskStatus.COMPLETED || this.status == WorkOrderTaskStatus.CANCELLED) {
             throw new IllegalStateException("Cannot start task in status: " + this.status);
         }
+        if (this.status == WorkOrderTaskStatus.ON_HOLD) {
+            // Only breaks and end-of-shift pauses are lifted by the mechanic; parts suspensions need administrative resume
+            if (this.holdReason != null && !this.holdReason.isSelfResumable()) {
+                throw new IllegalStateException("Task is suspended (" + this.holdReason + ") and must be resumed by the administration");
+            }
+            accumulatePause();
+            this.holdReason = null;
+        }
         this.status = WorkOrderTaskStatus.IN_PROGRESS;
         if (this.startedAt == null) {
             this.startedAt = Instant.now();
@@ -116,13 +127,92 @@ public class WorkOrderTask {
         if (this.status != WorkOrderTaskStatus.ON_HOLD) {
             throw new IllegalStateException("Task must be ON_HOLD to resume: " + this.status);
         }
+        accumulatePause();
+        this.status = WorkOrderTaskStatus.IN_PROGRESS;
+        this.holdReason = null;
+        this.missingItemDescription = null;
+    }
+
+    /**
+     * Stops the labor clock for a break or the end of the shift; the mechanic resumes it with start().
+     */
+    public void pause(HoldReason reason) {
+        Objects.requireNonNull(reason, "reason cannot be null");
+        if (!reason.isSelfResumable()) {
+            throw new IllegalArgumentException("Only BREAK or END_OF_SHIFT pauses can be taken by the mechanic");
+        }
+        if (this.status != WorkOrderTaskStatus.IN_PROGRESS) {
+            throw new IllegalStateException("Task must be IN_PROGRESS to be paused: " + this.status);
+        }
+        this.status = WorkOrderTaskStatus.ON_HOLD;
+        this.holdReason = reason;
+        this.pausedAt = Instant.now();
+    }
+
+    /**
+     * Head mechanic asks to suspend the task because a supplied part is defective. The task keeps
+     * running until the administration approves the request.
+     */
+    public void requestSuspension(String reason, UUID requestedBy) {
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("A justification of the defective part is required");
+        }
+        if (this.status != WorkOrderTaskStatus.IN_PROGRESS) {
+            throw new IllegalStateException("Only an IN_PROGRESS task can be suspended: " + this.status);
+        }
+        if (hasPendingSuspensionRequest()) {
+            throw new IllegalStateException("The task already has a suspension request awaiting review");
+        }
+        this.suspensionRequestReason = reason.trim();
+        this.suspensionRequestedBy = requestedBy;
+        this.suspensionRequestedAt = Instant.now();
+    }
+
+    public void approveSuspension() {
+        if (!hasPendingSuspensionRequest()) {
+            throw new IllegalStateException("The task has no suspension request to approve");
+        }
+        this.status = WorkOrderTaskStatus.ON_HOLD;
+        this.holdReason = HoldReason.DEFECTIVE_PART;
+        this.missingItemDescription = this.suspensionRequestReason;
+        this.pausedAt = Instant.now();
+        clearSuspensionRequest();
+    }
+
+    /**
+     * The administration dismisses the request: the task stays IN_PROGRESS.
+     */
+    public void rejectSuspension() {
+        if (!hasPendingSuspensionRequest()) {
+            throw new IllegalStateException("The task has no suspension request to reject");
+        }
+        clearSuspensionRequest();
+    }
+
+    public boolean hasPendingSuspensionRequest() {
+        return this.suspensionRequestedAt != null;
+    }
+
+    /**
+     * Rehydrates a pending suspension request (persistence only).
+     */
+    public void restoreSuspensionRequest(String reason, UUID requestedBy, Instant requestedAt) {
+        this.suspensionRequestReason = reason;
+        this.suspensionRequestedBy = requestedBy;
+        this.suspensionRequestedAt = requestedAt;
+    }
+
+    private void clearSuspensionRequest() {
+        this.suspensionRequestReason = null;
+        this.suspensionRequestedBy = null;
+        this.suspensionRequestedAt = null;
+    }
+
+    private void accumulatePause() {
         if (this.pausedAt != null) {
             this.totalPausedSeconds += Duration.between(this.pausedAt, Instant.now()).getSeconds();
             this.pausedAt = null;
         }
-        this.status = WorkOrderTaskStatus.IN_PROGRESS;
-        this.holdReason = null;
-        this.missingItemDescription = null;
     }
 
     public void complete(LaborHours actualHours, String notes) {
@@ -173,6 +263,9 @@ public class WorkOrderTask {
     public Optional<String> getMissingItemDescription() { return Optional.ofNullable(missingItemDescription); }
     public Optional<Instant> getPausedAt() { return Optional.ofNullable(pausedAt); }
     public long getTotalPausedSeconds() { return totalPausedSeconds; }
+    public Optional<String> getSuspensionRequestReason() { return Optional.ofNullable(suspensionRequestReason); }
+    public Optional<UUID> getSuspensionRequestedBy() { return Optional.ofNullable(suspensionRequestedBy); }
+    public Optional<Instant> getSuspensionRequestedAt() { return Optional.ofNullable(suspensionRequestedAt); }
     public Optional<Instant> getStartedAt() { return Optional.ofNullable(startedAt); }
     public Optional<Instant> getCompletedAt() { return completedAt != null ? Optional.of(completedAt) : Optional.empty(); }
     public List<WorkOrderTaskProduct> getConsumedProducts() { return Collections.unmodifiableList(consumedProducts); }

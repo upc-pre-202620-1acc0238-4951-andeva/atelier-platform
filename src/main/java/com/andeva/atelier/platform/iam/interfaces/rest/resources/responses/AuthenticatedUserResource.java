@@ -22,9 +22,15 @@ public record AuthenticatedUserResource(
         String token,
         String tokenType,
         TenantSummaryResource activeTenant,
-        List<String> permissions
+        List<String> permissions,
+        String refreshToken
 ) {
     public AuthenticatedUserResource {
         permissions = permissions != null ? List.copyOf(permissions) : List.of();
+    }
+
+    public AuthenticatedUserResource(UUID userId, String email, String fullName, String token, String tokenType,
+                                     TenantSummaryResource activeTenant, List<String> permissions) {
+        this(userId, email, fullName, token, tokenType, activeTenant, permissions, null);
     }
 }

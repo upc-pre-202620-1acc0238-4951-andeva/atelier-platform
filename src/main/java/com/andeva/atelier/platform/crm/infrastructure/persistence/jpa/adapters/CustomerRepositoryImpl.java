@@ -71,6 +71,12 @@ public class CustomerRepositoryImpl implements CustomerRepository {
     }
 
     @Override
+    public Optional<Customer> findByTenantIdAndEmail(TenantId tenantId, String email) {
+        return customerPersistenceRepository.findFirstByTenantIdAndEmailIgnoreCase(tenantId.value(), email)
+                .map(CustomerPersistenceAssembler::toDomain);
+    }
+
+    @Override
     public List<Customer> search(TenantId tenantId, CustomerType type, String searchTerm, CustomerStatus status) {
         String statusStr = status != null ? status.name() : null;
         return customerPersistenceRepository.searchCustomers(tenantId.value(), type, searchTerm, statusStr)

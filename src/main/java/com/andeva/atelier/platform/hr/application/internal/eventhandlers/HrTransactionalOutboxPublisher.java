@@ -10,6 +10,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,13 +28,16 @@ public class HrTransactionalOutboxPublisher {
 
     private final OutboxMessageJpaRepository outboxRepository;
     private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     public HrTransactionalOutboxPublisher(
             OutboxMessageJpaRepository outboxRepository,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.outboxRepository = Objects.requireNonNull(outboxRepository, "outboxRepository cannot be null");
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper cannot be null");
+        this.eventPublisher = Objects.requireNonNull(eventPublisher, "eventPublisher cannot be null");
         this.objectMapper.findAndRegisterModules();
     }
 
@@ -65,6 +69,8 @@ public class HrTransactionalOutboxPublisher {
         );
         persistOutbox("AttendanceRecord", event.attendanceRecordId().value().toString(),
                 integrationEvent.getClass().getSimpleName(), integrationEvent, event.occurredOn());
+        // Also delivered in-process: Operations pauses the mechanic's running tasks within this transaction
+        eventPublisher.publishEvent(integrationEvent);
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
