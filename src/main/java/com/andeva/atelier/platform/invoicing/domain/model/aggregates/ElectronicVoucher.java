@@ -359,7 +359,8 @@ public class ElectronicVoucher extends AbstractDomainAggregateRoot<ElectronicVou
                 branchId,
                 amount,
                 method,
-                isFullyPaid()
+                isFullyPaid(),
+                workOrderId != null ? workOrderId.value() : null
         ));
 
         return payment;

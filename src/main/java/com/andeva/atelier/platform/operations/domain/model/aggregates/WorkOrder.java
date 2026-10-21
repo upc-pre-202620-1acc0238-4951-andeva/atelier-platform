@@ -5,6 +5,7 @@ import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderIma
 import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTask;
 import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTaskProduct;
 import com.andeva.atelier.platform.operations.domain.model.enums.HoldReason;
+import com.andeva.atelier.platform.operations.domain.model.events.WorkOrderTaskPauseEndedEvent;
 import com.andeva.atelier.platform.operations.domain.model.enums.ProposalSeverity;
 import com.andeva.atelier.platform.operations.domain.model.enums.WorkOrderStatus;
 import com.andeva.atelier.platform.operations.domain.model.enums.WorkOrderTaskStatus;
@@ -194,11 +195,16 @@ public class WorkOrder extends AbstractDomainAggregateRoot<WorkOrder> {
 
     public void startTask(WorkOrderTaskId taskId) {
         WorkOrderTask task = findTask(taskId);
+        HoldReason endedPause = task.getStatus() == WorkOrderTaskStatus.ON_HOLD ? task.getHoldReason().orElse(null) : null;
         task.start();
         if (this.status == WorkOrderStatus.DRAFT) {
             this.status = WorkOrderStatus.IN_PROGRESS;
         }
         registerDomainEvent(WorkOrderTaskStartedEvent.of(this.id, taskId, task.getMechanicId().orElse(null)));
+        if (endedPause != null) {
+            registerDomainEvent(WorkOrderTaskPauseEndedEvent.of(this.tenantId, this.id, taskId,
+                    task.getMechanicId().orElse(null), endedPause));
+        }
     }
 
     public void completeTask(WorkOrderTaskId taskId, LaborHours actualHours) {
@@ -316,6 +322,13 @@ public class WorkOrder extends AbstractDomainAggregateRoot<WorkOrder> {
     }
 
     public void removeProductFromTask(WorkOrderTaskId taskId, WorkOrderTaskProductId productItemId) {
+        removeProductFromTask(taskId, productItemId, null);
+    }
+
+    /**
+     * @param removedBy user withdrawing the part, recorded by inventory when the units go back to their batch
+     */
+    public void removeProductFromTask(WorkOrderTaskId taskId, WorkOrderTaskProductId productItemId, UUID removedBy) {
         validateMutable("Cannot remove product from task");
         WorkOrderTask task = findTask(taskId);
         if (task.getStatus() == WorkOrderTaskStatus.COMPLETED) {
@@ -328,7 +341,7 @@ public class WorkOrder extends AbstractDomainAggregateRoot<WorkOrder> {
 
         task.removeProduct(found.getId());
         recalculateTotalAmount();
-        registerDomainEvent(ProductStockReservationCancelledEvent.of(this.id, taskId, found.getProductId(), found.getQuantity()));
+        registerDomainEvent(ProductStockReservationCancelledEvent.of(this.id, taskId, found.getProductId(), found.getQuantity(), removedBy));
     }
 
     public void attachIntakeImage(StorageUrl imageUrl, String description) {

@@ -157,14 +157,11 @@ public class InvoicingContextFacadeImpl implements InvoicingContextFacade {
         Objects.requireNonNull(workOrderId, "WorkOrderId cannot be null");
         List<ElectronicVoucher> vouchers = queryService.getVouchersByWorkOrderId(WorkOrderId.of(workOrderId));
 
-        if (vouchers.isEmpty()) {
-            return false;
-        }
+        // A voided or rejected voucher is replaced by a new one: only the valid vouchers must be paid
+        List<ElectronicVoucher> valid = vouchers.stream()
+                .filter(v -> v.getStatus() != VoucherStatus.VOIDED && v.getStatus() != VoucherStatus.REJECTED_SUNAT)
+                .toList();
 
-        return vouchers.stream().allMatch(v ->
-                v.isFullyPaid() &&
-                        v.getStatus() != VoucherStatus.VOIDED &&
-                        v.getStatus() != VoucherStatus.REJECTED_SUNAT
-        );
+        return !valid.isEmpty() && valid.stream().allMatch(ElectronicVoucher::isFullyPaid);
     }
 }

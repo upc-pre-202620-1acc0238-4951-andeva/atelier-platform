@@ -20,5 +20,13 @@ public record VoucherPaymentRegisteredIntegrationEvent(
         String currency,
         String paymentMethod,
         boolean isFullyPaid,
-        Instant occurredOn
-) implements Serializable {}
+        Instant occurredOn,
+        UUID workOrderId
+) implements Serializable {
+
+    public VoucherPaymentRegisteredIntegrationEvent(UUID paymentId, UUID voucherId, UUID tenantId, UUID branchId,
+                                                    BigDecimal amount, String currency, String paymentMethod,
+                                                    boolean isFullyPaid, Instant occurredOn) {
+        this(paymentId, voucherId, tenantId, branchId, amount, currency, paymentMethod, isFullyPaid, occurredOn, null);
+    }
+}

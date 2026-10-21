@@ -1,7 +1,7 @@
 package com.andeva.atelier.platform.inventory.application.internal.eventhandlers;
 
 import com.andeva.atelier.platform.inventory.application.commandservices.InventoryItemCommandService;
-import com.andeva.atelier.platform.inventory.domain.model.commands.ReleaseStockAllocationCommand;
+import com.andeva.atelier.platform.inventory.domain.model.commands.ReturnWorkOrderPartsCommand;
 import com.andeva.atelier.platform.inventory.domain.model.ids.InventoryItemId;
 import com.andeva.atelier.platform.inventory.domain.model.valueobjects.Quantity;
 import com.andeva.atelier.platform.inventory.interfaces.events.StockReleasedIntegrationEvent;
@@ -42,15 +42,17 @@ public class WorkOrderStockReservationCancelledListener {
         log.info("Processing stock reservation cancellation for product {} in work order {} task {}",
                 event.productId(), event.workOrderId(), event.taskId());
 
-        ReleaseStockAllocationCommand command = ReleaseStockAllocationCommand.ofBatch(
+        // US33: the units go back to the batches they were taken from, with who returned them
+        ReturnWorkOrderPartsCommand command = new ReturnWorkOrderPartsCommand(
                 InventoryItemId.of(event.productId()),
-                null,
-                Quantity.of(event.quantity()),
                 event.workOrderId(),
-                "Cancelled MRO task product reservation"
+                event.taskId(),
+                Quantity.of(event.quantity()),
+                event.removedBy(),
+                "Part withdrawn from the work order task"
         );
 
-        Result<Void, ApplicationError> result = itemCommandService.handle(command);
+        Result<java.math.BigDecimal, ApplicationError> result = itemCommandService.handle(command);
         if (result.isSuccess()) {
             StockReleasedIntegrationEvent releasedEvent = new StockReleasedIntegrationEvent(
                     event.productId(),

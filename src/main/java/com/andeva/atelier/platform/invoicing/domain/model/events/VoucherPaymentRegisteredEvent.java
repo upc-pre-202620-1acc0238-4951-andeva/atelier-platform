@@ -24,8 +24,31 @@ public record VoucherPaymentRegisteredEvent(
         Money amount,
         PaymentMethod paymentMethod,
         boolean isFullyPaid,
-        Instant occurredOn
+        Instant occurredOn,
+        java.util.UUID workOrderId
 ) implements Serializable {
+
+    public VoucherPaymentRegisteredEvent(PaymentId paymentId, VoucherId voucherId, TenantId tenantId, BranchId branchId,
+                                         Money amount, PaymentMethod paymentMethod, boolean isFullyPaid, Instant occurredOn) {
+        this(paymentId, voucherId, tenantId, branchId, amount, paymentMethod, isFullyPaid, occurredOn, null);
+    }
+
+    /**
+     * @param workOrderId work order billed by the voucher, if any (lets MRO close the order once it is settled)
+     */
+    public static VoucherPaymentRegisteredEvent of(
+            PaymentId paymentId,
+            VoucherId voucherId,
+            TenantId tenantId,
+            BranchId branchId,
+            Money amount,
+            PaymentMethod paymentMethod,
+            boolean isFullyPaid,
+            java.util.UUID workOrderId
+    ) {
+        return new VoucherPaymentRegisteredEvent(paymentId, voucherId, tenantId, branchId, amount, paymentMethod, isFullyPaid,
+                Instant.now(), workOrderId);
+    }
 
     public VoucherPaymentRegisteredEvent {
         Objects.requireNonNull(paymentId, "Payment ID cannot be null");
