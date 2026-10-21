@@ -152,6 +152,7 @@ class InvitationCommandServiceTest {
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(roleRepository.findById(role.id())).thenReturn(Optional.of(role));
         when(bearerTokenService.generateToken(any(), eq(tenantId), any())).thenReturn("staff.jwt.token");
+        when(membershipRepository.save(any(TenantMembership.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Result<AuthenticatedUser, ApplicationError> result = invitationCommandService.handle(command);
 
@@ -161,6 +162,7 @@ class InvitationCommandServiceTest {
         assertThat(auth.user().status()).isEqualTo(UserStatus.ACTIVE);
         assertThat(invitation.status()).isEqualTo(InvitationStatus.ACCEPTED);
         assertThat(auth.permissions()).contains("mro:exec");
+        assertThat(auth.membershipId()).isNotNull();
 
         verify(invitationRepository).save(invitation);
         verify(membershipRepository).save(any(TenantMembership.class));

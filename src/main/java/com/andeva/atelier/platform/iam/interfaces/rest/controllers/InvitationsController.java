@@ -216,7 +216,9 @@ public class InvitationsController {
                 authUser.token(),
                 "Bearer",
                 tenantSummary,
-                authUser.permissions().stream().sorted().toList()
+                authUser.permissions().stream().sorted().toList(),
+                authUser.refreshToken(),
+                authUser.membershipId()
         );
     }
 

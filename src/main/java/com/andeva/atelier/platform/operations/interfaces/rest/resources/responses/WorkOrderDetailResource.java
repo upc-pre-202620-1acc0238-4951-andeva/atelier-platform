@@ -17,6 +17,8 @@ public record WorkOrderDetailResource(
         Integer mileageIn,
         String diagnosticSummary,
         String status,
+        BigDecimal subtotal,
+        BigDecimal taxAmount,
         BigDecimal totalAmount,
         String currency,
         List<WorkOrderTaskResource> tasks,

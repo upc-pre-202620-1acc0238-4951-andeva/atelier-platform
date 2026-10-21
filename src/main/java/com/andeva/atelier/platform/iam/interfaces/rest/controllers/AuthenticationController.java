@@ -313,7 +313,8 @@ public class AuthenticationController {
                 "Bearer",
                 tenantSummary,
                 authUser.permissions().stream().sorted().toList(),
-                authUser.refreshToken()
+                authUser.refreshToken(),
+                authUser.membershipId()
         );
     }
 }
