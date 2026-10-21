@@ -136,10 +136,10 @@ class SecurityPipelineTest {
     }
 
     @Test
-    @DisplayName("UnauthorizedRequestHandlerEntryPoint renders RFC 7807 problem details")
+    @DisplayName("UnauthorizedRequestHandlerEntryPoint renders the shared error body")
     void testUnauthorizedEntryPoint() throws Exception {
         UnauthorizedRequestHandlerEntryPoint entryPoint =
-                new UnauthorizedRequestHandlerEntryPoint(new ObjectMapper());
+                new UnauthorizedRequestHandlerEntryPoint(new ObjectMapper().findAndRegisterModules());
 
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/work-orders");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -149,8 +149,8 @@ class SecurityPipelineTest {
         entryPoint.commence(request, response, authEx);
 
         assertThat(response.getStatus()).isEqualTo(401);
-        assertThat(response.getContentType()).isEqualTo("application/problem+json");
-        assertThat(response.getContentAsString()).contains("https://api.atelier.pe/errors/unauthorized");
+        assertThat(response.getContentType()).startsWith("application/json");
+        assertThat(response.getContentAsString()).contains("\"code\":\"UNAUTHORIZED\"");
         assertThat(response.getContentAsString()).contains("Invalid authentication token");
     }
 

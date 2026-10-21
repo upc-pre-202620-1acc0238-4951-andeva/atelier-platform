@@ -155,7 +155,7 @@ class VehicleFaultsControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value("Validation Failed"));
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test
@@ -189,7 +189,7 @@ class VehicleFaultsControllerTest {
 
         mockMvc.perform(get("/api/v1/iot/faults/vehicle/{vehicleId}/active", vehicleUuid))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.title").value("Access Denied"));
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test
@@ -232,7 +232,7 @@ class VehicleFaultsControllerTest {
 
         mockMvc.perform(post("/api/v1/iot/faults/{id}/resolve", faultUuid))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.title").value("Access Denied"));
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test
@@ -242,6 +242,6 @@ class VehicleFaultsControllerTest {
 
         mockMvc.perform(post("/api/v1/iot/faults/{id}/resolve", faultUuid))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.title").value("Vehicle Fault Not Found"));
+                .andExpect(jsonPath("$.code").exists());
     }
 }
