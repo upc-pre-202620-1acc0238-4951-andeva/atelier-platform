@@ -142,6 +142,27 @@ class VehicleFaultsControllerTest {
     }
 
     @Test
+    @DisplayName("Accepts every FaultSeverity value (LOW, MEDIUM) and rejects the old MINOR label")
+    void shouldAcceptDomainSeverities() throws Exception {
+        when(faultCommandService.handle(any(RegisterVehicleFaultCommand.class))).thenReturn(faultId);
+        when(faultQueryService.findById(faultId)).thenReturn(Optional.of(fault));
+
+        for (String severity : new String[]{"LOW", "MEDIUM"}) {
+            mockMvc.perform(post("/api/v1/iot/faults")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    new RegisterVehicleFaultRequest(vehicleUuid, "P0420", severity, "Catalyst efficiency below threshold"))))
+                    .andExpect(status().isCreated());
+        }
+
+        mockMvc.perform(post("/api/v1/iot/faults")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new RegisterVehicleFaultRequest(vehicleUuid, "P0420", "MINOR", "Old label"))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("Should return 400 when registering fault with invalid DTC code")
     void shouldReturnBadRequestWhenDtcCodeIsInvalid() throws Exception {
         RegisterVehicleFaultRequest request = new RegisterVehicleFaultRequest(
