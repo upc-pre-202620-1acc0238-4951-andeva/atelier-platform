@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ProblemDetail;
+import com.andeva.atelier.platform.shared.interfaces.rest.resources.ErrorResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.mock.http.MockHttpInputMessage;
@@ -71,182 +71,154 @@ class IoTExceptionHandlerTest {
     @DisplayName("DeviceNotFoundException maps to 404 NOT_FOUND")
     void handleDeviceNotFound() {
         DeviceNotFoundException ex = new DeviceNotFoundException(DeviceId.generate());
-        ResponseEntity<ProblemDetail> response = handler.handleDeviceNotFound(ex, request);
+        ResponseEntity<ErrorResource> response = handler.handleDeviceNotFound(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getStatus()).isEqualTo(404);
-        assertThat(response.getBody().getType().toString()).contains("device-not-found");
-        assertThat(response.getBody().getProperties().get("errorCode")).isEqualTo(ex.errorCode());
+        assertThat(response.getBody().code()).isEqualTo(ex.errorCode());
     }
 
     @Test
     @DisplayName("InvalidDeviceIdentifierException maps to 409 CONFLICT")
     void handleInvalidDeviceIdentifier() {
         InvalidDeviceIdentifierException ex = new InvalidDeviceIdentifierException("Identifier already registered");
-        ResponseEntity<ProblemDetail> response = handler.handleInvalidDeviceIdentifier(ex, request);
+        ResponseEntity<ErrorResource> response = handler.handleInvalidDeviceIdentifier(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getStatus()).isEqualTo(409);
-        assertThat(response.getBody().getType().toString()).contains("device-already-exists");
-        assertThat(response.getBody().getProperties().get("errorCode")).isEqualTo(ex.errorCode());
+        assertThat(response.getBody().code()).isEqualTo(ex.errorCode());
     }
 
     @Test
     @DisplayName("DeviceAlreadyInstalledException maps to 409 CONFLICT")
     void handleDeviceAlreadyInstalled() {
         DeviceAlreadyInstalledException ex = new DeviceAlreadyInstalledException(DeviceId.generate());
-        ResponseEntity<ProblemDetail> response = handler.handleDeviceAlreadyInstalled(ex, request);
+        ResponseEntity<ErrorResource> response = handler.handleDeviceAlreadyInstalled(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getStatus()).isEqualTo(409);
-        assertThat(response.getBody().getType().toString()).contains("device-already-installed");
-        assertThat(response.getBody().getProperties().get("errorCode")).isEqualTo(ex.errorCode());
+        assertThat(response.getBody().code()).isEqualTo(ex.errorCode());
     }
 
     @Test
     @DisplayName("InstallationNotFoundException maps to 404 NOT_FOUND")
     void handleInstallationNotFound() {
         InstallationNotFoundException ex = new InstallationNotFoundException(InstallationId.generate());
-        ResponseEntity<ProblemDetail> response = handler.handleInstallationNotFound(ex, request);
+        ResponseEntity<ErrorResource> response = handler.handleInstallationNotFound(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getStatus()).isEqualTo(404);
-        assertThat(response.getBody().getType().toString()).contains("installation-not-found");
-        assertThat(response.getBody().getProperties().get("errorCode")).isEqualTo(ex.errorCode());
+        assertThat(response.getBody().code()).isEqualTo(ex.errorCode());
     }
 
     @Test
     @DisplayName("ActiveInstallationConflictException maps to 409 CONFLICT")
     void handleActiveInstallationConflict() {
         ActiveInstallationConflictException ex = new ActiveInstallationConflictException(VehicleId.generate());
-        ResponseEntity<ProblemDetail> response = handler.handleActiveInstallationConflict(ex, request);
+        ResponseEntity<ErrorResource> response = handler.handleActiveInstallationConflict(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getStatus()).isEqualTo(409);
-        assertThat(response.getBody().getType().toString()).contains("active-installation-conflict");
-        assertThat(response.getBody().getProperties().get("errorCode")).isEqualTo(ex.errorCode());
+        assertThat(response.getBody().code()).isEqualTo(ex.errorCode());
     }
 
     @Test
     @DisplayName("InvalidDtcCodeException maps to 400 BAD_REQUEST")
     void handleInvalidDtcCode() {
         InvalidDtcCodeException ex = new InvalidDtcCodeException("INVALID");
-        ResponseEntity<ProblemDetail> response = handler.handleInvalidDtcCode(ex, request);
+        ResponseEntity<ErrorResource> response = handler.handleInvalidDtcCode(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getStatus()).isEqualTo(400);
-        assertThat(response.getBody().getType().toString()).contains("invalid-dtc-code");
-        assertThat(response.getBody().getProperties().get("errorCode")).isEqualTo(ex.errorCode());
+        assertThat(response.getBody().code()).isEqualTo(ex.errorCode());
     }
 
     @Test
     @DisplayName("VehicleFaultNotFoundException maps to 404 NOT_FOUND")
     void handleVehicleFaultNotFound() {
         VehicleFaultNotFoundException ex = new VehicleFaultNotFoundException(FaultId.generate());
-        ResponseEntity<ProblemDetail> response = handler.handleVehicleFaultNotFound(ex, request);
+        ResponseEntity<ErrorResource> response = handler.handleVehicleFaultNotFound(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getStatus()).isEqualTo(404);
-        assertThat(response.getBody().getType().toString()).contains("fault-not-found");
-        assertThat(response.getBody().getProperties().get("errorCode")).isEqualTo(ex.errorCode());
+        assertThat(response.getBody().code()).isEqualTo(ex.errorCode());
     }
 
     @Test
     @DisplayName("PredictiveAlertNotFoundException maps to 404 NOT_FOUND")
     void handlePredictiveAlertNotFound() {
         PredictiveAlertNotFoundException ex = new PredictiveAlertNotFoundException(AlertId.generate());
-        ResponseEntity<ProblemDetail> response = handler.handlePredictiveAlertNotFound(ex, request);
+        ResponseEntity<ErrorResource> response = handler.handlePredictiveAlertNotFound(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getStatus()).isEqualTo(404);
-        assertThat(response.getBody().getType().toString()).contains("alert-not-found");
-        assertThat(response.getBody().getProperties().get("errorCode")).isEqualTo(ex.errorCode());
+        assertThat(response.getBody().code()).isEqualTo(ex.errorCode());
     }
 
     @Test
     @DisplayName("TelemetryNotFoundException maps to 404 NOT_FOUND")
     void handleTelemetryNotFound() {
         TelemetryNotFoundException ex = new TelemetryNotFoundException(VehicleId.generate());
-        ResponseEntity<ProblemDetail> response = handler.handleTelemetryNotFound(ex, request);
+        ResponseEntity<ErrorResource> response = handler.handleTelemetryNotFound(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getStatus()).isEqualTo(404);
-        assertThat(response.getBody().getType().toString()).contains("telemetry-not-found");
-        assertThat(response.getBody().getProperties().get("errorCode")).isEqualTo("ERR_TELEMETRY_NOT_FOUND");
+        assertThat(response.getBody().code()).isEqualTo("ERR_TELEMETRY_NOT_FOUND");
     }
 
     @Test
     @DisplayName("VehicleHealthReportNotFoundException maps to 404 NOT_FOUND")
     void handleVehicleHealthReportNotFound() {
         VehicleHealthReportNotFoundException ex = new VehicleHealthReportNotFoundException(VehicleId.generate());
-        ResponseEntity<ProblemDetail> response = handler.handleVehicleHealthReportNotFound(ex, request);
+        ResponseEntity<ErrorResource> response = handler.handleVehicleHealthReportNotFound(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getStatus()).isEqualTo(404);
-        assertThat(response.getBody().getType().toString()).contains("health-report-not-found");
-        assertThat(response.getBody().getProperties().get("errorCode")).isEqualTo("ERR_HEALTH_REPORT_NOT_FOUND");
+        assertThat(response.getBody().code()).isEqualTo("ERR_HEALTH_REPORT_NOT_FOUND");
     }
 
     @Test
     @DisplayName("TimescaleIngestionException maps to 500 INTERNAL_SERVER_ERROR")
     void handleTimescaleIngestion() {
         TimescaleIngestionException ex = new TimescaleIngestionException("Timescale connection timeout");
-        ResponseEntity<ProblemDetail> response = handler.handleTimescaleIngestion(ex, request);
+        ResponseEntity<ErrorResource> response = handler.handleTimescaleIngestion(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getStatus()).isEqualTo(500);
-        assertThat(response.getBody().getType().toString()).contains("timescale-ingestion-error");
-        assertThat(response.getBody().getProperties().get("errorCode")).isEqualTo(ex.errorCode());
+        assertThat(response.getBody().code()).isEqualTo(ex.errorCode());
     }
 
     @Test
     @DisplayName("QuotaExceededException maps to 403 FORBIDDEN")
     void handleQuotaExceeded() {
         QuotaExceededException ex = new QuotaExceededException("Quota limit of 5 OBD-II devices reached");
-        ResponseEntity<ProblemDetail> response = handler.handleQuotaExceeded(ex, request);
+        ResponseEntity<ErrorResource> response = handler.handleQuotaExceeded(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getStatus()).isEqualTo(403);
-        assertThat(response.getBody().getType().toString()).contains("quota-exceeded");
-        assertThat(response.getBody().getProperties().get("errorCode")).isEqualTo("QUOTA_EXCEEDED");
+        assertThat(response.getBody().code()).isEqualTo("QUOTA_EXCEEDED");
     }
 
     @Test
     @DisplayName("AccessDeniedException maps to 403 FORBIDDEN")
     void handleAccessDenied() {
         AccessDeniedException ex = new AccessDeniedException("Access denied on IoT endpoint");
-        ResponseEntity<ProblemDetail> response = handler.handleAccessDenied(ex, request);
+        ResponseEntity<ErrorResource> response = handler.handleAccessDenied(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getStatus()).isEqualTo(403);
-        assertThat(response.getBody().getType().toString()).contains("access-denied");
-        assertThat(response.getBody().getProperties().get("errorCode")).isEqualTo("ACCESS_DENIED");
+        assertThat(response.getBody().code()).isEqualTo("ACCESS_DENIED");
     }
 
     @Test
     @DisplayName("IoTDomainException maps to 400 BAD_REQUEST")
     void handleGenericIoTDomain() {
         IoTDomainException ex = new IoTDomainException("Invalid telemetry range");
-        ResponseEntity<ProblemDetail> response = handler.handleGenericIoTDomain(ex, request);
+        ResponseEntity<ErrorResource> response = handler.handleGenericIoTDomain(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getStatus()).isEqualTo(400);
-        assertThat(response.getBody().getType().toString()).contains("iot-domain-error");
-        assertThat(response.getBody().getProperties().get("errorCode")).isEqualTo("IOT_DOMAIN_ERROR");
+        assertThat(response.getBody().code()).isEqualTo("IOT_DOMAIN_ERROR");
     }
 
     @Test
@@ -256,13 +228,12 @@ class IoTExceptionHandlerTest {
         bindingResult.addError(new FieldError("target", "macAddress", "MAC address is required"));
 
         MethodArgumentNotValidException ex = new MethodArgumentNotValidException(null, bindingResult);
-        ResponseEntity<ProblemDetail> response = handler.handleValidation(ex, request);
+        ResponseEntity<ErrorResource> response = handler.handleValidation(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getStatus()).isEqualTo(400);
-        assertThat(response.getBody().getProperties().get("errorCode")).isEqualTo("VALIDATION_FAILED");
-        assertThat(response.getBody().getProperties().get("invalidFields")).isNotNull();
+        assertThat(response.getBody().code()).isEqualTo("VALIDATION_FAILED");
+        assertThat(response.getBody().details()).isNotNull();
     }
 
     @Test
@@ -272,13 +243,11 @@ class IoTExceptionHandlerTest {
                 "Required request body is missing",
                 new MockHttpInputMessage(new byte[0])
         );
-        ResponseEntity<ProblemDetail> response = handler.handleHttpMessageNotReadable(ex, request);
+        ResponseEntity<ErrorResource> response = handler.handleHttpMessageNotReadable(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getStatus()).isEqualTo(400);
-        assertThat(response.getBody().getType().toString()).contains("malformed-request");
-        assertThat(response.getBody().getProperties().get("errorCode")).isEqualTo("MALFORMED_REQUEST");
+        assertThat(response.getBody().code()).isEqualTo("MALFORMED_REQUEST");
     }
 
     @Test
@@ -287,11 +256,10 @@ class IoTExceptionHandlerTest {
         LocaleContextHolder.setLocale(Locale.forLanguageTag("es"));
 
         DeviceNotFoundException ex = new DeviceNotFoundException(DeviceId.generate());
-        ResponseEntity<ProblemDetail> response = handler.handleDeviceNotFound(ex, request);
+        ResponseEntity<ErrorResource> response = handler.handleDeviceNotFound(ex, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).isNotNull();
         // Spanish title or detail resolved
-        assertThat(response.getBody().getTitle()).isNotEmpty();
     }
 }

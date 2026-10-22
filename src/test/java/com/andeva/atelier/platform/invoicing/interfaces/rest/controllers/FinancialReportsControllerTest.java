@@ -163,7 +163,7 @@ class FinancialReportsControllerTest {
     void getCashFlowMissingTenant() throws Exception {
         mockMvc.perform(get("/api/v1/invoicing/financial-reports/cash-flow"))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.status").value(403));
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test

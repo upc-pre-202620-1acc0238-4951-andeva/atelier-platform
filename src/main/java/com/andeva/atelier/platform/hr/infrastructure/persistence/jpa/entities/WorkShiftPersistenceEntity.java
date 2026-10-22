@@ -42,6 +42,10 @@ public class WorkShiftPersistenceEntity extends HrAuditableAbstractPersistenceEn
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
+    /** Comma-separated DayOfWeek names (e.g. "MONDAY,TUESDAY"); null = every day. */
+    @Column(name = "work_days", length = 80)
+    private String workDays;
+
     public WorkShiftPersistenceEntity(UUID id) {
         super(id);
     }

@@ -16,6 +16,8 @@ import com.andeva.atelier.platform.invoicing.interfaces.events.VoucherVoidedInte
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.WorkOrderId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -35,9 +37,20 @@ public class InvoicingDomainEventsHandler {
     private static final Logger log = LoggerFactory.getLogger(InvoicingDomainEventsHandler.class);
 
     private final InvoicingTransactionalOutboxPublisher outboxPublisher;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public InvoicingDomainEventsHandler(InvoicingTransactionalOutboxPublisher outboxPublisher) {
+        this(outboxPublisher, null);
+    }
+
+    /**
+     * @param applicationEventPublisher also delivers payment events in-process, so MRO can close a settled order
+     */
+    @Autowired
+    public InvoicingDomainEventsHandler(InvoicingTransactionalOutboxPublisher outboxPublisher,
+                                        ApplicationEventPublisher applicationEventPublisher) {
         this.outboxPublisher = Objects.requireNonNull(outboxPublisher, "Outbox publisher cannot be null");
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     @EventListener
@@ -127,10 +140,14 @@ public class InvoicingDomainEventsHandler {
                 event.amount().currency().name(),
                 event.paymentMethod().name(),
                 event.isFullyPaid(),
-                event.occurredOn()
+                event.occurredOn(),
+                event.workOrderId()
         );
 
         outboxPublisher.on(integrationEvent);
+        if (applicationEventPublisher != null) {
+            applicationEventPublisher.publishEvent(integrationEvent);
+        }
     }
 
     @EventListener

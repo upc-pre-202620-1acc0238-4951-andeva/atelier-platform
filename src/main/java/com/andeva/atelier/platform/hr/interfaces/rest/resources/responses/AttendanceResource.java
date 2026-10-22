@@ -19,5 +19,8 @@ public record AttendanceResource(
         Instant justifiedAt,
         String justificationStatus,
         UUID justificationReviewedBy,
-        Instant justificationReviewedAt
+        Instant justificationReviewedAt,
+        Long workedMinutes,
+        Long regularMinutes,
+        Long overtimeMinutes
 ) {}

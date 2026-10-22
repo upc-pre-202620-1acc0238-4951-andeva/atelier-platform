@@ -57,6 +57,9 @@ public class AttendanceRecordPersistenceEntity extends HrAuditableAbstractPersis
     @Column(name = "distance_to_branch_m", nullable = false)
     private Integer distanceToBranchMeters = 0;
 
+    @Column(name = "overtime_minutes")
+    private Integer overtimeMinutes = 0;
+
     @Column(name = "justification_reason", length = 255)
     private String justificationReason;
 

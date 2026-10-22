@@ -9,7 +9,9 @@ import com.andeva.atelier.platform.hr.interfaces.rest.resources.requests.UpdateW
 import com.andeva.atelier.platform.hr.interfaces.rest.resources.responses.WorkShiftResource;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 
+import java.time.DayOfWeek;
 import java.util.List;
+import java.util.Set;
 
 public final class WorkShiftResourceAssembler {
 
@@ -21,7 +23,8 @@ public final class WorkShiftResourceAssembler {
                 resource.name(),
                 resource.startTime(),
                 resource.endTime(),
-                resource.gracePeriodMinutes()
+                resource.gracePeriodMinutes(),
+                resource.workDays()
         );
     }
 
@@ -32,7 +35,8 @@ public final class WorkShiftResourceAssembler {
                 resource.name(),
                 resource.startTime(),
                 resource.endTime(),
-                resource.gracePeriodMinutes()
+                resource.gracePeriodMinutes(),
+                resource.workDays()
         );
     }
 
@@ -44,12 +48,18 @@ public final class WorkShiftResourceAssembler {
                 domain.getSchedule().startTime(),
                 domain.getSchedule().endTime(),
                 domain.getGracePeriod().minutes(),
-                domain.isActive()
+                domain.isActive(),
+                names(domain.getWorkDays()),
+                names(domain.getRestDays())
         );
     }
 
     public static List<WorkShiftResource> toResourceList(List<WorkShift> list) {
         if (list == null) return List.of();
         return list.stream().map(WorkShiftResourceAssembler::toResource).toList();
+    }
+
+    private static List<String> names(Set<DayOfWeek> days) {
+        return days.stream().sorted().map(DayOfWeek::name).toList();
     }
 }

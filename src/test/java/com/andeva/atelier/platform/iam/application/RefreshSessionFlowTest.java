@@ -7,7 +7,11 @@ import com.andeva.atelier.platform.iam.application.internal.outbound.acl.GoogleI
 import com.andeva.atelier.platform.iam.application.internal.outbound.security.BCryptHashingService;
 import com.andeva.atelier.platform.iam.application.internal.outbound.security.BearerTokenService;
 import com.andeva.atelier.platform.iam.domain.model.aggregates.RefreshSession;
+import com.andeva.atelier.platform.iam.domain.model.aggregates.Role;
+import com.andeva.atelier.platform.iam.domain.model.aggregates.TenantMembership;
+import com.andeva.atelier.platform.iam.domain.model.entities.Permission;
 import com.andeva.atelier.platform.iam.domain.model.aggregates.User;
+import com.andeva.atelier.platform.iam.domain.model.enums.SalaryType;
 import com.andeva.atelier.platform.iam.domain.model.commands.AuthenticateUserCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.RefreshAccessTokenCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.SignOutCommand;
@@ -19,6 +23,8 @@ import com.andeva.atelier.platform.iam.domain.repositories.UserRepository;
 import com.andeva.atelier.platform.shared.application.result.ApplicationError;
 import com.andeva.atelier.platform.shared.application.result.Result;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.EmailAddress;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.Money;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,6 +36,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -96,6 +104,20 @@ class RefreshSessionFlowTest {
         Result<AuthenticatedUser, ApplicationError> replayed = service.handle(new RefreshAccessTokenCommand(signedIn.refreshToken()));
         assertThat(replayed.isFailure()).isTrue();
         assertThat(replayed.getError().code()).isEqualTo("UNAUTHORIZED");
+    }
+
+    @Test
+    @DisplayName("The session carries the active staff membership so the app can read its own HR records")
+    void shouldExposeActiveMembershipId() {
+        TenantId tenantId = TenantId.of(UUID.randomUUID());
+        Role role = Role.createCustom(tenantId, "Mechanic", "Workshop mechanic", Set.of(Permission.create("hr:attendance:read_own", "Own", "HR")));
+        TenantMembership membership = TenantMembership.create(tenantId, user.id(), SalaryType.FIXED, Money.soles(0.00), Set.of(role));
+        when(membershipRepository.findByUserId(user.id())).thenReturn(List.of(membership));
+
+        AuthenticatedUser signedIn = service.handle(new AuthenticateUserCommand(EmailAddress.of("owner@atelier.pe"), "Secret#2026")).getOrThrow();
+
+        assertThat(signedIn.membershipId()).isEqualTo(membership.id().value());
+        assertThat(signedIn.tenantId()).isEqualTo(membership.tenantId());
     }
 
     @Test

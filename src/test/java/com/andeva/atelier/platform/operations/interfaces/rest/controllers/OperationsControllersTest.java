@@ -116,6 +116,14 @@ class OperationsControllersTest {
         );
     }
 
+    /** A user allowed to manage any task's parts (operations:work_orders:update). */
+    private static com.andeva.atelier.platform.iam.infrastructure.security.model.CustomUserDetails orderManager() {
+        return new com.andeva.atelier.platform.iam.infrastructure.security.model.CustomUserDetails(
+                UUID.randomUUID(), "admin@atelier.pe", "hash", UUID.randomUUID(),
+                java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("operations:work_orders:update")),
+                true);
+    }
+
     @Nested
     @DisplayName("TasksController Canonical Endpoints Tests")
     class TasksControllerTests {
@@ -210,7 +218,8 @@ class OperationsControllersTest {
             sampleOrder.addProductToTask(sampleTask.getId(), addReq.productId(),
                     com.andeva.atelier.platform.operations.domain.model.valueobjects.Quantity.of(new BigDecimal("2.0")),
                     com.andeva.atelier.platform.shared.domain.model.valueobjects.Money.soles(new BigDecimal("45.00")));
-            ResponseEntity<?> addRes = tasksController.addProduct(sampleTask.getId().value(), addReq, UriComponentsBuilder.newInstance());
+            ResponseEntity<?> addRes = tasksController.addProduct(sampleTask.getId().value(), addReq, orderManager(),
+                    UriComponentsBuilder.newInstance());
             assertThat(addRes.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
             when(workOrderCommandService.handle(any(UpdateTaskProductQuantityCommand.class)))
@@ -226,8 +235,24 @@ class OperationsControllersTest {
             when(workOrderCommandService.handle(any(RemoveProductFromTaskCommand.class)))
                     .thenReturn(Result.success(sampleOrder));
 
-            ResponseEntity<?> response = tasksController.removeTaskProduct(sampleTask.getId().value(), UUID.randomUUID());
+            ResponseEntity<?> response = tasksController.removeTaskProduct(sampleTask.getId().value(), UUID.randomUUID(), orderManager());
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        }
+
+        @Test
+        @DisplayName("US23 E1: a mechanic with charge_parts may charge parts only to a task assigned to them")
+        void shouldLetMechanicChargeOnlyOwnTask() {
+            var mechanic = new com.andeva.atelier.platform.iam.infrastructure.security.model.CustomUserDetails(
+                    UUID.randomUUID(), "mecanico@atelier.pe", "hash", UUID.randomUUID(),
+                    java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("operations:tasks:charge_parts")),
+                    true);
+            when(workOrderQueryService.handle(any(com.andeva.atelier.platform.operations.domain.model.queries.GetTasksAssignedToMechanicQuery.class)))
+                    .thenReturn(java.util.List.of());
+            AddTaskProductResource addReq = new AddTaskProductResource(UUID.randomUUID(), new BigDecimal("1.0"), null, "PEN");
+
+            org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                            tasksController.addProduct(sampleTask.getId().value(), addReq, mechanic, UriComponentsBuilder.newInstance()))
+                    .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
         }
 
         @Test

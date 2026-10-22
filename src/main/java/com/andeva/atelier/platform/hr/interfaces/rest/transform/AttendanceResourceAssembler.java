@@ -29,7 +29,8 @@ public final class AttendanceResourceAssembler {
                 BranchId.of(request.branchId()),
                 membershipId,
                 WorkShiftId.of(request.shiftId()),
-                GeoCoordinates.of(request.latitude(), request.longitude())
+                GeoCoordinates.of(request.latitude(), request.longitude()),
+                request.clockInTime()
         );
     }
 
@@ -75,7 +76,10 @@ public final class AttendanceResourceAssembler {
                 justifiedAt,
                 domain.getJustificationStatus().map(Enum::name).orElse(null),
                 domain.getJustificationReviewedBy().map(TenantMembershipId::value).orElse(null),
-                domain.getJustificationReviewedAt().orElse(null)
+                domain.getJustificationReviewedAt().orElse(null),
+                domain.getClockOut() != null ? domain.totalWorkedMinutes() : null,
+                domain.getClockOut() != null ? domain.regularWorkedMinutes() : null,
+                domain.getClockOut() != null ? domain.getOvertimeMinutes() : null
         );
     }
 

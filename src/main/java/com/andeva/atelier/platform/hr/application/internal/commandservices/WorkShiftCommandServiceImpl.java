@@ -40,7 +40,8 @@ public class WorkShiftCommandServiceImpl implements WorkShiftCommandService {
                     command.name(),
                     command.startTime(),
                     command.endTime(),
-                    command.gracePeriodMinutes()
+                    command.gracePeriodMinutes(),
+                    command.workDays()
             );
             WorkShift saved = workShiftRepository.save(shift);
             return Result.success(saved);
@@ -64,7 +65,12 @@ public class WorkShiftCommandServiceImpl implements WorkShiftCommandService {
         }
 
         try {
-            shift.updateSchedule(command.name(), command.startTime(), command.endTime(), command.gracePeriodMinutes());
+            if (command.workDays() != null) {
+                shift.updateSchedule(command.name(), command.startTime(), command.endTime(), command.gracePeriodMinutes(),
+                        command.workDays());
+            } else {
+                shift.updateSchedule(command.name(), command.startTime(), command.endTime(), command.gracePeriodMinutes());
+            }
             WorkShift saved = workShiftRepository.save(shift);
             return Result.success(saved);
         } catch (Exception ex) {

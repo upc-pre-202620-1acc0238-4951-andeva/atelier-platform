@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -25,5 +26,14 @@ public class EmployeeFcmNotificationAdapter implements EmployeeNotificationPort 
         tenancyContextFacade.fetchUserIdOfMembership(membershipId)
                 .flatMap(tenancyContextFacade::fetchUserDeviceToken)
                 .ifPresent(token -> pushSender.send(token, title, body, data));
+    }
+
+    @Override
+    public void notifyPermissionHolders(UUID tenantId, String permission, String title, String body, Map<String, String> data) {
+        tenancyContextFacade.fetchActiveUserIdsWithPermission(tenantId, permission).stream()
+                .map(tenancyContextFacade::fetchUserDeviceToken)
+                .flatMap(Optional::stream)
+                .distinct()
+                .forEach(token -> pushSender.send(token, title, body, data));
     }
 }

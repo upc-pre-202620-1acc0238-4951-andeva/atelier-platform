@@ -10,11 +10,19 @@ import com.andeva.atelier.platform.inventory.domain.model.commands.DeactivateInv
 import com.andeva.atelier.platform.inventory.domain.model.commands.ReleaseStockAllocationCommand;
 import com.andeva.atelier.platform.inventory.domain.model.commands.UpdateInventoryItemCommand;
 import com.andeva.atelier.platform.inventory.domain.model.entities.InventoryBatch;
+import com.andeva.atelier.platform.inventory.domain.model.commands.ReturnWorkOrderPartsCommand;
+import com.andeva.atelier.platform.inventory.domain.model.entities.WorkOrderPartAllocation;
+import com.andeva.atelier.platform.inventory.domain.model.valueobjects.BatchDeduction;
+import com.andeva.atelier.platform.inventory.domain.model.valueobjects.Quantity;
 import com.andeva.atelier.platform.inventory.domain.model.valueobjects.StockAllocation;
 import com.andeva.atelier.platform.inventory.domain.repositories.InventoryItemRepository;
+import com.andeva.atelier.platform.inventory.domain.repositories.WorkOrderPartAllocationRepository;
 import com.andeva.atelier.platform.shared.application.result.ApplicationError;
 import com.andeva.atelier.platform.shared.application.result.Result;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,9 +34,17 @@ import java.util.Optional;
 public class InventoryItemCommandServiceImpl implements InventoryItemCommandService {
 
     private final InventoryItemRepository itemRepository;
+    private final WorkOrderPartAllocationRepository allocationRepository;
 
     public InventoryItemCommandServiceImpl(InventoryItemRepository itemRepository) {
+        this(itemRepository, null);
+    }
+
+    @Autowired
+    public InventoryItemCommandServiceImpl(InventoryItemRepository itemRepository,
+                                           WorkOrderPartAllocationRepository allocationRepository) {
         this.itemRepository = Objects.requireNonNull(itemRepository, "itemRepository cannot be null");
+        this.allocationRepository = allocationRepository;
     }
 
     @Override
@@ -94,6 +110,14 @@ public class InventoryItemCommandServiceImpl implements InventoryItemCommandServ
         try {
             StockAllocation allocation = item.allocateStockFifo(command.requestedQuantity());
             itemRepository.save(item);
+            if (allocationRepository != null && command.workOrderId() != null) {
+                // Keep where each unit came from and what it cost: returns and the cost of sales depend on it
+                for (BatchDeduction deduction : allocation.deductions()) {
+                    allocationRepository.save(WorkOrderPartAllocation.record(item.getTenantId(), item.getId(),
+                            deduction.batchId(), command.workOrderId(), command.taskId(),
+                            deduction.quantityDeducted().value(), deduction.unitCost()));
+                }
+            }
             return Result.success(allocation);
         } catch (InsufficientStockException ex) {
             return Result.failure(ApplicationError.badRequest(ex.getMessage()));
@@ -123,6 +147,48 @@ public class InventoryItemCommandServiceImpl implements InventoryItemCommandServ
         } catch (Exception ex) {
             return Result.failure(ApplicationError.badRequest(ex.getMessage()));
         }
+    }
+
+    @Override
+    public Result<BigDecimal, ApplicationError> handle(ReturnWorkOrderPartsCommand command) {
+        Objects.requireNonNull(command, "ReturnWorkOrderPartsCommand cannot be null");
+
+        Optional<InventoryItem> itemOpt = itemRepository.findById(command.itemId());
+        if (itemOpt.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("InventoryItem", command.itemId().value()));
+        }
+        InventoryItem item = itemOpt.get();
+        BigDecimal pending = command.quantity().value();
+        BigDecimal restored = BigDecimal.ZERO;
+
+        if (allocationRepository != null) {
+            // Undo the latest charges first, each one into the batch it was taken from
+            for (WorkOrderPartAllocation allocation : allocationRepository.findOpenByWorkOrderTaskAndItem(
+                    command.workOrderId(), command.taskId(), command.itemId())) {
+                if (pending.signum() <= 0) {
+                    break;
+                }
+                BigDecimal returned = allocation.returnUnits(pending, command.returnedBy(), command.reason());
+                if (returned.signum() > 0) {
+                    item.restoreBatchStock(allocation.getBatchId(), Quantity.of(returned));
+                    allocationRepository.save(allocation);
+                    pending = pending.subtract(returned);
+                    restored = restored.add(returned);
+                }
+            }
+        }
+        if (pending.signum() > 0) {
+            // Charges made before allocations were recorded: back to the newest batch with room for them
+            Optional<InventoryBatch> target = item.getBatches().stream()
+                    .filter(batch -> batch.getRemainingQuantity().isLessThan(batch.getInitialQuantity()))
+                    .max(java.util.Comparator.comparing(InventoryBatch::getArrivalDate));
+            if (target.isPresent()) {
+                item.restoreBatchStock(target.get().getId().value(), Quantity.of(pending));
+                restored = restored.add(pending);
+            }
+        }
+        itemRepository.save(item);
+        return Result.success(restored);
     }
 
     @Override

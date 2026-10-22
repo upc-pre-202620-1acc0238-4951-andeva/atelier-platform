@@ -184,6 +184,7 @@ Cada permiso atómico se define con precisión funcional y corresponde a los con
 | `operations:tasks:hold_request` | Solicitar suspensión de tarea por repuesto defectuoso o faltante | `POST /api/v1/tasks/{taskId}/hold` |
 | `operations:tasks:hold_validate` | Aprobar o resolver administrativamente la suspensión de tarea | `POST /api/v1/tasks/{taskId}/hold/approve`, `POST /api/v1/tasks/{taskId}/hold/reject`, `POST /api/v1/tasks/{taskId}/resume` |
 | `operations:tasks:complete` | Registrar el cierre técnico de la labor con cómputo de horas | `POST /api/v1/tasks/{taskId}/complete` |
+| `operations:tasks:charge_parts` | Imputar repuestos del almacén a una tarea propia en curso *(nuevo)* | `POST /api/v1/tasks/{taskId}/products` (solo tareas asignadas al usuario) |
 | `operations:bays:read` | Consultar disponibilidad y ocupación de bahías en tiempo real | `GET /api/v1/work-bays`, `GET /api/v1/work-bays/{bayId}` |
 | `operations:bays:reassign` | Reasignar mecánicos y vehículos entre bahías operativas | `PUT /api/v1/tasks/{taskId}/mechanic`, `PUT /api/v1/work-orders/{workOrderId}/bay`, `DELETE /api/v1/work-orders/{workOrderId}/bay` |
 | `operations:vehicle_handover:execute` | Ejecutar entrega pericial del automóvil y validar pase de salida | `POST /api/v1/work-orders/{workOrderId}/deliver` |
@@ -207,7 +208,7 @@ Cada permiso atómico se define con precisión funcional y corresponde a los con
 | `inventory:batches:restore` | Reincorporar repuestos removidos de tareas canceladas | `POST /api/v1/inventory/batches/restore` |
 | `inventory:alerts:read` | Consultar alertas de reposición por stock mínimo | `GET /api/v1/inventory/alerts` |
 | `inventory:alerts:resolve` | Marcar alertas resueltas tras emitir orden de reposición | `POST /api/v1/inventory/alerts/{id}/resolve`, `POST /api/v1/inventory/alerts/evaluate` |
-| `inventory:batches:read` | Consultar lotes de repuestos, costos unitarios y valorización del inventario *(nuevo)* | `GET /api/v1/inventory/batches/by-part/{partId}`, `GET /api/v1/inventory/items/{id}/batches`, `GET /api/v1/inventory/items/valuation` |
+| `inventory:batches:read` | Consultar lotes de repuestos, costos unitarios y valorización del inventario *(nuevo)* | `GET /api/v1/inventory/batches/by-part/{partId}`, `GET /api/v1/inventory/items/{id}/batches`, `GET /api/v1/inventory/items/valuation`, `GET /api/v1/work-orders/{workOrderId}/profitability`, `GET /api/v1/work-orders/{workOrderId}/part-movements` |
 
 ### 4.5. Bounded Context Human Resources & Shifts (`hr:*`)
 
@@ -325,6 +326,7 @@ La siguiente matriz detalla de forma exhaustiva los permisos atómicos asignados
 | `operations:tasks:hold_request` | No | No | No | No | No | Sí | No | No |
 | `operations:tasks:hold_validate`| Sí | Sí | Sí | No | No | No | No | No |
 | `operations:tasks:complete` | No | No | Sí | No | No | Sí | No | No |
+| `operations:tasks:charge_parts` | No | No | Sí | No | No | Sí | No | No |
 | `operations:bays:read` | Sí | Sí | Sí | Sí | No | Sí | No | No |
 | `operations:bays:reassign` | Sí | Sí | Sí | No | No | No | No | No |
 | `operations:vehicle_handover:execute` | Sí | Sí | No | Sí | No | No | No | No |

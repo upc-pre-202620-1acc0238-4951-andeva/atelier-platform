@@ -54,6 +54,14 @@ public class ShiftStartReminderScheduler {
      * @return number of reminders sent
      */
     public int remindShiftsStartingAfter(LocalTime now) {
+        return remindShiftsStartingAfter(now, java.time.LocalDate.now(WORKSHOP_ZONE).getDayOfWeek());
+    }
+
+    /**
+     * @param today day of the week in the workshop zone: shifts resting that day send no reminder
+     * @return number of reminders sent
+     */
+    public int remindShiftsStartingAfter(LocalTime now, java.time.DayOfWeek today) {
         LocalTime from = now.plusMinutes(LEAD_MINUTES);
         LocalTime to = from.plusMinutes(WINDOW_MINUTES);
         if (to.isBefore(from)) {
@@ -61,6 +69,9 @@ public class ShiftStartReminderScheduler {
         }
         int sent = 0;
         for (WorkShift shift : workShiftRepository.findActiveStartingBetween(from, to)) {
+            if (!shift.isWorkDay(today)) {
+                continue;
+            }
             String start = shift.getSchedule().startTime().format(HOUR);
             String body = "Tu turno " + shift.getName() + " inicia a las " + start + ". Tolerancia: "
                     + shift.getGracePeriod().minutes() + " minutos.";

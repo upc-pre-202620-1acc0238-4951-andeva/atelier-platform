@@ -4,7 +4,10 @@ import com.andeva.atelier.platform.operations.application.internal.outbound.acl.
 import com.andeva.atelier.platform.operations.domain.model.events.ProductStockReservationRequestedEvent;
 import com.andeva.atelier.platform.operations.domain.model.events.TaskSuspensionRequestedEvent;
 import com.andeva.atelier.platform.operations.domain.model.events.WorkOrderTaskAssignedEvent;
+import com.andeva.atelier.platform.operations.domain.model.events.WorkOrderCompletedEvent;
+import com.andeva.atelier.platform.operations.domain.model.events.WorkOrderTaskPauseEndedEvent;
 import com.andeva.atelier.platform.operations.domain.model.events.WorkOrderTaskPausedEvent;
+import com.andeva.atelier.platform.operations.domain.model.events.WorkOrderTaskResumedEvent;
 import com.andeva.atelier.platform.operations.domain.repositories.WorkOrderRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +29,7 @@ public class StaffNotificationsEventHandler {
 
     static final String SUPERVISOR_PERMISSION = "operations:tasks:hold_validate";
     static final String INVENTORY_AUDIT_PERMISSION = "inventory:batches:restore";
+    static final String HANDOVER_PERMISSION = "operations:vehicle_handover:execute";
 
     private final StaffNotificationPort notificationPort;
     private final WorkOrderRepository workOrderRepository;
@@ -74,6 +78,34 @@ public class StaffNotificationsEventHandler {
                         "Se imputaron " + event.quantity().value().stripTrailingZeros().toPlainString()
                                 + " unidad(es) a la orden #" + order.getInternalNumber().sequence(),
                         data("TASK_PART_CHARGED", event.workOrderId().value(), event.taskId().value()))));
+    }
+
+    /** US27 E5: supervisors learn that the work resumed after a break or a shift change. */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void on(WorkOrderTaskPauseEndedEvent event) {
+        safely(() -> notificationPort.notifyPermissionHolders(event.tenantId().value(), SUPERVISOR_PERMISSION,
+                "Tarea reanudada", "Un mecánico reanudó su tarea en bahía",
+                data("TASK_RESUMED", event.workOrderId().value(), event.taskId().value())));
+    }
+
+    /** US29 E3: the mechanic learns that the administration lifted the suspension. */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void on(WorkOrderTaskResumedEvent event) {
+        if (event.mechanicId() == null) {
+            return;
+        }
+        safely(() -> notificationPort.notifyMember(event.mechanicId(), "Suspensión levantada",
+                "Tu tarea volvió a estar en curso", data("TASK_RESUMED", event.workOrderId().value(), event.taskId().value())));
+    }
+
+    /** US39 E1: the vehicle is ready for the quality check and the settlement. */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void on(WorkOrderCompletedEvent event) {
+        safely(() -> workOrderRepository.findById(event.workOrderId()).ifPresent(order ->
+                notificationPort.notifyPermissionHolders(event.tenantId().value(), HANDOVER_PERMISSION,
+                        "Vehículo listo",
+                        "La orden #" + order.getInternalNumber().sequence() + " completó todas sus tareas y está lista para la entrega",
+                        Map.of("type", "WORK_ORDER_COMPLETED", "workOrderId", String.valueOf(event.workOrderId().value())))));
     }
 
     private static Map<String, String> data(String type, Object workOrderId, Object taskId) {

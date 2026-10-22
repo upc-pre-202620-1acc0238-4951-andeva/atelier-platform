@@ -31,6 +31,14 @@ public record ElectronicVoucherResource(
         SunatResponseDto sunatResponse,
         List<VoucherLineResource> lines,
         List<VoucherPaymentResource> payments,
-        Instant issuedAt
+        Instant issuedAt,
+        BigDecimal paidAmount,
+        BigDecimal pendingBalance,
+        String paymentStatus
 ) implements Serializable {
+
+    /** Collection state of the voucher: nothing paid yet, partially paid, or fully paid. */
+    public static final String PAYMENT_PENDING = "PENDING";
+    public static final String PAYMENT_PARTIAL = "PARTIAL";
+    public static final String PAYMENT_PAID = "PAID";
 }

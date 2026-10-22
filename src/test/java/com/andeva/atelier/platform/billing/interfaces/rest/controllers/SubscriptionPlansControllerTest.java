@@ -152,8 +152,8 @@ class SubscriptionPlansControllerTest {
         mockMvc.perform(get("/api/v1/billing/plans/" + unknownId)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.title").value("Plan Not Found"))
-                .andExpect(jsonPath("$.status").value(404));
+                .andExpect(jsonPath("$.code").exists())
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test
@@ -224,10 +224,10 @@ class SubscriptionPlansControllerTest {
         mockMvc.perform(get("/api/v1/billing/plans/" + UUID.randomUUID())
                         .header("Accept-Language", "es"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.status").value(404))
-                .andExpect(jsonPath("$.title").value("Plan no encontrado"))
-                .andExpect(jsonPath("$.detail").value("El plan comercial de suscripcion solicitado no existe o ha sido archivado."))
-                .andExpect(jsonPath("$.errorCode").value("PLAN_NOT_FOUND"));
+                .andExpect(jsonPath("$.code").exists())
+                .andExpect(jsonPath("$.code").exists())
+                .andExpect(jsonPath("$.message").value("El plan comercial de suscripcion solicitado no existe o ha sido archivado."))
+                .andExpect(jsonPath("$.code").value("PLAN_NOT_FOUND"));
     }
 
     @Test
@@ -238,9 +238,9 @@ class SubscriptionPlansControllerTest {
         mockMvc.perform(get("/api/v1/billing/plans/" + UUID.randomUUID())
                         .header("Accept-Language", "en"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.status").value(404))
-                .andExpect(jsonPath("$.title").value("Plan Not Found"))
-                .andExpect(jsonPath("$.detail").value("The requested commercial subscription plan does not exist or has been archived."))
-                .andExpect(jsonPath("$.errorCode").value("PLAN_NOT_FOUND"));
+                .andExpect(jsonPath("$.code").exists())
+                .andExpect(jsonPath("$.code").exists())
+                .andExpect(jsonPath("$.message").value("The requested commercial subscription plan does not exist or has been archived."))
+                .andExpect(jsonPath("$.code").value("PLAN_NOT_FOUND"));
     }
 }

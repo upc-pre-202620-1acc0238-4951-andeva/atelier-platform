@@ -53,6 +53,7 @@ public class AttendanceRecordPersistenceAssembler {
                 entity.getJustificationReviewedBy() != null ? TenantMembershipId.of(entity.getJustificationReviewedBy()) : null,
                 entity.getJustificationReviewedAt()
         );
+        record.restoreOvertime(entity.getOvertimeMinutes() != null ? entity.getOvertimeMinutes() : 0);
         return record;
     }
 
@@ -69,6 +70,7 @@ public class AttendanceRecordPersistenceAssembler {
         entity.setLatitude(BigDecimal.valueOf(domain.getCoordinates().latitude()));
         entity.setLongitude(BigDecimal.valueOf(domain.getCoordinates().longitude()));
         entity.setDistanceToBranchMeters((int) Math.round(domain.getDistanceToBranch().meters()));
+        entity.setOvertimeMinutes((int) domain.getOvertimeMinutes());
 
         domain.getJustification().ifPresent(j -> {
             entity.setJustificationReason(j.reason());
@@ -85,10 +87,14 @@ public class AttendanceRecordPersistenceAssembler {
     public void updateEntity(AttendanceRecordPersistenceEntity entity, AttendanceRecord domain) {
         entity.setClockOut(domain.getClockOut());
         entity.setStatus(domain.getStatus());
+        entity.setOvertimeMinutes((int) domain.getOvertimeMinutes());
         domain.getJustification().ifPresent(j -> {
             entity.setJustificationReason(j.reason());
             entity.setJustifiedBy(j.justifiedBy().value());
             entity.setJustifiedAt(j.justifiedAt());
         });
+        entity.setJustificationStatus(domain.getJustificationStatus().orElse(null));
+        entity.setJustificationReviewedBy(domain.getJustificationReviewedBy().map(TenantMembershipId::value).orElse(null));
+        entity.setJustificationReviewedAt(domain.getJustificationReviewedAt().orElse(null));
     }
 }

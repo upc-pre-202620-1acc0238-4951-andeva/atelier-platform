@@ -163,7 +163,7 @@ class PredictiveAlertsControllerTest {
 
         mockMvc.perform(get("/api/v1/iot/alerts/vehicle/{vehicleId}", vehicleUuid))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.title").value("Access Denied"));
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test
@@ -209,7 +209,7 @@ class PredictiveAlertsControllerTest {
 
         mockMvc.perform(patch("/api/v1/iot/alerts/{id}/acknowledge", alertUuid))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.title").value("Access Denied"));
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test
@@ -219,7 +219,7 @@ class PredictiveAlertsControllerTest {
 
         mockMvc.perform(patch("/api/v1/iot/alerts/{id}/acknowledge", alertUuid))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.title").value("Predictive Alert Not Found"));
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test

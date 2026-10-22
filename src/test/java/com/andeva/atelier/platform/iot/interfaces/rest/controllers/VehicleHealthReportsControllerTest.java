@@ -182,7 +182,7 @@ class VehicleHealthReportsControllerTest {
         mockMvc.perform(get("/api/v1/iot/health-reports/latest")
                         .param("vehicleId", vehicleUuid.toString()))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.errorCode").value("ERR_HEALTH_REPORT_NOT_FOUND"));
+                .andExpect(jsonPath("$.code").value("ERR_HEALTH_REPORT_NOT_FOUND"));
     }
 
     @Test
@@ -226,7 +226,7 @@ class VehicleHealthReportsControllerTest {
 
         mockMvc.perform(get("/api/v1/iot/health-reports/{reportId}", UUID.randomUUID()))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.errorCode").value("ERR_HEALTH_REPORT_NOT_FOUND"));
+                .andExpect(jsonPath("$.code").value("ERR_HEALTH_REPORT_NOT_FOUND"));
     }
 
     @Test
@@ -238,6 +238,6 @@ class VehicleHealthReportsControllerTest {
         mockMvc.perform(post("/api/v1/iot/health-reports/generate")
                         .param("vehicleId", vehicleUuid.toString()))
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.errorCode").value("ERR_INSUFFICIENT_TELEMETRY"));
+                .andExpect(jsonPath("$.code").value("ERR_INSUFFICIENT_TELEMETRY"));
     }
 }

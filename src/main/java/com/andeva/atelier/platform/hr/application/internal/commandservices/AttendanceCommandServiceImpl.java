@@ -19,6 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Objects;
 import java.util.Optional;
@@ -29,6 +31,12 @@ import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 @Service
 @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
 public class AttendanceCommandServiceImpl implements AttendanceCommandService {
+
+    private static final ZoneId WORKSHOP_ZONE = ZoneId.of("America/Lima");
+    /** Oldest clock-in captured offline that is still accepted. */
+    private static final Duration MAX_OFFLINE_CLOCK_IN_AGE = Duration.ofHours(12);
+    /** Device clocks may run slightly ahead of the server. */
+    private static final Duration CLOCK_SKEW_TOLERANCE = Duration.ofMinutes(2);
 
     private final AttendanceRecordRepository attendanceRepository;
     private final WorkShiftRepository workShiftRepository;
@@ -67,6 +75,18 @@ public class AttendanceCommandServiceImpl implements AttendanceCommandService {
         }
         var branchGeofence = branchGeofenceOpt.get();
 
+        Instant now = Instant.now();
+        Instant clockInTime = command.clockInTime();
+        if (clockInTime != null) {
+            if (clockInTime.isAfter(now.plus(CLOCK_SKEW_TOLERANCE))) {
+                return Result.failure(ApplicationError.badRequest("La hora de marcación no puede estar en el futuro"));
+            }
+            if (clockInTime.isBefore(now.minus(MAX_OFFLINE_CLOCK_IN_AGE))) {
+                return Result.failure(ApplicationError.badRequest(
+                        "La marcación sin conexión tiene más de 12 horas y ya no puede registrarse"));
+            }
+        }
+
         try {
             AttendanceRecord record = AttendanceRecord.recordClockIn(
                     command.tenantId(),
@@ -77,7 +97,8 @@ public class AttendanceCommandServiceImpl implements AttendanceCommandService {
                     branchGeofence.centroid(),
                     branchGeofence.allowedRadiusMeters(),
                     geofencingService,
-                    ZoneId.of("America/Lima")
+                    WORKSHOP_ZONE,
+                    clockInTime
             );
 
             AttendanceRecord saved = attendanceRepository.save(record);
@@ -108,7 +129,8 @@ public class AttendanceCommandServiceImpl implements AttendanceCommandService {
         }
 
         try {
-            record.recordClockOut(command.clockOutTime());
+            WorkShift shift = workShiftRepository.findById(record.getShiftId()).orElse(null);
+            record.recordClockOut(command.clockOutTime(), shift, WORKSHOP_ZONE);
             AttendanceRecord saved = attendanceRepository.save(record);
             return Result.success(saved);
         } catch (Exception ex) {

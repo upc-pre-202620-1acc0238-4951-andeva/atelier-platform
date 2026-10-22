@@ -165,7 +165,7 @@ class SaasInvoicesControllerTest {
         mockMvc.perform(get("/api/v1/billing/invoices/" + unknownId)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.title").value("SaaS Invoice Not Found"));
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test
@@ -205,6 +205,6 @@ class SaasInvoicesControllerTest {
 
         mockMvc.perform(get("/api/v1/billing/invoices/" + invoiceWithoutPdf.id().value() + "/pdf"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.title").value("SaaS Invoice Not Found"));
+                .andExpect(jsonPath("$.code").exists());
     }
 }

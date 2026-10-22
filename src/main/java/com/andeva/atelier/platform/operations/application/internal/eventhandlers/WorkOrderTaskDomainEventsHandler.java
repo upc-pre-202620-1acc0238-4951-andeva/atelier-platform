@@ -58,7 +58,8 @@ public class WorkOrderTaskDomainEventsHandler {
                 event.taskId().value(),
                 event.productId(),
                 event.quantity().value(),
-                event.occurredOn()
+                event.occurredOn(),
+                event.removedBy()
         ));
     }
 }

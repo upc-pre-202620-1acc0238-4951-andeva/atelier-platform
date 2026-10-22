@@ -40,6 +40,7 @@ import com.andeva.atelier.platform.operations.application.internal.outbound.acl.
 import com.andeva.atelier.platform.operations.application.internal.outbound.acl.InventoryItemSummaryDto;
 import com.andeva.atelier.platform.operations.application.internal.outbound.acl.InventoryReservationAclService;
 import com.andeva.atelier.platform.operations.application.internal.outbound.acl.TenancyAclService;
+import com.andeva.atelier.platform.operations.application.internal.outbound.acl.WorkOrderSettlementAclService;
 import com.andeva.atelier.platform.operations.application.internal.outbound.acl.WorkforceShiftAclService;
 
 @Service
@@ -57,6 +58,7 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
     private final TenancyAclService tenancyAclService;
     private final InventoryReservationAclService inventoryAclService;
     private final WorkforceShiftAclService workforceShiftAclService;
+    private final WorkOrderSettlementAclService settlementAclService;
 
     public WorkOrderCommandServiceImpl(
             WorkOrderRepository workOrderRepository,
@@ -80,7 +82,6 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
                 tenancyAclService, inventoryAclService, null);
     }
 
-    @Autowired
     public WorkOrderCommandServiceImpl(
             WorkOrderRepository workOrderRepository,
             WorkBayRepository workBayRepository,
@@ -91,6 +92,23 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
             InventoryReservationAclService inventoryAclService,
             WorkforceShiftAclService workforceShiftAclService
     ) {
+        this(workOrderRepository, workBayRepository, serviceRepository, storageGateway, customerFleetAclService,
+                tenancyAclService, inventoryAclService, workforceShiftAclService, null);
+    }
+
+    @Autowired
+    public WorkOrderCommandServiceImpl(
+            WorkOrderRepository workOrderRepository,
+            WorkBayRepository workBayRepository,
+            ServiceRepository serviceRepository,
+            DirectToCloudStorageGateway storageGateway,
+            CustomerFleetAclService customerFleetAclService,
+            TenancyAclService tenancyAclService,
+            InventoryReservationAclService inventoryAclService,
+            WorkforceShiftAclService workforceShiftAclService,
+            WorkOrderSettlementAclService settlementAclService
+    ) {
+        this.settlementAclService = settlementAclService;
         this.workOrderRepository = Objects.requireNonNull(workOrderRepository);
         this.workBayRepository = Objects.requireNonNull(workBayRepository);
         this.serviceRepository = Objects.requireNonNull(serviceRepository);
@@ -517,7 +535,7 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
         }
         WorkOrder order = orderOpt.get();
         try {
-            order.removeProductFromTask(command.taskId(), command.productItemId());
+            order.removeProductFromTask(command.taskId(), command.productItemId(), command.removedBy());
             WorkOrder saved = workOrderRepository.save(order);
             return Result.success(saved);
         } catch (Exception e) {
@@ -643,6 +661,11 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
         }
 
         WorkOrder order = orderOpt.get();
+        // US39 E2/E3: the order is paid only once the vouchers that bill it are fully paid
+        if (settlementAclService != null && !settlementAclService.isSettled(order.getId().value())) {
+            return Result.failure(ApplicationError.unprocessableEntity(
+                    "The work order cannot be marked as paid: its electronic voucher has a pending balance or was not issued"));
+        }
         try {
             order.markPaid();
             WorkOrder saved = workOrderRepository.save(order);
