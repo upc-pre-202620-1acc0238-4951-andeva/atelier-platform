@@ -48,6 +48,15 @@ public class VehicleFaultCommandServiceImpl implements VehicleFaultCommandServic
     public FaultId handle(RegisterVehicleFaultCommand command) {
         Objects.requireNonNull(command, "RegisterVehicleFaultCommand cannot be null");
 
+        // 0. A code still active on the vehicle is the same fault: re-scans and offline retries do not duplicate it
+        Optional<VehicleFault> active = vehicleFaultRepository.findActiveByVehicleId(command.vehicleId()).stream()
+                .filter(fault -> fault.getTenantId().equals(command.tenantId()))
+                .filter(fault -> fault.getDtcCode().value().equalsIgnoreCase(command.code().value()))
+                .findFirst();
+        if (active.isPresent()) {
+            return active.get().getId();
+        }
+
         // 1. Resolve standardized metadata from DTC catalog or evaluate with domain service
         Optional<DtcCatalogEntry> catalogEntry = dtcCatalogRepository.findByCode(command.code());
         FaultSeverity severity = catalogEntry.map(DtcCatalogEntry::getDefaultSeverity)
