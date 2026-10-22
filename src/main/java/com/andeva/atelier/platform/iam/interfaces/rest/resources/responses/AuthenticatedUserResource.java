@@ -13,6 +13,8 @@ import java.util.UUID;
  * @param tokenType    Token scheme type (Bearer)
  * @param activeTenant Active workshop tenant associated with the session (or null)
  * @param permissions  Flat list of atomic permissions granted to the user in the active tenant
+ * @param refreshToken Opaque refresh token of this device (rotated on every refresh)
+ * @param membershipId Active staff membership in the tenant (or null), the id the HR "own records" endpoints expect
  * @author Joel Huamani Estefanero
  */
 public record AuthenticatedUserResource(
@@ -23,7 +25,8 @@ public record AuthenticatedUserResource(
         String tokenType,
         TenantSummaryResource activeTenant,
         List<String> permissions,
-        String refreshToken
+        String refreshToken,
+        UUID membershipId
 ) {
     public AuthenticatedUserResource {
         permissions = permissions != null ? List.copyOf(permissions) : List.of();
@@ -31,6 +34,6 @@ public record AuthenticatedUserResource(
 
     public AuthenticatedUserResource(UUID userId, String email, String fullName, String token, String tokenType,
                                      TenantSummaryResource activeTenant, List<String> permissions) {
-        this(userId, email, fullName, token, tokenType, activeTenant, permissions, null);
+        this(userId, email, fullName, token, tokenType, activeTenant, permissions, null, null);
     }
 }

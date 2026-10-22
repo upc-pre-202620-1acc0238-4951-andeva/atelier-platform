@@ -21,7 +21,7 @@ public record RegisterVehicleFaultRequest(
         String dtcCode,
 
         @NotBlank(message = "{error.iot.fault.severity.required}")
-        @Pattern(regexp = "^(MINOR|MODERATE|CRITICAL)$", message = "{error.iot.fault.severity.invalid}")
+        @Pattern(regexp = "^(LOW|MEDIUM|CRITICAL)$", message = "{error.iot.fault.severity.invalid}")
         String severity,
 
         String description

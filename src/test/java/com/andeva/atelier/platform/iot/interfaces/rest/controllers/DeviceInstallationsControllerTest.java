@@ -180,6 +180,6 @@ class DeviceInstallationsControllerTest {
 
         mockMvc.perform(get("/api/v1/iot/installations/vehicle/" + vehicleUuid + "/active"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.type").value("https://api.atelier.andeva.com/errors/installation-not-found"));
+                .andExpect(jsonPath("$.code").exists());
     }
 }

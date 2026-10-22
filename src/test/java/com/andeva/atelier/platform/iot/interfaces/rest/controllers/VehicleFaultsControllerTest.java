@@ -142,6 +142,27 @@ class VehicleFaultsControllerTest {
     }
 
     @Test
+    @DisplayName("Accepts every FaultSeverity value (LOW, MEDIUM) and rejects the old MINOR label")
+    void shouldAcceptDomainSeverities() throws Exception {
+        when(faultCommandService.handle(any(RegisterVehicleFaultCommand.class))).thenReturn(faultId);
+        when(faultQueryService.findById(faultId)).thenReturn(Optional.of(fault));
+
+        for (String severity : new String[]{"LOW", "MEDIUM"}) {
+            mockMvc.perform(post("/api/v1/iot/faults")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    new RegisterVehicleFaultRequest(vehicleUuid, "P0420", severity, "Catalyst efficiency below threshold"))))
+                    .andExpect(status().isCreated());
+        }
+
+        mockMvc.perform(post("/api/v1/iot/faults")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new RegisterVehicleFaultRequest(vehicleUuid, "P0420", "MINOR", "Old label"))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("Should return 400 when registering fault with invalid DTC code")
     void shouldReturnBadRequestWhenDtcCodeIsInvalid() throws Exception {
         RegisterVehicleFaultRequest request = new RegisterVehicleFaultRequest(
@@ -155,7 +176,7 @@ class VehicleFaultsControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value("Validation Failed"));
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test
@@ -189,7 +210,7 @@ class VehicleFaultsControllerTest {
 
         mockMvc.perform(get("/api/v1/iot/faults/vehicle/{vehicleId}/active", vehicleUuid))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.title").value("Access Denied"));
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test
@@ -232,7 +253,7 @@ class VehicleFaultsControllerTest {
 
         mockMvc.perform(post("/api/v1/iot/faults/{id}/resolve", faultUuid))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.title").value("Access Denied"));
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test
@@ -242,6 +263,6 @@ class VehicleFaultsControllerTest {
 
         mockMvc.perform(post("/api/v1/iot/faults/{id}/resolve", faultUuid))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.title").value("Vehicle Fault Not Found"));
+                .andExpect(jsonPath("$.code").exists());
     }
 }

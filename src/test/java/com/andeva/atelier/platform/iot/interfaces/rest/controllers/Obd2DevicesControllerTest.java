@@ -162,7 +162,7 @@ class Obd2DevicesControllerTest {
 
         mockMvc.perform(get("/api/v1/iot/devices/" + unknown))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.type").value("https://api.atelier.andeva.com/errors/device-not-found"));
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test

@@ -11,6 +11,7 @@ import com.andeva.atelier.platform.hr.domain.model.ids.WorkShiftId;
 import com.andeva.atelier.platform.hr.domain.model.valueobjects.AttendanceJustification;
 import com.andeva.atelier.platform.hr.domain.model.valueobjects.GeoCoordinates;
 import com.andeva.atelier.platform.hr.domain.model.valueobjects.HaversineDistance;
+import com.andeva.atelier.platform.hr.domain.model.valueobjects.ShiftSchedule;
 import com.andeva.atelier.platform.hr.domain.services.HaversineGeofencingService;
 import com.andeva.atelier.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.BranchId;
@@ -19,6 +20,7 @@ import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.Objects;
@@ -40,6 +42,10 @@ public class AttendanceRecord extends AbstractDomainAggregateRoot<AttendanceReco
     private JustificationStatus justificationStatus;
     private TenantMembershipId justificationReviewedBy;
     private Instant justificationReviewedAt;
+    private long overtimeMinutes;
+
+    /** Minutes past the scheduled end tolerated before the excess counts as overtime. */
+    public static final int OVERTIME_THRESHOLD_MINUTES = 30;
 
     public AttendanceRecord(
             AttendanceRecordId id,
@@ -78,6 +84,25 @@ public class AttendanceRecord extends AbstractDomainAggregateRoot<AttendanceReco
             HaversineGeofencingService geofencingService,
             ZoneId timeZone
     ) {
+        return recordClockIn(tenantId, branchId, membershipId, workShift, employeeLocation, branchCentroid,
+                allowedRadiusMeters, geofencingService, timeZone, null);
+    }
+
+    /**
+     * @param clockInTime moment captured on the device (a clock-in queued without coverage); null means now
+     */
+    public static AttendanceRecord recordClockIn(
+            TenantId tenantId,
+            BranchId branchId,
+            TenantMembershipId membershipId,
+            WorkShift workShift,
+            GeoCoordinates employeeLocation,
+            GeoCoordinates branchCentroid,
+            double allowedRadiusMeters,
+            HaversineGeofencingService geofencingService,
+            ZoneId timeZone,
+            Instant clockInTime
+    ) {
         Objects.requireNonNull(geofencingService, "HaversineGeofencingService cannot be null");
         HaversineDistance distance = geofencingService.calculateDistance(employeeLocation, branchCentroid);
 
@@ -86,7 +111,7 @@ public class AttendanceRecord extends AbstractDomainAggregateRoot<AttendanceReco
         }
 
         AttendanceRecordId attendanceId = AttendanceRecordId.generate();
-        Instant now = Instant.now();
+        Instant now = clockInTime != null ? clockInTime : Instant.now();
         LocalTime localClockIn = now.atZone(timeZone != null ? timeZone : ZoneId.systemDefault()).toLocalTime();
 
         AttendanceStatus status;
@@ -118,6 +143,14 @@ public class AttendanceRecord extends AbstractDomainAggregateRoot<AttendanceReco
     }
 
     public void recordClockOut(Instant clockOutTime) {
+        recordClockOut(clockOutTime, null, null);
+    }
+
+    /**
+     * Closes the day; with the shift, time worked more than {@value #OVERTIME_THRESHOLD_MINUTES} minutes past its
+     * scheduled end is recorded as overtime for payroll.
+     */
+    public void recordClockOut(Instant clockOutTime, WorkShift workShift, ZoneId timeZone) {
         if (this.clockOut != null) {
             throw new InvalidAttendanceClockOutException("La salida ya ha sido registrada previamente para esta jornada");
         }
@@ -128,10 +161,42 @@ public class AttendanceRecord extends AbstractDomainAggregateRoot<AttendanceReco
 
         this.clockOut = effectiveClockOut;
         long workedMinutes = Duration.between(this.clockIn, this.clockOut).toMinutes();
+        this.overtimeMinutes = workShift != null ? overtimeAfter(workShift, timeZone) : 0;
 
         registerEvent(EmployeeClockedOutEvent.now(
                 this.id, this.tenantId, this.membershipId, this.clockOut, workedMinutes
         ));
+        if (this.overtimeMinutes > 0) {
+            registerEvent(OvertimeRecordedEvent.now(this.id, this.tenantId, this.membershipId, this.overtimeMinutes));
+        }
+    }
+
+    private long overtimeAfter(WorkShift workShift, ZoneId timeZone) {
+        ZoneId zone = timeZone != null ? timeZone : ZoneId.systemDefault();
+        ShiftSchedule schedule = workShift.getSchedule();
+        LocalDate workDay = this.clockIn.atZone(zone).toLocalDate();
+        LocalDate endDay = schedule.spansOverMidnight() ? workDay.plusDays(1) : workDay;
+        Instant scheduledEnd = endDay.atTime(schedule.endTime()).atZone(zone).toInstant();
+        long minutesPastEnd = Duration.between(scheduledEnd, this.clockOut).toMinutes();
+        return minutesPastEnd > OVERTIME_THRESHOLD_MINUTES ? minutesPastEnd : 0;
+    }
+
+    /**
+     * Rehydrates the overtime of a closed day (persistence only).
+     */
+    public void restoreOvertime(long minutes) {
+        this.overtimeMinutes = Math.max(0, minutes);
+    }
+
+    public long getOvertimeMinutes() {
+        return overtimeMinutes;
+    }
+
+    /**
+     * Time worked within the schedule: the day minus its overtime.
+     */
+    public long regularWorkedMinutes() {
+        return Math.max(0, totalWorkedMinutes() - overtimeMinutes);
     }
 
     /**

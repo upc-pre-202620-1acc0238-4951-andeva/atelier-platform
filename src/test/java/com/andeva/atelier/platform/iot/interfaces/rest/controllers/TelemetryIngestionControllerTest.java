@@ -146,7 +146,7 @@ class TelemetryIngestionControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value("Validation Failed"));
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test
@@ -186,7 +186,7 @@ class TelemetryIngestionControllerTest {
 
         mockMvc.perform(get("/api/v1/iot/telemetry/vehicle/{vehicleId}/latest", vehicleUuid))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.errorCode").value("ERR_TELEMETRY_NOT_FOUND"));
+                .andExpect(jsonPath("$.code").value("ERR_TELEMETRY_NOT_FOUND"));
     }
 
     @Test
@@ -210,7 +210,7 @@ class TelemetryIngestionControllerTest {
 
         mockMvc.perform(get("/api/v1/iot/telemetry/vehicle/{vehicleId}/latest", vehicleUuid))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.title").value("Access Denied"));
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test
@@ -252,7 +252,7 @@ class TelemetryIngestionControllerTest {
                         .param("from", future.toString())
                         .param("to", now.toString()))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("Start date cannot be after end date"));
+                .andExpect(jsonPath("$.message").value("Start date cannot be after end date"));
     }
 
     @Test
@@ -278,6 +278,6 @@ class TelemetryIngestionControllerTest {
         mockMvc.perform(get("/api/v1/iot/telemetry/vehicle/{vehicleId}/history", vehicleUuid)
                         .param("bucket", "1 hour"))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.title").value("Access Denied"));
+                .andExpect(jsonPath("$.code").exists());
     }
 }

@@ -9,8 +9,12 @@ import com.andeva.atelier.platform.hr.domain.model.valueobjects.ShiftSchedule;
 import com.andeva.atelier.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 
+import java.time.DayOfWeek;
 import java.time.LocalTime;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.Objects;
+import java.util.Set;
 
 public class WorkShift extends AbstractDomainAggregateRoot<WorkShift> {
 
@@ -20,6 +24,10 @@ public class WorkShift extends AbstractDomainAggregateRoot<WorkShift> {
     private ShiftSchedule schedule;
     private GracePeriod gracePeriod;
     private boolean isActive;
+    private Set<DayOfWeek> workDays = EVERY_DAY;
+
+    /** Days a shift is worked when none are configured (shifts created before work days existed). */
+    public static final Set<DayOfWeek> EVERY_DAY = Collections.unmodifiableSet(EnumSet.allOf(DayOfWeek.class));
 
     public WorkShift(
             WorkShiftId id,
@@ -44,10 +52,25 @@ public class WorkShift extends AbstractDomainAggregateRoot<WorkShift> {
             LocalTime endTime,
             int gracePeriodMinutes
     ) {
+        return create(tenantId, name, startTime, endTime, gracePeriodMinutes, null);
+    }
+
+    /**
+     * @param workDays days the shift is worked; the others are rest days (null or empty = every day)
+     */
+    public static WorkShift create(
+            TenantId tenantId,
+            String name,
+            LocalTime startTime,
+            LocalTime endTime,
+            int gracePeriodMinutes,
+            Set<DayOfWeek> workDays
+    ) {
         WorkShiftId shiftId = WorkShiftId.generate();
         ShiftSchedule schedule = ShiftSchedule.of(startTime, endTime);
         GracePeriod grace = GracePeriod.of(gracePeriodMinutes);
         WorkShift workShift = new WorkShift(shiftId, tenantId, name, schedule, grace, true);
+        workShift.assignWorkDays(workDays);
         workShift.registerEvent(WorkShiftCreatedEvent.now(shiftId, tenantId, name));
         return workShift;
     }
@@ -57,6 +80,35 @@ public class WorkShift extends AbstractDomainAggregateRoot<WorkShift> {
         this.schedule = ShiftSchedule.of(startTime, endTime);
         this.gracePeriod = GracePeriod.of(gracePeriodMinutes);
         registerEvent(WorkShiftUpdatedEvent.now(this.id, this.tenantId, this.name));
+    }
+
+    public void updateSchedule(String name, LocalTime startTime, LocalTime endTime, int gracePeriodMinutes,
+                               Set<DayOfWeek> workDays) {
+        assignWorkDays(workDays);
+        updateSchedule(name, startTime, endTime, gracePeriodMinutes);
+    }
+
+    /**
+     * Sets the worked days (commands and persistence); null or empty means every day.
+     */
+    public void assignWorkDays(Set<DayOfWeek> days) {
+        this.workDays = days == null || days.isEmpty()
+                ? EVERY_DAY
+                : Collections.unmodifiableSet(EnumSet.copyOf(days));
+    }
+
+    public boolean isWorkDay(DayOfWeek day) {
+        return day != null && workDays.contains(day);
+    }
+
+    public Set<DayOfWeek> getWorkDays() {
+        return workDays;
+    }
+
+    public Set<DayOfWeek> getRestDays() {
+        return workDays.size() == 7
+                ? Set.of()
+                : Collections.unmodifiableSet(EnumSet.complementOf(EnumSet.copyOf(workDays)));
     }
 
     public void activate() {

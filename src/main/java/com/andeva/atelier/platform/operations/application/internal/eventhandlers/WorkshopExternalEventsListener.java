@@ -6,6 +6,9 @@ import com.andeva.atelier.platform.operations.application.commandservices.WorkOr
 import com.andeva.atelier.platform.hr.interfaces.events.MechanicClockedOutIntegrationEvent;
 import com.andeva.atelier.platform.operations.domain.model.commands.CreateWorkOrderCommand;
 import com.andeva.atelier.platform.operations.domain.model.commands.PauseTasksOnClockOutCommand;
+import com.andeva.atelier.platform.operations.domain.model.commands.MarkWorkOrderAsPaidCommand;
+import com.andeva.atelier.platform.operations.domain.model.ids.WorkOrderId;
+import com.andeva.atelier.platform.invoicing.interfaces.events.VoucherPaymentRegisteredIntegrationEvent;
 import com.andeva.atelier.platform.operations.domain.model.valueobjects.DiagnosticSummary;
 import com.andeva.atelier.platform.operations.domain.model.valueobjects.Mileage;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.BranchId;
@@ -66,6 +69,25 @@ public class WorkshopExternalEventsListener {
             }
         } catch (RuntimeException e) {
             log.error("Could not pause the tasks of mechanic {} after clock-out: {}", event.membershipId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * US39 E2: the payment that settles the voucher of a completed order marks the order as paid.
+     * An order not yet completed stays as is (the cashier can mark it paid once the work is done).
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void on(VoucherPaymentRegisteredIntegrationEvent event) {
+        if (!event.isFullyPaid() || event.workOrderId() == null) {
+            return;
+        }
+        var result = workOrderCommandService.handle(new MarkWorkOrderAsPaidCommand(new WorkOrderId(event.workOrderId())));
+        if (result.isSuccess()) {
+            log.info("Work order {} marked as paid after its voucher {} was settled", event.workOrderId(), event.voucherId());
+        } else {
+            log.info("Work order {} not marked as paid after the settlement of voucher {}: {}",
+                    event.workOrderId(), event.voucherId(), result.getError().message());
         }
     }
 }

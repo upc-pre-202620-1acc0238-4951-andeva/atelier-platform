@@ -299,7 +299,8 @@ public class UserCommandServiceImpl implements UserCommandService {
         }
 
         String token = bearerTokenService.generateToken(user, tenantId, permissions);
-        AuthenticatedUser session = new AuthenticatedUser(user, token, tenantId, permissions);
+        AuthenticatedUser session = new AuthenticatedUser(user, token, tenantId, permissions)
+                .withMembershipId(activeMembership != null ? activeMembership.id().value() : null);
         return refreshSessionManager != null ? session.withRefreshToken(refreshSessionManager.issue(user.id())) : session;
     }
 

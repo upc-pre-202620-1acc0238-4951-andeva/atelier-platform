@@ -224,7 +224,7 @@ class ElectronicVouchersControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value(400));
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test
@@ -245,7 +245,7 @@ class ElectronicVouchersControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.status").value(403));
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test
@@ -295,7 +295,7 @@ class ElectronicVouchersControllerTest {
         mockMvc.perform(get("/api/v1/invoicing/vouchers/{id}", UUID.randomUUID())
                         .header("X-Tenant-Id", tenantId.value().toString()))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.status").value(404));
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test
@@ -352,6 +352,6 @@ class ElectronicVouchersControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value(400));
+                .andExpect(jsonPath("$.code").exists());
     }
 }

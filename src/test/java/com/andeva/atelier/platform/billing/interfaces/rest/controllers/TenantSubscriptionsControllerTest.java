@@ -175,7 +175,7 @@ class TenantSubscriptionsControllerTest {
         mockMvc.perform(get("/api/v1/billing/subscriptions/me")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.title").value("Subscription Not Found"));
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test

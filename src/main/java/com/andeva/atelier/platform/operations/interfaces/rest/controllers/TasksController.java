@@ -226,13 +226,18 @@ public class TasksController {
     }
 
     @PostMapping("/{taskId}/products")
-    @PreAuthorize("hasAuthority('operations:work_orders:update')")
-    @Operation(summary = "Add consumed product or spare part to technical task")
+    @PreAuthorize("hasAnyAuthority('operations:work_orders:update', 'operations:tasks:charge_parts')")
+    @Operation(summary = "Add consumed product or spare part to technical task (a mechanic only to a task of their own)")
     public ResponseEntity<?> addProduct(
             @PathVariable UUID taskId,
             @Valid @RequestBody AddTaskProductResource resource,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             UriComponentsBuilder ucb
     ) {
+        if (!mayChargeParts(userDetails, taskId)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Only the mechanic assigned to the task can charge parts to it");
+        }
         AddProductToTaskCommand command = AddTaskProductCommandFromResourceAssembler.toCommandFromResource(taskId, resource);
         Result<WorkOrder, ApplicationError> result = workOrderCommandService.handle(command);
 
@@ -261,6 +266,26 @@ public class TasksController {
         URI location = ucb.path("/api/v1/tasks/{taskId}/products/{productId}")
                 .buildAndExpand(taskId, resource.productId()).toUri();
         return ResponseEntity.created(location).body(productResource);
+    }
+
+    /**
+     * Holders of work_orders:update charge any task; charge_parts alone covers only the caller's open tasks.
+     */
+    private boolean mayChargeParts(CustomUserDetails userDetails, UUID taskId) {
+        if (userDetails == null) {
+            return false;
+        }
+        boolean managesOrders = userDetails.getAuthorities().stream()
+                .anyMatch(a -> "operations:work_orders:update".equals(a.getAuthority()));
+        if (managesOrders) {
+            return true;
+        }
+        if (userDetails.getTenantId() == null || userDetails.getUserId() == null) {
+            return false;
+        }
+        return workOrderQueryService.handle(new GetTasksAssignedToMechanicQuery(
+                        TenantId.of(userDetails.getTenantId()), userDetails.getUserId())).stream()
+                .anyMatch(view -> view.task().getId().value().equals(taskId));
     }
 
     @PutMapping("/{taskId}/products/{productId}")
@@ -297,11 +322,13 @@ public class TasksController {
     @Operation(summary = "Remove consumed product or spare part from technical task")
     public ResponseEntity<?> removeTaskProduct(
             @PathVariable UUID taskId,
-            @PathVariable UUID productId
+            @PathVariable UUID productId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         RemoveProductFromTaskCommand command = new RemoveProductFromTaskCommand(
                 new WorkOrderTaskId(taskId),
-                new WorkOrderTaskProductId(productId)
+                new WorkOrderTaskProductId(productId),
+                userDetails != null ? userDetails.getUserId() : null
         );
         Result<WorkOrder, ApplicationError> result = workOrderCommandService.handle(command);
         if (result.isFailure()) {

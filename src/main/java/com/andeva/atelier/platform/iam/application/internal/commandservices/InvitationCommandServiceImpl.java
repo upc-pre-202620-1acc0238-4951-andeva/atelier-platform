@@ -25,9 +25,11 @@ import com.andeva.atelier.platform.shared.application.result.ApplicationError;
 import com.andeva.atelier.platform.shared.application.result.Result;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.Money;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.PhoneNumber;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -49,6 +51,7 @@ public class InvitationCommandServiceImpl implements InvitationCommandService {
     private final SubscriptionQuotaPort subscriptionQuotaPort;
     private final BCryptHashingService hashingService;
     private final BearerTokenService bearerTokenService;
+    private final RefreshSessionManager refreshSessionManager;
 
     public InvitationCommandServiceImpl(
             InvitationRepository invitationRepository,
@@ -59,6 +62,22 @@ public class InvitationCommandServiceImpl implements InvitationCommandService {
             BCryptHashingService hashingService,
             BearerTokenService bearerTokenService
     ) {
+        this(invitationRepository, userRepository, roleRepository, membershipRepository, subscriptionQuotaPort,
+                hashingService, bearerTokenService, null);
+    }
+
+    @Autowired
+    public InvitationCommandServiceImpl(
+            InvitationRepository invitationRepository,
+            UserRepository userRepository,
+            RoleRepository roleRepository,
+            TenantMembershipRepository membershipRepository,
+            SubscriptionQuotaPort subscriptionQuotaPort,
+            BCryptHashingService hashingService,
+            BearerTokenService bearerTokenService,
+            RefreshSessionManager refreshSessionManager
+    ) {
+        this.refreshSessionManager = refreshSessionManager;
         this.invitationRepository = Objects.requireNonNull(invitationRepository, "InvitationRepository cannot be null");
         this.userRepository = Objects.requireNonNull(userRepository, "UserRepository cannot be null");
         this.roleRepository = Objects.requireNonNull(roleRepository, "RoleRepository cannot be null");
@@ -166,6 +185,7 @@ public class InvitationCommandServiceImpl implements InvitationCommandService {
 
         // 4. Membership in the tenant with the invited role (a former membership here is reactivated)
         Optional<TenantMembership> previous = membershipRepository.findByTenantIdAndUserId(invitation.tenantId(), savedUser.id());
+        TenantMembership savedMembership;
         if (previous.isPresent()) {
             TenantMembership membership = previous.get();
             if (membership.status() == MembershipStatus.ACTIVE) {
@@ -173,9 +193,9 @@ public class InvitationCommandServiceImpl implements InvitationCommandService {
             }
             membership.assignRole(role);
             membership.activate();
-            membershipRepository.save(membership);
+            savedMembership = membershipRepository.save(membership);
         } else {
-            membershipRepository.save(TenantMembership.create(
+            savedMembership = membershipRepository.save(TenantMembership.create(
                     invitation.tenantId(),
                     savedUser.id(),
                     SalaryType.FIXED,
@@ -184,12 +204,19 @@ public class InvitationCommandServiceImpl implements InvitationCommandService {
             ));
         }
 
-        // 6. Generate authenticated session
+        // 6. Generate authenticated session, shaped like a sign-in (role code, refresh token, membership)
         Set<String> permissions = role.permissions().stream()
                 .map(Permission::name)
-                .collect(Collectors.toSet());
+                .collect(Collectors.toCollection(HashSet::new));
+        if (role.code() != null) {
+            permissions.add(role.code());
+        }
         String token = bearerTokenService.generateToken(savedUser, invitation.tenantId(), permissions);
+        AuthenticatedUser session = new AuthenticatedUser(savedUser, token, invitation.tenantId(), permissions)
+                .withMembershipId(savedMembership != null ? savedMembership.id().value() : null);
 
-        return Result.success(new AuthenticatedUser(savedUser, token, invitation.tenantId(), permissions));
+        return Result.success(refreshSessionManager != null
+                ? session.withRefreshToken(refreshSessionManager.issue(savedUser.id()))
+                : session);
     }
 }

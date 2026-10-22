@@ -40,6 +40,20 @@ public interface InventoryContextFacade {
 
     BigDecimal calculateInventoryValuation(UUID tenantId);
 
+    /**
+     * FIFO cost of the units still charged to a work order, per task and batch (cost of sales, US35).
+     */
+    default java.util.List<com.andeva.atelier.platform.inventory.interfaces.acl.dto.PartCostDto> getPartCostsOfWorkOrder(UUID workOrderId) {
+        return java.util.List.of();
+    }
+
+    /**
+     * Every part charge of a work order with its returns: who, when and how many units went back (US33).
+     */
+    default java.util.List<com.andeva.atelier.platform.inventory.interfaces.acl.dto.PartMovementDto> getPartMovementsOfWorkOrder(UUID workOrderId) {
+        return java.util.List.of();
+    }
+
     default Optional<PartSummaryDto> fetchItemSummary(UUID itemId) {
         return getPartSummary(null, itemId);
     }

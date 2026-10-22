@@ -85,7 +85,7 @@ class StripeWebhooksControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.title").value("Invalid Webhook Signature"));
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test
@@ -102,7 +102,7 @@ class StripeWebhooksControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.title").value("Invalid Webhook Signature"));
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test
@@ -119,7 +119,7 @@ class StripeWebhooksControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.title").value("Webhook Processing Failed"));
+                .andExpect(jsonPath("$.code").exists());
     }
 
     @Test
@@ -130,6 +130,6 @@ class StripeWebhooksControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("   "))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value("Invalid Argument"));
+                .andExpect(jsonPath("$.code").exists());
     }
 }

@@ -73,6 +73,10 @@ public class ElectronicVoucherResourceAssembler {
 
         String typeCode = toSunatTypeCode(voucher.getVoucherType());
 
+        java.math.BigDecimal pending = voucher.getPendingBalance().amount().max(java.math.BigDecimal.ZERO);
+        java.math.BigDecimal paid = voucher.getTaxCalculation().totalAmount().amount().subtract(pending)
+                .max(java.math.BigDecimal.ZERO);
+
         return new ElectronicVoucherResource(
                 voucher.getId().value(),
                 voucher.getTenantId().value(),
@@ -92,7 +96,12 @@ public class ElectronicVoucherResourceAssembler {
                 sunatResponse,
                 lineResources,
                 paymentResources,
-                voucher.getIssuedAt()
+                voucher.getIssuedAt(),
+                paid,
+                pending,
+                pending.signum() <= 0 ? ElectronicVoucherResource.PAYMENT_PAID
+                        : paid.signum() > 0 ? ElectronicVoucherResource.PAYMENT_PARTIAL
+                        : ElectronicVoucherResource.PAYMENT_PENDING
         );
     }
 

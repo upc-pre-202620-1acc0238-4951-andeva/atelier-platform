@@ -101,6 +101,7 @@ public final class PermissionCatalog {
             new Entry("operations:tasks:hold_request", "Solicitar suspensión de tarea por repuesto defectuoso o faltante", of(MECHANIC)),
             new Entry("operations:tasks:hold_validate", "Aprobar o resolver administrativamente la suspensión de tarea", of(OWNER, ADMINISTRATOR, CHIEF_MECHANIC)),
             new Entry("operations:tasks:complete", "Registrar el cierre técnico de la labor con cómputo de horas", of(CHIEF_MECHANIC, MECHANIC)),
+            new Entry("operations:tasks:charge_parts", "Imputar repuestos del almacén a una tarea propia en curso", of(CHIEF_MECHANIC, MECHANIC)),
             new Entry("operations:bays:read", "Consultar disponibilidad y ocupación de bahías en tiempo real", of(OWNER, ADMINISTRATOR, CHIEF_MECHANIC, SERVICE_ADVISOR, MECHANIC)),
             new Entry("operations:bays:reassign", "Reasignar mecánicos y vehículos entre bahías operativas", of(OWNER, ADMINISTRATOR, CHIEF_MECHANIC)),
             new Entry("operations:vehicle_handover:execute", "Ejecutar entrega pericial del automóvil y validar pase de salida", of(OWNER, ADMINISTRATOR, SERVICE_ADVISOR)),

@@ -13,6 +13,8 @@ public record WorkOrderResource(
         UUID currentBayId,
         Integer mileageIn,
         String status,
+        BigDecimal subtotal,
+        BigDecimal taxAmount,
         BigDecimal totalAmount,
         String currency
 ) {}

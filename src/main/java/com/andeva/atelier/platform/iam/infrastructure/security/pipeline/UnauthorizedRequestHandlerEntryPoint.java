@@ -1,5 +1,6 @@
 package com.andeva.atelier.platform.iam.infrastructure.security.pipeline;
 
+import com.andeva.atelier.platform.shared.interfaces.rest.resources.ErrorResource;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -9,12 +10,9 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.net.URI;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
- * Authentication entry point emitting RFC 7807 structured Problem Details JSON
+ * Authentication entry point emitting the shared ErrorResource body ({code, message, details, timestamp})
  * whenever an unauthenticated request attempts to access a protected resource.
  *
  * @author Joel Huamani Estefanero
@@ -35,17 +33,13 @@ public class UnauthorizedRequestHandlerEntryPoint implements AuthenticationEntry
             AuthenticationException authException) throws IOException {
 
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
 
-        Map<String, Object> problem = new LinkedHashMap<>();
-        problem.put("type", "https://api.atelier.pe/errors/unauthorized");
-        problem.put("title", "Unauthorized");
-        problem.put("status", HttpServletResponse.SC_UNAUTHORIZED);
-        problem.put("detail", authException != null && authException.getMessage() != null
+        ErrorResource error = ErrorResource.of("UNAUTHORIZED", authException != null && authException.getMessage() != null
                 ? authException.getMessage()
                 : "Full authentication is required to access this resource");
-        problem.put("instance", request.getRequestURI());
 
-        response.getWriter().write(objectMapper.writeValueAsString(problem));
+        response.getWriter().write(objectMapper.writeValueAsString(error));
     }
 }

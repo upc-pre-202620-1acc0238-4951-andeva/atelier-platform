@@ -9,4 +9,9 @@ import java.util.UUID;
 public interface EmployeeNotificationPort {
 
     void notifyEmployee(UUID membershipId, String title, String body, Map<String, String> data);
+
+    /**
+     * Every active member of the tenant whose roles grant the permission (e.g. payroll managers).
+     */
+    void notifyPermissionHolders(UUID tenantId, String permission, String title, String body, Map<String, String> data);
 }

@@ -8,6 +8,7 @@ import com.andeva.atelier.platform.operations.interfaces.rest.resources.response
 import com.andeva.atelier.platform.operations.interfaces.rest.resources.responses.WorkOrderResource;
 import com.andeva.atelier.platform.operations.interfaces.rest.resources.responses.WorkOrderSummaryResource;
 import com.andeva.atelier.platform.operations.interfaces.rest.resources.responses.WorkOrderTaskResource;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.Money;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -32,6 +33,8 @@ public final class WorkOrderResourceAssembler {
                 entity.getCurrentBayId().map(WorkBayId::value).orElse(null),
                 entity.getMileageIn() != null ? entity.getMileageIn().value() : null,
                 entity.getStatus().name(),
+                amountOf(entity.getSubtotal()),
+                amountOf(entity.getTax()),
                 entity.getTotalAmount() != null ? entity.getTotalAmount().amount() : BigDecimal.ZERO,
                 entity.getTotalAmount() != null && entity.getTotalAmount().currency() != null
                         ? entity.getTotalAmount().currency().name()
@@ -94,6 +97,8 @@ public final class WorkOrderResourceAssembler {
                 entity.getMileageIn() != null ? entity.getMileageIn().value() : null,
                 entity.getDiagnosticSummary() != null ? entity.getDiagnosticSummary().value() : null,
                 entity.getStatus().name(),
+                amountOf(entity.getSubtotal()),
+                amountOf(entity.getTax()),
                 entity.getTotalAmount() != null ? entity.getTotalAmount().amount() : BigDecimal.ZERO,
                 entity.getTotalAmount() != null && entity.getTotalAmount().currency() != null
                         ? entity.getTotalAmount().currency().name()
@@ -104,5 +109,9 @@ public final class WorkOrderResourceAssembler {
                 Instant.now(),
                 Instant.now()
         );
+    }
+
+    private static BigDecimal amountOf(Money money) {
+        return money != null ? money.amount() : BigDecimal.ZERO;
     }
 }

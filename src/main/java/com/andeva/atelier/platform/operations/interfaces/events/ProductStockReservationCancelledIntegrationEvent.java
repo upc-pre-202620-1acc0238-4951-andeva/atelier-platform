@@ -9,6 +9,11 @@ public record ProductStockReservationCancelledIntegrationEvent(
         UUID taskId,
         UUID productId,
         BigDecimal quantity,
-        Instant occurredOn
+        Instant occurredOn,
+        UUID removedBy
 ) {
+    public ProductStockReservationCancelledIntegrationEvent(UUID workOrderId, UUID taskId, UUID productId,
+                                                            BigDecimal quantity, Instant occurredOn) {
+        this(workOrderId, taskId, productId, quantity, occurredOn, null);
+    }
 }

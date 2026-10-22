@@ -22,6 +22,11 @@ public interface InventoryItemCommandService {
 
     Result<Void, ApplicationError> handle(ReleaseStockAllocationCommand command);
 
+    /**
+     * @return units restored to stock
+     */
+    Result<java.math.BigDecimal, ApplicationError> handle(com.andeva.atelier.platform.inventory.domain.model.commands.ReturnWorkOrderPartsCommand command);
+
     Result<InventoryItem, ApplicationError> handle(UpdateInventoryItemCommand command);
 
     Result<Void, ApplicationError> handle(DeactivateInventoryItemCommand command);
