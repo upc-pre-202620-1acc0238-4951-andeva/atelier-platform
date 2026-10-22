@@ -3,7 +3,9 @@ package com.andeva.atelier.platform.iam.interfaces.rest.controllers;
 import com.andeva.atelier.platform.iam.application.commandservices.TenantCommandService;
 import com.andeva.atelier.platform.iam.application.commandservices.UserCommandService;
 import com.andeva.atelier.platform.iam.application.internal.dto.AuthenticatedUser;
+import com.andeva.atelier.platform.iam.application.queryservices.SessionPlanQueryService;
 import com.andeva.atelier.platform.iam.application.queryservices.TenantQueryService;
+import com.andeva.atelier.platform.iam.interfaces.rest.transform.SessionPlanResourceAssembler;
 import com.andeva.atelier.platform.iam.domain.model.aggregates.Tenant;
 import com.andeva.atelier.platform.iam.domain.model.commands.AuthenticateUserCommand;
 import com.andeva.atelier.platform.iam.domain.model.commands.AuthenticateWithGoogleCommand;
@@ -71,6 +73,13 @@ public class AuthenticationController {
     private final CreateTenantCommandFromResourceAssembler createTenantCommandAssembler;
     private final BCryptHashingService hashingService;
     private final MessageSource messageSource;
+    private SessionPlanQueryService sessionPlanQueryService;
+
+    /** Optional: without it the session is answered without the plan. */
+    @Autowired(required = false)
+    public void setSessionPlanQueryService(SessionPlanQueryService sessionPlanQueryService) {
+        this.sessionPlanQueryService = sessionPlanQueryService;
+    }
 
     @Autowired
     public AuthenticationController(
@@ -314,7 +323,8 @@ public class AuthenticationController {
                 tenantSummary,
                 authUser.permissions().stream().sorted().toList(),
                 authUser.refreshToken(),
-                authUser.membershipId()
+                authUser.membershipId(),
+                SessionPlanResourceAssembler.toResource(sessionPlanQueryService, authUser.tenantId())
         );
     }
 }
