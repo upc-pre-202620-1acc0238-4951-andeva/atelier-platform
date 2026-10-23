@@ -38,6 +38,12 @@ public class TenantRepositoryImpl implements TenantRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public java.util.List<TenantId> findAllIds() {
+        return persistenceRepository.findAllIds().stream().map(TenantId::of).toList();
+    }
+
+    @Override
     public Tenant save(Tenant tenant) {
         Objects.requireNonNull(tenant, "Tenant cannot be null");
         TenantPersistenceEntity entity = TenantPersistenceAssembler.toEntity(tenant);

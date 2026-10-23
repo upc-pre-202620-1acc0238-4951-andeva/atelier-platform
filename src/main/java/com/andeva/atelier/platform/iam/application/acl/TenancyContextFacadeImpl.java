@@ -160,6 +160,12 @@ public class TenancyContextFacadeImpl implements TenancyContextFacade {
     }
 
     @Override
+    public List<UUID> fetchAllTenantIds() {
+        return tenantQueryService.handle(new com.andeva.atelier.platform.iam.domain.model.queries.GetAllTenantIdsQuery())
+                .stream().map(TenantId::value).toList();
+    }
+
+    @Override
     public Optional<UUID> fetchActiveMembershipId(UUID userId, UUID tenantId) {
         if (userId == null || tenantId == null) {
             return Optional.empty();

@@ -37,4 +37,10 @@ public class TenantQueryServiceImpl implements TenantQueryService {
         Objects.requireNonNull(query, "GetTenantByTaxIdQuery cannot be null");
         return tenantRepository.findByTaxId(query.taxId());
     }
+
+    @Override
+    public java.util.List<com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId> handle(
+            com.andeva.atelier.platform.iam.domain.model.queries.GetAllTenantIdsQuery query) {
+        return tenantRepository.findAllIds();
+    }
 }

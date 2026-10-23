@@ -177,6 +177,44 @@ public class TenantSubscriptionCommandServiceImpl implements TenantSubscriptionC
     }
 
     @Override
+    @Transactional
+    public TenantSubscription handleGrantComplimentaryPlan(TenantId tenantId, PlanTier tier, int days) {
+        Objects.requireNonNull(tenantId, "TenantId cannot be null");
+        Objects.requireNonNull(tier, "PlanTier cannot be null");
+
+        SubscriptionPlan plan = planRepository.findAllActive().stream()
+                .filter(p -> p.tier() == tier)
+                .findFirst()
+                .orElseThrow(() -> new PlanNotFoundException("No active plan of tier " + tier + " in the catalog"));
+        Instant now = Instant.now();
+        com.andeva.atelier.platform.billing.domain.model.valueobjects.SubscriptionPeriod period =
+                com.andeva.atelier.platform.billing.domain.model.valueobjects.SubscriptionPeriod.of(
+                        now, now.plus(java.time.Duration.ofDays(Math.max(days, 1))));
+
+        TenantSubscription subscription = subscriptionRepository.findByTenantId(tenantId)
+                .map(existing -> {
+                    if (!existing.planId().equals(plan.id())) {
+                        existing.changePlan(plan.id(), plan.stripePriceId());
+                    }
+                    existing.renewPeriod(period);
+                    return existing;
+                })
+                .orElseGet(() -> {
+                    String legalName = iamTenantValidationAclPort.getTenantLegalName(tenantId);
+                    String email = iamTenantValidationAclPort.getTenantContactEmail(tenantId);
+                    StripeCustomerId customerId = stripeGatewayPort.createCustomer(tenantId, legalName, email);
+                    return TenantSubscription.activate(tenantId, plan.id(), customerId, null, period);
+                });
+
+        TenantSubscription saved = subscriptionRepository.save(subscription);
+        // The quota policy cache is refreshed by these events (the repository does not publish them)
+        subscription.domainEvents().forEach(eventPublisher::publishEvent);
+        billingCachePort.evict(tenantId);
+        billingCachePort.cacheSubscriptionActive(tenantId, true);
+        return saved;
+    }
+
+    @Override
     public String handleCreateCustomerPortalSession(TenantId tenantId, String returnUrl) {
         Objects.requireNonNull(tenantId, "TenantId cannot be null");
         Objects.requireNonNull(returnUrl, "returnUrl cannot be null");

@@ -73,16 +73,28 @@ public class TenantLifecycleIntegrationEventHandler {
         TenantId tenantId = new TenantId(event.tenantId());
         log.info("Processing TenantCreatedIntegrationEvent for new tenant: {} ({})", tenantId.value(), event.name());
 
+        provisionTrial(tenantId, event.trialPlanId());
+    }
+
+    /**
+     * Starts the free trial of a workshop in a transaction of its own; failures are logged, never thrown.
+     *
+     * @param requestedPlanId plan picked at sign-up, or null for the default (Go) plan
+     * @return true when a trial was created
+     */
+    public boolean provisionTrial(TenantId tenantId, UUID requestedPlanId) {
         try {
-            trialTransaction.executeWithoutResult(status -> startTrial(tenantId, event.trialPlanId()));
+            Boolean created = trialTransaction.execute(status -> startTrial(tenantId, requestedPlanId));
+            return Boolean.TRUE.equals(created);
         } catch (DuplicateActiveSubscriptionException e) {
             log.warn("Trial provision skipped for tenant {}: already has an active subscription", tenantId.value());
         } catch (Exception e) {
             log.error("Failed to provision free trial for tenant {}: {}", tenantId.value(), e.getMessage(), e);
         }
+        return false;
     }
 
-    private void startTrial(TenantId tenantId, UUID requestedPlanId) {
+    private boolean startTrial(TenantId tenantId, UUID requestedPlanId) {
         List<SubscriptionPlan> activePlans = planRepository.findAllActive();
         // The plan picked on the website, when it is an active self-service plan; Enterprise is negotiated with sales
         Optional<SubscriptionPlan> requestedPlan = requestedPlanId == null ? Optional.empty() : activePlans.stream()
@@ -98,12 +110,13 @@ public class TenantLifecycleIntegrationEventHandler {
 
         if (trialPlanOpt.isEmpty()) {
             log.warn("Cannot automatically provision free trial for tenant {}: No active subscription plans found in catalog", tenantId.value());
-            return;
+            return false;
         }
 
         SubscriptionPlan trialPlan = trialPlanOpt.get();
         tenantSubscriptionCommandService.handleStartTrial(tenantId, trialPlan.id(), DEFAULT_FREE_TRIAL_DAYS);
         log.info("Successfully provisioned {}-day trial on plan '{}' for tenant {}",
                 DEFAULT_FREE_TRIAL_DAYS, trialPlan.name(), tenantId.value());
+        return true;
     }
 }

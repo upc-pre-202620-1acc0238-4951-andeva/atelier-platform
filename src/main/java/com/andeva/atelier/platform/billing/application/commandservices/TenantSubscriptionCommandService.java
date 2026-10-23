@@ -54,4 +54,19 @@ public interface TenantSubscriptionCommandService {
      * @return secure customer portal redirect URL
      */
     String handleCreateCustomerPortalSession(TenantId tenantId, String returnUrl);
+
+    /**
+     * Grants a complimentary (non-billed) ACTIVE subscription on the active plan of the given tier, e.g. for a
+     * demo or a sales pilot. An existing subscription is moved to that plan and its period renewed.
+     *
+     * @param tenantId workshop tenant identifier
+     * @param tier     commercial tier of the plan to grant
+     * @param days     length of the granted period
+     * @return the active subscription
+     */
+    default TenantSubscription handleGrantComplimentaryPlan(TenantId tenantId,
+                                                            com.andeva.atelier.platform.billing.domain.model.enums.PlanTier tier,
+                                                            int days) {
+        throw new UnsupportedOperationException("Complimentary plans are not supported");
+    }
 }
