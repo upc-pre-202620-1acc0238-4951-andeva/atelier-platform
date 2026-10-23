@@ -297,12 +297,15 @@ public class WorkOrdersController {
             return ErrorResponseAssembler.toErrorResponseFromApplicationError(result.getError());
         }
 
+        // Answer with the stored image: a retried upload of the same URL returns the original one
+        var stored = result.getOrThrow().findIntakeImage(
+                com.andeva.atelier.platform.operations.domain.model.valueobjects.StorageUrl.of(resource.imageUrl()));
         WorkOrderImageResource imgResource = new WorkOrderImageResource(
-                UUID.randomUUID(),
+                stored.map(img -> img.getId()).orElseGet(UUID::randomUUID),
                 workOrderId,
                 resource.imageUrl(),
-                resource.description(),
-                java.time.Instant.now()
+                stored.map(img -> img.getDescription()).orElse(resource.description()),
+                stored.map(img -> img.getUploadedAt()).orElseGet(java.time.Instant::now)
         );
 
         URI location = ucb.path("/api/v1/work-orders/{workOrderId}/intake-images").buildAndExpand(workOrderId).toUri();

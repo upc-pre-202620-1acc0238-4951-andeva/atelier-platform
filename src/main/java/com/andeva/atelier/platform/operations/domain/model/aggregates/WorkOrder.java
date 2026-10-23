@@ -276,12 +276,24 @@ public class WorkOrder extends AbstractDomainAggregateRoot<WorkOrder> {
 
     public void attachTaskEvidence(WorkOrderTaskId taskId, StorageUrl url, EvidenceType evidenceType, String description) {
         WorkOrderTask task = findTask(taskId);
+        if (task.findEvidenceImage(url).isPresent()) {
+            return; // retried upload of a photo already attached
+        }
         WorkOrderTaskImage image = task.attachEvidenceImage(url, evidenceType, description);
         registerDomainEvent(WorkOrderTaskEvidenceAttachedEvent.of(this.id, taskId, image.getId(), url, evidenceType));
     }
 
+    /**
+     * A proposal carries its evidence photo: resubmitting the same photo returns the proposal already filed.
+     */
     public TaskProposal submitProposal(UUID mechanicId, String desc, ProposalSeverity sev, StorageUrl url, ServiceId suggestedServiceId) {
         validateMutable("Cannot submit proposal");
+        if (url != null) {
+            Optional<TaskProposal> existing = this.proposals.stream().filter(p -> url.equals(p.getImageUrl())).findFirst();
+            if (existing.isPresent()) {
+                return existing.get();
+            }
+        }
         TaskProposal proposal = TaskProposal.create(this.id, mechanicId, desc, sev, url, suggestedServiceId);
         this.proposals.add(proposal);
         registerDomainEvent(TaskProposalSubmittedEvent.of(this.id, proposal.getId(), mechanicId, sev));
@@ -344,7 +356,13 @@ public class WorkOrder extends AbstractDomainAggregateRoot<WorkOrder> {
         registerDomainEvent(ProductStockReservationCancelledEvent.of(this.id, taskId, found.getProductId(), found.getQuantity(), removedBy));
     }
 
+    /**
+     * The same photo (same storage URL) is attached once: a retried upload keeps the stored image.
+     */
     public void attachIntakeImage(StorageUrl imageUrl, String description) {
+        if (findIntakeImage(imageUrl).isPresent()) {
+            return;
+        }
         WorkOrderImage image = WorkOrderImage.create(this.id, imageUrl, description);
         this.intakeImages.add(image);
         registerDomainEvent(WorkOrderIntakeImageAttachedEvent.of(this.id, image.getId(), imageUrl));
@@ -415,6 +433,10 @@ public class WorkOrder extends AbstractDomainAggregateRoot<WorkOrder> {
         validateMutable("Cannot update diagnostic and mileage");
         if (newSummary != null) this.diagnosticSummary = newSummary;
         if (newMileage != null) this.mileageIn = newMileage;
+    }
+
+    public Optional<WorkOrderImage> findIntakeImage(StorageUrl imageUrl) {
+        return this.intakeImages.stream().filter(image -> image.getImageUrl().equals(imageUrl)).findFirst();
     }
 
     private WorkOrderTask findTask(WorkOrderTaskId taskId) {

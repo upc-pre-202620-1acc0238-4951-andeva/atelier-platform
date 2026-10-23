@@ -24,4 +24,21 @@ public interface SubscriptionQuotaPort {
      * @param currentStaffCount current number of staff members in the tenant
      */
     void validateStaffAdditionAllowed(TenantId tenantId, int currentStaffCount);
+
+    /**
+     * Plan of the tenant's subscription, sent with the session so every role sees which modules it may use.
+     *
+     * @param tenantId the workshop tenant identifier
+     * @return the plan, or empty when the tenant has no subscription
+     */
+    default java.util.Optional<SessionPlan> fetchSessionPlan(TenantId tenantId) {
+        return java.util.Optional.empty();
+    }
+
+    /**
+     * @param accessGranted subscription active, in trial or within its grace period
+     */
+    record SessionPlan(String planName, String tier, String status, boolean accessGranted,
+                       boolean iotTelemetryEnabled, boolean aiDiagnosticsEnabled) {
+    }
 }
