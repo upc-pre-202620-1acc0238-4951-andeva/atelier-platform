@@ -18,4 +18,7 @@ public interface TenantPersistenceRepository extends JpaRepository<TenantPersist
     Optional<TenantPersistenceEntity> findByTaxId(String taxId);
 
     boolean existsByTaxId(String taxId);
+
+    @org.springframework.data.jpa.repository.Query("SELECT t.id FROM TenantPersistenceEntity t")
+    java.util.List<UUID> findAllIds();
 }

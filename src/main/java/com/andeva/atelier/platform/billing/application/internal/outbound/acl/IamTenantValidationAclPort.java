@@ -33,4 +33,11 @@ public interface IamTenantValidationAclPort {
      * @return contact email string
      */
     String getTenantContactEmail(TenantId tenantId);
+
+    /**
+     * Every registered workshop, to find the ones left without a subscription.
+     */
+    default java.util.List<TenantId> listTenantIds() {
+        return java.util.List.of();
+    }
 }

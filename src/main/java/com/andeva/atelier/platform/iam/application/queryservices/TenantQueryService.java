@@ -16,4 +16,9 @@ public interface TenantQueryService {
     Optional<Tenant> handle(GetTenantByIdQuery query);
 
     Optional<Tenant> handle(GetTenantByTaxIdQuery query);
+
+    default java.util.List<com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId> handle(
+            com.andeva.atelier.platform.iam.domain.model.queries.GetAllTenantIdsQuery query) {
+        return java.util.List.of();
+    }
 }

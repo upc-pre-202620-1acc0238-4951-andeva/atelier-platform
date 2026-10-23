@@ -81,6 +81,13 @@ public interface TenancyContextFacade {
     boolean isUserStaffMemberOfTenant(UUID userId, UUID tenantId);
 
     /**
+     * Identifiers of every registered workshop (e.g. Billing reconciles subscriptions at start-up).
+     */
+    default List<UUID> fetchAllTenantIds() {
+        return List.of();
+    }
+
+    /**
      * Resolves the active staff membership of a user inside a workshop tenant.
      *
      * @param userId the user UUID

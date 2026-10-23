@@ -20,4 +20,9 @@ public interface TenantRepository {
     Optional<Tenant> findByTaxId(TaxId taxId);
 
     boolean existsByTaxId(TaxId taxId);
+
+    /** Identifiers of every registered workshop (start-up reconciliations). */
+    default java.util.List<TenantId> findAllIds() {
+        return java.util.List.of();
+    }
 }

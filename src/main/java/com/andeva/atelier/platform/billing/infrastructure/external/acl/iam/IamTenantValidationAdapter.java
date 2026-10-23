@@ -25,6 +25,11 @@ public class IamTenantValidationAdapter implements IamTenantValidationAclPort {
     }
 
     @Override
+    public java.util.List<TenantId> listTenantIds() {
+        return tenancyContextFacade.fetchAllTenantIds().stream().map(TenantId::of).toList();
+    }
+
+    @Override
     public boolean tenantExists(TenantId tenantId) {
         if (tenantId == null) {
             return false;
