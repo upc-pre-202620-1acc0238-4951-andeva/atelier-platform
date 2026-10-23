@@ -37,7 +37,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@DisplayName("Worked time, overtime, offline clock-in and rest days (US07, US08, US09)")
+@DisplayName("Worked time, overtime, offline clock-in and rest days (US06, US08, US09)")
 class AttendanceOvertimeAndWorkDaysTest {
 
     private static final ZoneId LIMA = ZoneId.of("America/Lima");

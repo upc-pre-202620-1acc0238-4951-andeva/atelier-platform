@@ -126,6 +126,32 @@ class VehicleFaultCommandServiceTest {
     }
 
     @Test
+    @DisplayName("Registering a code already active on the vehicle returns that fault instead of a duplicate")
+    void shouldReuseActiveFaultWithSameCode() {
+        VehicleFault active = VehicleFault.detect(vehicleId, tenantId, dtcCode, FaultSeverity.CRITICAL, "Misfire");
+        when(vehicleFaultRepository.findActiveByVehicleId(vehicleId)).thenReturn(java.util.List.of(active));
+
+        FaultId faultId = service.handle(new RegisterVehicleFaultCommand(vehicleId, tenantId, DtcCode.of("P0300"),
+                FaultSeverity.CRITICAL, "Re-scan"));
+
+        assertThat(faultId).isEqualTo(active.getId());
+        verify(vehicleFaultRepository, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
+    @DisplayName("A resolved code or a different code is registered as a new fault")
+    void shouldRegisterNewFaultWhenNoActiveMatch() {
+        VehicleFault other = VehicleFault.detect(vehicleId, tenantId, DtcCode.of("P0420"), FaultSeverity.MEDIUM, "Catalyst");
+        when(vehicleFaultRepository.findActiveByVehicleId(vehicleId)).thenReturn(java.util.List.of(other));
+        when(dtcCatalogRepository.findByCode(dtcCode)).thenReturn(Optional.empty());
+
+        FaultId faultId = service.handle(new RegisterVehicleFaultCommand(vehicleId, tenantId, dtcCode, FaultSeverity.CRITICAL, "Misfire"));
+
+        assertThat(faultId).isNotEqualTo(other.getId());
+        verify(vehicleFaultRepository).save(any(VehicleFault.class));
+    }
+
+    @Test
     @DisplayName("Should resolve active vehicle fault")
     void shouldResolveActiveVehicleFault() {
         FaultId faultId = FaultId.generate();

@@ -45,4 +45,24 @@ public class SubscriptionQuotaAdapter implements SubscriptionQuotaPort {
                     "Subscription tier limit exceeded: maximum allowed staff members is " + max);
         }
     }
+
+    @Override
+    public java.util.Optional<SessionPlan> fetchSessionPlan(TenantId tenantId) {
+        if (tenantId == null) {
+            return java.util.Optional.empty();
+        }
+        var status = subscriptionContextFacade.getTenantSubscriptionStatus(tenantId.value());
+        if (status == null || status.tier() == null) {
+            return java.util.Optional.empty();
+        }
+        TenantQuotaLimitsDto limits = subscriptionContextFacade.getTenantQuotaLimits(tenantId.value());
+        return java.util.Optional.of(new SessionPlan(
+                status.planName(),
+                status.tier(),
+                status.status(),
+                status.isActive(),
+                limits != null && limits.iotTelemetryEnabled(),
+                limits != null && limits.aiDiagnosticsEnabled()
+        ));
+    }
 }

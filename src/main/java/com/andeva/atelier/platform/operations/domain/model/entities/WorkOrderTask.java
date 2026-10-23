@@ -244,10 +244,21 @@ public class WorkOrderTask {
         this.consumedProducts.removeIf(p -> p.getId().equals(productId));
     }
 
+    /**
+     * The same photo (same storage URL) is attached once: a retried upload returns the stored image.
+     */
     public WorkOrderTaskImage attachEvidenceImage(StorageUrl url, EvidenceType evidenceType, String description) {
+        Optional<WorkOrderTaskImage> existing = findEvidenceImage(url);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
         WorkOrderTaskImage image = WorkOrderTaskImage.create(this.id, url, evidenceType, description);
         this.taskImages.add(image);
         return image;
+    }
+
+    public Optional<WorkOrderTaskImage> findEvidenceImage(StorageUrl url) {
+        return this.taskImages.stream().filter(image -> image.getImageUrl().equals(url)).findFirst();
     }
 
     public WorkOrderTaskId getId() { return id; }

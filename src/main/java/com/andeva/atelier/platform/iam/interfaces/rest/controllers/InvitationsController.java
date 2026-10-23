@@ -5,7 +5,9 @@ import com.andeva.atelier.platform.iam.application.internal.dto.AuthenticatedUse
 import com.andeva.atelier.platform.iam.application.internal.dto.InvitationValidationResult;
 import com.andeva.atelier.platform.iam.application.queryservices.InvitationQueryService;
 import com.andeva.atelier.platform.iam.application.queryservices.RoleQueryService;
+import com.andeva.atelier.platform.iam.application.queryservices.SessionPlanQueryService;
 import com.andeva.atelier.platform.iam.application.queryservices.TenantQueryService;
+import com.andeva.atelier.platform.iam.interfaces.rest.transform.SessionPlanResourceAssembler;
 import com.andeva.atelier.platform.iam.domain.model.aggregates.Invitation;
 import com.andeva.atelier.platform.iam.domain.model.aggregates.Role;
 import com.andeva.atelier.platform.iam.domain.model.aggregates.Tenant;
@@ -69,6 +71,13 @@ public class InvitationsController {
     private final InvitationQueryService invitationQueryService;
     private final TenantQueryService tenantQueryService;
     private final RoleQueryService roleQueryService;
+    private SessionPlanQueryService sessionPlanQueryService;
+
+    /** Optional: without it the session is answered without the plan. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setSessionPlanQueryService(SessionPlanQueryService sessionPlanQueryService) {
+        this.sessionPlanQueryService = sessionPlanQueryService;
+    }
 
     public InvitationsController(
             InvitationCommandService invitationCommandService,
@@ -218,7 +227,8 @@ public class InvitationsController {
                 tenantSummary,
                 authUser.permissions().stream().sorted().toList(),
                 authUser.refreshToken(),
-                authUser.membershipId()
+                authUser.membershipId(),
+                SessionPlanResourceAssembler.toResource(sessionPlanQueryService, authUser.tenantId())
         );
     }
 
