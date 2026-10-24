@@ -50,7 +50,7 @@ class TelemetryRecordTest {
         assertThat(record.tenantId()).isEqualTo(tenantId);
         assertThat(record.location()).contains(coords);
         assertThat(record.speed()).isEqualTo(speed);
-        assertThat(record.engineTemperature()).isEqualTo(temp);
+        assertThat(record.engineTemperature()).contains(temp);
         assertThat(record.engineRpm()).isEqualTo(rpm);
         assertThat(record.fuelLevel()).contains(fuel);
         assertThat(record.batteryVoltage()).contains(battery);
@@ -70,7 +70,7 @@ class TelemetryRecordTest {
                 TenantId.generate(),
                 Optional.empty(),
                 VehicleSpeed.of(0),
-                EngineTemperature.of(108.0),
+                Optional.of(EngineTemperature.of(108.0)),
                 EngineRpm.of(800),
                 Optional.empty(),
                 Optional.of(BatteryVoltage.of(11.2))
@@ -90,11 +90,31 @@ class TelemetryRecordTest {
                 TenantId.generate(),
                 Optional.empty(),
                 VehicleSpeed.of(0),
-                EngineTemperature.of(90.0),
+                Optional.of(EngineTemperature.of(90.0)),
                 EngineRpm.of(1000),
                 Optional.empty(),
                 Optional.empty()
         )).isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("timestamp");
+    }
+
+    @Test
+    @DisplayName("Reading without coolant temperature (PID 0105 unsupported) is accepted and never reports overheating")
+    void testReadingWithoutCoolantTemperature() {
+        TelemetryRecord record = TelemetryRecord.of(
+                Instant.now(),
+                VehicleId.generate(),
+                TenantId.generate(),
+                null,
+                VehicleSpeed.of(40),
+                null,
+                EngineRpm.of(1800),
+                null,
+                null
+        );
+
+        assertThat(record.engineTemperature()).isEmpty();
+        assertThat(record.indicatesOverheating()).isFalse();
+        assertThat(record.isEngineRunning()).isTrue();
     }
 }

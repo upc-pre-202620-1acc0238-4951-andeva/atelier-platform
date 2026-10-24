@@ -15,7 +15,7 @@ public record VehicleLatestTelemetryResponse(
         Double latitude,
         Double longitude,
         int speedKmh,
-        double engineTempCelsius,
+        Double engineTempCelsius,
         int engineRpm,
         Double batteryVoltage,
         Double fuelPercentage

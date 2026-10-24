@@ -48,7 +48,7 @@ public class IoTTelemetryContextFacadeImpl implements IoTTelemetryContextFacade 
                         r.vehicleId().value(),
                         r.timestamp(),
                         r.speed().kmh(),
-                        r.engineTemperature().celsius(),
+                        r.engineTemperature().map(t -> t.celsius()).orElse(null),
                         r.engineRpm().rpm(),
                         r.batteryVoltage().map(b -> b.volts()).orElse(null)
                 ));

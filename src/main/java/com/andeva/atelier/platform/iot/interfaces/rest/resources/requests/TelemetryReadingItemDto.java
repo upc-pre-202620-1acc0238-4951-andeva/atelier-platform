@@ -22,7 +22,7 @@ public record TelemetryReadingItemDto(
         @Min(value = 0, message = "{error.iot.telemetry.speed.negative}")
         int speedKmh,
 
-        @NotNull(message = "{error.iot.telemetry.temperature.required}")
+        // Optional: vehicles that do not answer PID 0105 (coolant temperature) still send speed and RPM
         Double engineTempCelsius,
 
         @Min(value = 0, message = "{error.iot.telemetry.rpm.negative}")

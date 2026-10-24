@@ -191,4 +191,32 @@ class Obd2DevicesControllerTest {
 
         verify(deviceCommandService).handle(any(UpdateDeviceStatusCommand.class));
     }
+
+    @Test
+    @DisplayName("GET /api/v1/iot/devices?identifier= finds the adapter by MAC ignoring case and separator")
+    void listDevicesFilteredByIdentifier() throws Exception {
+        Obd2Device other = Obd2Device.register(
+                tenantId,
+                DeviceIdentifier.of("AA:BB:CC:DD:EE:FF"),
+                ConnectionType.BLUETOOTH_BLE,
+                "ELM327",
+                "v1.0"
+        );
+        when(deviceQueryService.getDevicesByTenant(tenantId)).thenReturn(List.of(device, other));
+
+        mockMvc.perform(get("/api/v1/iot/devices").param("identifier", "00-1b-44-11-3a-b7"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(deviceId.value().toString()));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/iot/devices?identifier= returns an empty list when no device matches")
+    void listDevicesFilteredByUnknownIdentifier() throws Exception {
+        when(deviceQueryService.getDevicesByTenant(tenantId)).thenReturn(List.of(device));
+
+        mockMvc.perform(get("/api/v1/iot/devices").param("identifier", "11:22:33:44:55:66"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
 }

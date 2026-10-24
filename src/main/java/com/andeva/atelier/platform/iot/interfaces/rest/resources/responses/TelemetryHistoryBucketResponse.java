@@ -13,7 +13,7 @@ public record TelemetryHistoryBucketResponse(
         Instant bucketTime,
         UUID vehicleId,
         int avgSpeedKmh,
-        double avgEngineTempCelsius,
+        Double avgEngineTempCelsius,
         int avgEngineRpm,
         Double avgFuelPercentage,
         Double avgBatteryVoltage,

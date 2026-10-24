@@ -63,7 +63,7 @@ public class TimescaleTelemetryRepositoryImpl implements TelemetryLogRepository,
             ps.setObject(4, record.location().map(l -> l.latitude()).orElse(null));
             ps.setObject(5, record.location().map(l -> l.longitude()).orElse(null));
             ps.setInt(6, record.speed().kmh());
-            ps.setDouble(7, record.engineTemperature().celsius());
+            ps.setObject(7, record.engineTemperature().map(t -> t.celsius()).orElse(null));
             ps.setInt(8, record.engineRpm().rpm());
             ps.setObject(9, record.fuelLevel().map(f -> f.percentage()).orElse(null));
             ps.setObject(10, record.batteryVoltage().map(b -> b.volts()).orElse(null));
@@ -93,7 +93,7 @@ public class TimescaleTelemetryRepositoryImpl implements TelemetryLogRepository,
             entity.setLatitude((Double) rs.getObject("latitude"));
             entity.setLongitude((Double) rs.getObject("longitude"));
             entity.setSpeed(rs.getInt("speed"));
-            entity.setEngineTempC(rs.getDouble("engine_temp_c"));
+            entity.setEngineTempC((Double) rs.getObject("engine_temp_c"));
             entity.setEngineRpm(rs.getInt("engine_rpm"));
             entity.setFuelLevelPct((Double) rs.getObject("fuel_level_pct"));
             entity.setBatteryVoltage((Double) rs.getObject("battery_voltage"));
@@ -127,7 +127,7 @@ public class TimescaleTelemetryRepositoryImpl implements TelemetryLogRepository,
             entity.setLatitude((Double) rs.getObject("latitude"));
             entity.setLongitude((Double) rs.getObject("longitude"));
             entity.setSpeed(rs.getInt("speed"));
-            entity.setEngineTempC(rs.getDouble("engine_temp_c"));
+            entity.setEngineTempC((Double) rs.getObject("engine_temp_c"));
             entity.setEngineRpm(rs.getInt("engine_rpm"));
             entity.setFuelLevelPct((Double) rs.getObject("fuel_level_pct"));
             entity.setBatteryVoltage((Double) rs.getObject("battery_voltage"));
@@ -148,8 +148,8 @@ public class TimescaleTelemetryRepositoryImpl implements TelemetryLogRepository,
                     COUNT(*) AS records_count,
                     COALESCE(AVG(speed), 0.0) AS avg_speed,
                     COALESCE(MAX(speed), 0.0) AS max_speed,
-                    COALESCE(AVG(engine_temp_c), 0.0) AS avg_engine_temp,
-                    COALESCE(MAX(engine_temp_c), 0.0) AS max_engine_temp,
+                    AVG(engine_temp_c) AS avg_engine_temp,
+                    MAX(engine_temp_c) AS max_engine_temp,
                     COALESCE(AVG(engine_rpm), 0) AS avg_rpm,
                     COALESCE(MAX(engine_rpm), 0) AS max_rpm,
                     COALESCE(MIN(battery_voltage), 0.0) AS min_battery_voltage,
@@ -173,8 +173,8 @@ public class TimescaleTelemetryRepositoryImpl implements TelemetryLogRepository,
                     count,
                     rs.getDouble("avg_speed"),
                     rs.getDouble("max_speed"),
-                    rs.getDouble("avg_engine_temp"),
-                    rs.getDouble("max_engine_temp"),
+                    nullableDouble(rs, "avg_engine_temp"),
+                    nullableDouble(rs, "max_engine_temp"),
                     rs.getInt("avg_rpm"),
                     rs.getInt("max_rpm"),
                     rs.getDouble("min_battery_voltage"),
@@ -184,5 +184,11 @@ public class TimescaleTelemetryRepositoryImpl implements TelemetryLogRepository,
         }, vehicleId.value(), Timestamp.from(from), Timestamp.from(to));
 
         return summaries.stream().filter(Objects::nonNull).findFirst();
+    }
+
+    // Readings without coolant temperature leave the aggregate NULL instead of a misleading 0 °C
+    private static Double nullableDouble(java.sql.ResultSet rs, String column) throws java.sql.SQLException {
+        Number value = (Number) rs.getObject(column);
+        return value != null ? value.doubleValue() : null;
     }
 }

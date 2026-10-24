@@ -280,4 +280,57 @@ class TelemetryIngestionControllerTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").exists());
     }
+
+    @Test
+    @DisplayName("Should ingest readings without coolant temperature (PID 0105 unsupported)")
+    void shouldIngestReadingsWithoutCoolantTemperature() throws Exception {
+        TelemetryReadingItemDto reading = new TelemetryReadingItemDto(
+                Instant.now(),
+                null,
+                null,
+                45,
+                null,
+                1900,
+                null,
+                null
+        );
+        TelemetryBatchRequest request = new TelemetryBatchRequest(vehicleUuid, List.of(reading));
+
+        mockMvc.perform(post("/api/v1/iot/telemetry/batch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.ingestedCount").value(1));
+
+        org.mockito.ArgumentCaptor<IngestTelemetryBatchCommand> captor =
+                org.mockito.ArgumentCaptor.forClass(IngestTelemetryBatchCommand.class);
+        verify(telemetryCommandService).handle(captor.capture());
+        TelemetryRecord ingested = captor.getValue().readings().get(0);
+        org.assertj.core.api.Assertions.assertThat(ingested.engineTemperature()).isEmpty();
+        org.assertj.core.api.Assertions.assertThat(ingested.engineRpm().rpm()).isEqualTo(1900);
+    }
+
+    @Test
+    @DisplayName("Should return latest telemetry with a null coolant temperature when it was not reported")
+    void shouldReturnLatestTelemetryWithoutCoolantTemperature() throws Exception {
+        VehicleId vehicleId = VehicleId.of(vehicleUuid);
+        TelemetryRecord record = TelemetryRecord.of(
+                Instant.now(),
+                vehicleId,
+                TenantId.of(tenantUuid),
+                null,
+                VehicleSpeed.of(30.0),
+                null,
+                EngineRpm.of(1500),
+                null,
+                null
+        );
+
+        when(telemetryQueryService.getLatestTelemetry(vehicleId)).thenReturn(Optional.of(record));
+
+        mockMvc.perform(get("/api/v1/iot/telemetry/vehicle/{vehicleId}/latest", vehicleUuid))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.engineTempCelsius").isEmpty())
+                .andExpect(jsonPath("$.engineRpm").value(1500));
+    }
 }

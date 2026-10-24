@@ -94,6 +94,7 @@ public class TelemetryIngestionController {
                 coords = GeoCoordinates.of(item.latitude(), item.longitude());
             }
 
+            EngineTemperature temperature = item.engineTempCelsius() != null ? EngineTemperature.of(item.engineTempCelsius()) : null;
             FuelLevel fuel = item.fuelPercentage() != null ? FuelLevel.of(item.fuelPercentage()) : null;
             BatteryVoltage voltage = item.batteryVoltage() != null ? BatteryVoltage.of(item.batteryVoltage()) : null;
 
@@ -103,7 +104,7 @@ public class TelemetryIngestionController {
                     tenantId,
                     coords,
                     VehicleSpeed.of(item.speedKmh()),
-                    EngineTemperature.of(item.engineTempCelsius()),
+                    temperature,
                     EngineRpm.of(item.engineRpm()),
                     fuel,
                     voltage
@@ -186,7 +187,7 @@ public class TelemetryIngestionController {
                         r.timestamp(),
                         r.vehicleId().value(),
                         r.speed().kmh(),
-                        r.engineTemperature().celsius(),
+                        r.engineTemperature().map(EngineTemperature::celsius).orElse(null),
                         r.engineRpm().rpm(),
                         r.fuelLevel().map(FuelLevel::percentage).orElse(null),
                         r.batteryVoltage().map(BatteryVoltage::volts).orElse(null),

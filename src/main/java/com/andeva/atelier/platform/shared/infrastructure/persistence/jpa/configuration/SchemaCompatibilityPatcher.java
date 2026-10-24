@@ -25,7 +25,9 @@ public class SchemaCompatibilityPatcher {
 
     private static final List<String> PATCHES = List.of(
             // HoldReason gained BREAK, END_OF_SHIFT and DEFECTIVE_PART
-            "ALTER TABLE IF EXISTS work_order_tasks DROP CONSTRAINT IF EXISTS work_order_tasks_hold_reason_check"
+            "ALTER TABLE IF EXISTS work_order_tasks DROP CONSTRAINT IF EXISTS work_order_tasks_hold_reason_check",
+            // Coolant temperature became optional for vehicles that do not answer PID 0105
+            "ALTER TABLE IF EXISTS telemetry_logs ALTER COLUMN engine_temp_c DROP NOT NULL"
     );
 
     private final JdbcTemplate jdbcTemplate;

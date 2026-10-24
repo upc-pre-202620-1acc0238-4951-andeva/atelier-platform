@@ -45,8 +45,8 @@ public class TelemetryLogPersistenceEntity {
     @Column(name = "speed", nullable = false)
     private int speed;
 
-    @Column(name = "engine_temp_c", nullable = false)
-    private double engineTempC;
+    @Column(name = "engine_temp_c")
+    private Double engineTempC;
 
     @Column(name = "engine_rpm", nullable = false)
     private int engineRpm;

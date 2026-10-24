@@ -38,8 +38,8 @@ public class TimescaleTelemetryAnalyticsRepository {
                     COUNT(*) AS records_count,
                     COALESCE(AVG(speed), 0.0) AS avg_speed,
                     COALESCE(MAX(speed), 0.0) AS max_speed,
-                    COALESCE(AVG(engine_temp_c), 0.0) AS avg_engine_temp,
-                    COALESCE(MAX(engine_temp_c), 0.0) AS max_engine_temp,
+                    AVG(engine_temp_c) AS avg_engine_temp,
+                    MAX(engine_temp_c) AS max_engine_temp,
                     COALESCE(AVG(engine_rpm), 0) AS avg_rpm,
                     COALESCE(MAX(engine_rpm), 0) AS max_rpm,
                     COALESCE(MIN(battery_voltage), 0.0) AS min_battery_voltage,
@@ -63,8 +63,8 @@ public class TimescaleTelemetryAnalyticsRepository {
                     count,
                     rs.getDouble("avg_speed"),
                     rs.getDouble("max_speed"),
-                    rs.getDouble("avg_engine_temp"),
-                    rs.getDouble("max_engine_temp"),
+                    nullableDouble(rs, "avg_engine_temp"),
+                    nullableDouble(rs, "max_engine_temp"),
                     rs.getInt("avg_rpm"),
                     rs.getInt("max_rpm"),
                     rs.getDouble("min_battery_voltage"),
@@ -74,5 +74,11 @@ public class TimescaleTelemetryAnalyticsRepository {
         }, vehicleId, Timestamp.from(since)).stream()
                 .filter(java.util.Objects::nonNull)
                 .toList();
+    }
+
+    // Readings without coolant temperature leave the aggregate NULL instead of a misleading 0 °C
+    private static Double nullableDouble(java.sql.ResultSet rs, String column) throws java.sql.SQLException {
+        Number value = (Number) rs.getObject(column);
+        return value != null ? value.doubleValue() : null;
     }
 }
