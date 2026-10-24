@@ -37,7 +37,7 @@ public class TimescaleTelemetryPersistenceAssembler {
                 new TenantId(entity.getTenantId()),
                 location,
                 new VehicleSpeed(entity.getSpeed()),
-                new EngineTemperature(entity.getEngineTempC()),
+                Optional.ofNullable(entity.getEngineTempC()).map(EngineTemperature::new),
                 new EngineRpm(entity.getEngineRpm()),
                 Optional.ofNullable(entity.getFuelLevelPct()).map(FuelLevel::new),
                 Optional.ofNullable(entity.getBatteryVoltage()).map(BatteryVoltage::new)
@@ -57,7 +57,7 @@ public class TimescaleTelemetryPersistenceAssembler {
         entity.setLatitude(domain.location().map(GeoCoordinates::latitude).orElse(null));
         entity.setLongitude(domain.location().map(GeoCoordinates::longitude).orElse(null));
         entity.setSpeed(domain.speed().kmh());
-        entity.setEngineTempC(domain.engineTemperature().celsius());
+        entity.setEngineTempC(domain.engineTemperature().map(EngineTemperature::celsius).orElse(null));
         entity.setEngineRpm(domain.engineRpm().rpm());
         entity.setFuelLevelPct(domain.fuelLevel().map(FuelLevel::percentage).orElse(null));
         entity.setBatteryVoltage(domain.batteryVoltage().map(BatteryVoltage::volts).orElse(null));

@@ -3,6 +3,7 @@ package com.andeva.atelier.platform.iot.domain.services;
 import com.andeva.atelier.platform.iot.domain.model.aggregates.TelemetryRecord;
 import com.andeva.atelier.platform.iot.domain.model.enums.AlertType;
 import com.andeva.atelier.platform.iot.domain.model.valueobjects.ConfidenceScore;
+import com.andeva.atelier.platform.iot.domain.model.valueobjects.EngineTemperature;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -40,14 +41,15 @@ public class PredictiveAnomalyDetectionEngine {
         }
 
         // 3. High Mechanical Strain (Excessive RPM under High Temperature)
-        if (record.engineRpm().isExcessiveRpm() && record.engineTemperature().celsius() > 100.0) {
+        Optional<Double> coolantTemp = record.engineTemperature().map(t -> t.celsius());
+        if (record.engineRpm().isExcessiveRpm() && coolantTemp.filter(t -> t > 100.0).isPresent()) {
             return Optional.of(new AnomalyEvaluationResult(
                     AlertType.CYLINDER_MISFIRE_HAZARD,
                     new ConfidenceScore(new BigDecimal("85.00")),
                     String.format(
                             "Excessive engine RPM (%d RPM) under elevated coolant temperature (%.1f°C). High risk of mechanical cylinder strain.",
                             record.engineRpm().rpm(),
-                            record.engineTemperature().celsius()
+                            coolantTemp.get()
                     )
             ));
         }
@@ -57,8 +59,9 @@ public class PredictiveAnomalyDetectionEngine {
 
     public Optional<AnomalyEvaluationResult> detectThermalRunaway(TelemetryRecord record) {
         Objects.requireNonNull(record, "TelemetryRecord cannot be null");
-        if (record.engineTemperature().isCriticalOverheating()) {
-            double temp = record.engineTemperature().celsius();
+        Optional<EngineTemperature> coolant = record.engineTemperature();
+        if (coolant.isPresent() && coolant.get().isCriticalOverheating()) {
+            double temp = coolant.get().celsius();
             BigDecimal confidence = temp >= 115.0 ? new BigDecimal("98.50") : new BigDecimal("88.00");
             return Optional.of(new AnomalyEvaluationResult(
                     AlertType.ENGINE_OVERHEATING_RISK,

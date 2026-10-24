@@ -32,6 +32,18 @@ public record DeviceIdentifier(String value) implements Serializable {
         return new DeviceIdentifier(value);
     }
 
+    /**
+     * Whether a raw identifier names the same hardware, ignoring case and MAC separators
+     * (Android reports {@code AA:BB:...}, a device may have been registered as {@code aa-bb-...}).
+     */
+    public boolean matches(String candidate) {
+        return candidate != null && canonical(value).equals(canonical(candidate));
+    }
+
+    private static String canonical(String identifier) {
+        return identifier.trim().replace(":", "").replace("-", "").toUpperCase(Locale.ROOT);
+    }
+
     public boolean isMacAddress() {
         return MAC_PATTERN.matcher(value).matches();
     }

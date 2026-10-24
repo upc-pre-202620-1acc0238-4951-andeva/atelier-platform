@@ -13,7 +13,7 @@ public record VehicleLatestTelemetryDto(
         UUID vehicleId,
         Instant timestamp,
         double speedKmh,
-        double engineTempCelsius,
+        Double engineTempCelsius,
         int engineRpm,
         Double batteryVoltage
 ) implements Serializable {

@@ -40,7 +40,7 @@ class PredictiveAnomalyDetectionEngineTest {
                 TenantId.generate(),
                 Optional.empty(),
                 VehicleSpeed.of(50),
-                EngineTemperature.of(108.0),
+                Optional.of(EngineTemperature.of(108.0)),
                 EngineRpm.of(2500),
                 Optional.empty(),
                 Optional.of(BatteryVoltage.of(14.0))
@@ -63,7 +63,7 @@ class PredictiveAnomalyDetectionEngineTest {
                 TenantId.generate(),
                 Optional.empty(),
                 VehicleSpeed.of(60),
-                EngineTemperature.of(118.5),
+                Optional.of(EngineTemperature.of(118.5)),
                 EngineRpm.of(3000),
                 Optional.empty(),
                 Optional.of(BatteryVoltage.of(13.8))
@@ -85,7 +85,7 @@ class PredictiveAnomalyDetectionEngineTest {
                 TenantId.generate(),
                 Optional.empty(),
                 VehicleSpeed.of(0),
-                EngineTemperature.of(88.0),
+                Optional.of(EngineTemperature.of(88.0)),
                 EngineRpm.of(0),
                 Optional.empty(),
                 Optional.of(BatteryVoltage.of(11.4))
@@ -108,7 +108,7 @@ class PredictiveAnomalyDetectionEngineTest {
                 TenantId.generate(),
                 Optional.empty(),
                 VehicleSpeed.of(40), // moving
-                EngineTemperature.of(90.0),
+                Optional.of(EngineTemperature.of(90.0)),
                 EngineRpm.of(2000),
                 Optional.empty(),
                 Optional.of(BatteryVoltage.of(11.6))
@@ -127,7 +127,7 @@ class PredictiveAnomalyDetectionEngineTest {
                 TenantId.generate(),
                 Optional.empty(),
                 VehicleSpeed.of(120),
-                EngineTemperature.of(102.0),
+                Optional.of(EngineTemperature.of(102.0)),
                 EngineRpm.of(6500), // excessive RPM
                 Optional.empty(),
                 Optional.of(BatteryVoltage.of(14.0))
@@ -149,7 +149,7 @@ class PredictiveAnomalyDetectionEngineTest {
                 TenantId.generate(),
                 Optional.empty(),
                 VehicleSpeed.of(80),
-                EngineTemperature.of(90.0),
+                Optional.of(EngineTemperature.of(90.0)),
                 EngineRpm.of(2200),
                 Optional.of(FuelLevel.of(65.0)),
                 Optional.of(BatteryVoltage.of(14.2))
@@ -157,5 +157,24 @@ class PredictiveAnomalyDetectionEngineTest {
 
         Optional<AnomalyEvaluationResult> result = engine.evaluateTelemetryRecord(record);
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should raise no thermal or strain alert when the vehicle reports no coolant temperature")
+    void testNoCoolantTemperature() {
+        TelemetryRecord record = new TelemetryRecord(
+                Instant.now(),
+                VehicleId.generate(),
+                TenantId.generate(),
+                Optional.empty(),
+                VehicleSpeed.of(90),
+                Optional.empty(),
+                EngineRpm.of(6500),
+                Optional.empty(),
+                Optional.of(BatteryVoltage.of(14.0))
+        );
+
+        assertThat(engine.detectThermalRunaway(record)).isEmpty();
+        assertThat(engine.evaluateTelemetryRecord(record)).isEmpty();
     }
 }

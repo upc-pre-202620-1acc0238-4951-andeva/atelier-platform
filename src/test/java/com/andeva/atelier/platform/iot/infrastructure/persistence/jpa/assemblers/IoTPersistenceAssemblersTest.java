@@ -259,10 +259,26 @@ class IoTPersistenceAssemblersTest {
         assertThat(mappedBack.tenantId()).isEqualTo(tenantId);
         assertThat(mappedBack.location()).isPresent();
         assertThat(mappedBack.speed().kmh()).isEqualTo(85);
-        assertThat(mappedBack.engineTemperature().celsius()).isEqualTo(98.5);
+        assertThat(mappedBack.engineTemperature()).map(t -> t.celsius()).contains(98.5);
         assertThat(mappedBack.batteryVoltage().get().volts()).isEqualTo(14.2);
 
         assertThat(assembler.toEntity(null)).isNull();
         assertThat(assembler.toDomain(null)).isNull();
+    }
+
+    @Test
+    @DisplayName("TimescaleTelemetryPersistenceAssembler should keep a missing coolant temperature as null")
+    void testTimescaleTelemetryWithoutCoolantTemperature() {
+        TimescaleTelemetryPersistenceAssembler assembler = new TimescaleTelemetryPersistenceAssembler();
+        TelemetryRecord record = TelemetryRecord.of(
+                Instant.now(), vehicleId, tenantId, null,
+                VehicleSpeed.of(30.0), null, EngineRpm.of(1500), null, null
+        );
+
+        TelemetryLogPersistenceEntity entity = assembler.toEntity(record);
+        assertThat(entity.getEngineTempC()).isNull();
+
+        TelemetryRecord mappedBack = assembler.toDomain(entity);
+        assertThat(mappedBack.engineTemperature()).isEmpty();
     }
 }

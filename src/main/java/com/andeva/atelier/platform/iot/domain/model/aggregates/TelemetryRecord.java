@@ -21,7 +21,7 @@ public record TelemetryRecord(
         TenantId tenantId,
         Optional<GeoCoordinates> location,
         VehicleSpeed speed,
-        EngineTemperature engineTemperature,
+        Optional<EngineTemperature> engineTemperature,
         EngineRpm engineRpm,
         Optional<FuelLevel> fuelLevel,
         Optional<BatteryVoltage> batteryVoltage
@@ -33,7 +33,7 @@ public record TelemetryRecord(
         Objects.requireNonNull(tenantId, "TenantId cannot be null");
         location = location != null ? location : Optional.empty();
         Objects.requireNonNull(speed, "VehicleSpeed cannot be null");
-        Objects.requireNonNull(engineTemperature, "EngineTemperature cannot be null");
+        engineTemperature = engineTemperature != null ? engineTemperature : Optional.empty();
         Objects.requireNonNull(engineRpm, "EngineRpm cannot be null");
         fuelLevel = fuelLevel != null ? fuelLevel : Optional.empty();
         batteryVoltage = batteryVoltage != null ? batteryVoltage : Optional.empty();
@@ -56,7 +56,7 @@ public record TelemetryRecord(
                 tenantId,
                 Optional.ofNullable(location),
                 speed,
-                engineTemperature,
+                Optional.ofNullable(engineTemperature),
                 engineRpm,
                 Optional.ofNullable(fuelLevel),
                 Optional.ofNullable(batteryVoltage)
@@ -64,7 +64,7 @@ public record TelemetryRecord(
     }
 
     public boolean indicatesOverheating() {
-        return engineTemperature.indicatesOverheating();
+        return engineTemperature.map(EngineTemperature::indicatesOverheating).orElse(false);
     }
 
     public boolean indicatesLowBattery() {

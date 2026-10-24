@@ -30,7 +30,7 @@ public class TelemetryResourceAssembler {
                 record.location().map(GeoCoordinates::latitude).orElse(null),
                 record.location().map(GeoCoordinates::longitude).orElse(null),
                 record.speed().kmh(),
-                record.engineTemperature().celsius(),
+                record.engineTemperature().map(t -> t.celsius()).orElse(null),
                 record.engineRpm().rpm(),
                 record.batteryVoltage().map(BatteryVoltage::volts).orElse(null),
                 record.fuelLevel().map(FuelLevel::percentage).orElse(null)
@@ -41,7 +41,7 @@ public class TelemetryResourceAssembler {
             Instant bucketTime,
             UUID vehicleId,
             int avgSpeedKmh,
-            double avgEngineTempCelsius,
+            Double avgEngineTempCelsius,
             int avgEngineRpm,
             Double avgFuelPercentage,
             Double avgBatteryVoltage,

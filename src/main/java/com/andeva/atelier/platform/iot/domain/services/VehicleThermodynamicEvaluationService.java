@@ -98,6 +98,16 @@ public class VehicleThermodynamicEvaluationService {
      */
     public ThermodynamicEvaluationResult evaluate(TelemetryRecord record) {
         Objects.requireNonNull(record, "TelemetryRecord cannot be null");
-        return evaluate(record.engineRpm(), record.speed(), record.engineTemperature());
+        return record.engineTemperature()
+                .map(coolantTemp -> evaluate(record.engineRpm(), record.speed(), coolantTemp))
+                .orElseGet(() -> new ThermodynamicEvaluationResult(
+                        RiskLevel.LOW,
+                        false,
+                        String.format(
+                                "No coolant temperature reported (PID 0105 unsupported); thermal state not evaluated at %d RPM, %d km/h.",
+                                record.engineRpm().rpm(),
+                                record.speed().kmh()
+                        )
+                ));
     }
 }

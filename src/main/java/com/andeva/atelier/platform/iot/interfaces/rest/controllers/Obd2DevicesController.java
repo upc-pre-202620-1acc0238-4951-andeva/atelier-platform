@@ -126,7 +126,7 @@ public class Obd2DevicesController {
         return ResponseEntity.ok(deviceAssembler.toResponse(device));
     }
 
-    @Operation(summary = "List workshop OBD-II devices with optional status filter")
+    @Operation(summary = "List workshop OBD-II devices with optional status and hardware identifier (MAC or IMEI) filters")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Devices listed successfully"),
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
@@ -136,6 +136,7 @@ public class Obd2DevicesController {
     @PreAuthorize("hasAuthority('iot:devices:read')")
     public ResponseEntity<List<Obd2DeviceResponse>> listDevices(
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String identifier,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         TenantId tenantId = resolveTenantId(userDetails);
@@ -144,6 +145,11 @@ public class Obd2DevicesController {
         if (status != null && !status.isBlank()) {
             DeviceStatus targetStatus = DeviceStatus.valueOf(status.toUpperCase().trim());
             devices = devices.stream().filter(d -> d.getStatus() == targetStatus).toList();
+        }
+
+        // Lets the mobile app find the paired Bluetooth adapter by its MAC address
+        if (identifier != null && !identifier.isBlank()) {
+            devices = devices.stream().filter(d -> d.getDeviceIdentifier().matches(identifier)).toList();
         }
 
         return ResponseEntity.ok(devices.stream().map(deviceAssembler::toResponse).toList());

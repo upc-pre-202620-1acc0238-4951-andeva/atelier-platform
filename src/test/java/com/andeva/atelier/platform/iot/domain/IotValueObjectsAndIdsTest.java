@@ -468,4 +468,17 @@ class IotValueObjectsAndIdsTest {
             assertThat(empty.isEmpty()).isTrue();
         }
     }
+
+    @Test
+    @DisplayName("DeviceIdentifier matches the same hardware regardless of case and MAC separator")
+    void testDeviceIdentifierMatches() {
+        DeviceIdentifier mac = DeviceIdentifier.of("00:1b:44:11:3a:b7");
+
+        assertThat(mac.matches("00:1B:44:11:3A:B7")).isTrue();
+        assertThat(mac.matches("00-1b-44-11-3a-b7")).isTrue();
+        assertThat(mac.matches(" 00:1B:44:11:3A:B7 ")).isTrue();
+        assertThat(mac.matches("00:1B:44:11:3A:B8")).isFalse();
+        assertThat(mac.matches(null)).isFalse();
+        assertThat(DeviceIdentifier.of("356938035643809").matches("356938035643809")).isTrue();
+    }
 }

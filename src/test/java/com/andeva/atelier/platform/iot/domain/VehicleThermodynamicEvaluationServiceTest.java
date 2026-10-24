@@ -81,7 +81,7 @@ class VehicleThermodynamicEvaluationServiceTest {
                 TenantId.generate(),
                 Optional.empty(),
                 VehicleSpeed.of(70),
-                EngineTemperature.of(89.0),
+                Optional.of(EngineTemperature.of(89.0)),
                 EngineRpm.of(2100),
                 Optional.empty(),
                 Optional.empty()
@@ -92,5 +92,26 @@ class VehicleThermodynamicEvaluationServiceTest {
         assertThat(result.riskLevel()).isEqualTo(RiskLevel.LOW);
         assertThat(result.isAbnormalThermalGradient()).isFalse();
         assertThat(result.diagnosticSummary()).contains("normal thermodynamic parameters");
+    }
+
+    @Test
+    @DisplayName("Should report LOW risk without evaluating heat when the coolant temperature is missing")
+    void testMissingCoolantTemperature() {
+        TelemetryRecord record = new TelemetryRecord(
+                Instant.now(),
+                VehicleId.generate(),
+                TenantId.generate(),
+                Optional.empty(),
+                VehicleSpeed.of(0),
+                Optional.empty(),
+                EngineRpm.of(800),
+                Optional.empty(),
+                Optional.empty()
+        );
+
+        ThermodynamicEvaluationResult result = service.evaluate(record);
+
+        assertThat(result.riskLevel()).isEqualTo(RiskLevel.LOW);
+        assertThat(result.isAbnormalThermalGradient()).isFalse();
     }
 }
