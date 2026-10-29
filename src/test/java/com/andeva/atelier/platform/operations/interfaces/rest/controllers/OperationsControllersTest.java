@@ -141,7 +141,7 @@ class OperationsControllersTest {
             when(workOrderQueryService.handle(any(GetWorkOrderTaskByIdQuery.class)))
                     .thenReturn(Optional.of(sampleTask));
 
-            ResponseEntity<?> response = tasksController.getTaskById(sampleTask.getId().value());
+            ResponseEntity<?> response = tasksController.getTaskById(sampleTask.getId().value(), null);
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         }
 
@@ -151,7 +151,7 @@ class OperationsControllersTest {
             when(workOrderQueryService.handle(any(GetWorkOrderTaskByIdQuery.class)))
                     .thenReturn(Optional.empty());
 
-            ResponseEntity<?> response = tasksController.getTaskById(UUID.randomUUID());
+            ResponseEntity<?> response = tasksController.getTaskById(UUID.randomUUID(), null);
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         }
 
@@ -193,7 +193,7 @@ class OperationsControllersTest {
             when(workOrderQueryService.handle(any(GetWorkOrderTaskByIdQuery.class)))
                     .thenReturn(Optional.of(sampleTask));
             UpdateWorkOrderTaskResource updateReq = new UpdateWorkOrderTaskResource("Nueva descripcion", new BigDecimal("180.00"), mechanicId);
-            ResponseEntity<?> updateRes = tasksController.updateTask(sampleTask.getId().value(), updateReq);
+            ResponseEntity<?> updateRes = tasksController.updateTask(sampleTask.getId().value(), updateReq, null);
             assertThat(updateRes.getStatusCode()).isEqualTo(HttpStatus.OK);
 
             // assignMechanic
@@ -225,7 +225,7 @@ class OperationsControllersTest {
             when(workOrderCommandService.handle(any(UpdateTaskProductQuantityCommand.class)))
                     .thenReturn(Result.success(sampleOrder));
             UpdateTaskProductResource updateReq = new UpdateTaskProductResource(new BigDecimal("3.0"));
-            ResponseEntity<?> updateRes = tasksController.updateProductQuantity(sampleTask.getId().value(), addReq.productId(), updateReq);
+            ResponseEntity<?> updateRes = tasksController.updateProductQuantity(sampleTask.getId().value(), addReq.productId(), updateReq, orderManager());
             assertThat(updateRes.getStatusCode()).isEqualTo(HttpStatus.OK);
         }
 

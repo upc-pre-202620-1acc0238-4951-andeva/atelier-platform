@@ -1,6 +1,7 @@
 package com.andeva.atelier.platform.operations.infrastructure.persistence.jpa.assemblers;
 
 import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTask;
+import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTaskProduct;
 import com.andeva.atelier.platform.operations.domain.model.ids.ServiceId;
 import com.andeva.atelier.platform.operations.domain.model.ids.WorkOrderId;
 import com.andeva.atelier.platform.operations.domain.model.ids.WorkOrderTaskId;
@@ -105,9 +106,18 @@ public final class WorkOrderTaskPersistenceAssembler {
         entity.setCompletedAt(domain.getCompletedAt().orElse(null));
 
         if (domain.getConsumedProducts() != null) {
-            java.util.Set<java.util.UUID> existingProdIds = entity.getProducts().stream()
-                    .map(com.andeva.atelier.platform.operations.infrastructure.persistence.jpa.entities.WorkOrderTaskProductPersistenceEntity::getId)
-                    .collect(java.util.stream.Collectors.toSet());
+            java.util.Map<java.util.UUID, WorkOrderTaskProduct> domainProducts = domain.getConsumedProducts().stream()
+                    .collect(java.util.stream.Collectors.toMap(p -> p.getId().value(), p -> p));
+            // Lines withdrawn in the domain are dropped here so orphanRemoval deletes them
+            entity.getProducts().removeIf(existing -> !domainProducts.containsKey(existing.getId()));
+            java.util.Set<java.util.UUID> existingProdIds = new java.util.HashSet<>();
+            for (var existing : entity.getProducts()) {
+                WorkOrderTaskProduct p = domainProducts.get(existing.getId());
+                existing.setQuantity(p.getQuantity().value());
+                existing.setUnitPrice(p.getUnitPrice().amount());
+                existing.setTotalAmount(p.getTotalAmount().amount());
+                existingProdIds.add(existing.getId());
+            }
             for (var p : domain.getConsumedProducts()) {
                 if (!existingProdIds.contains(p.getId().value())) {
                     entity.getProducts().add(WorkOrderTaskProductPersistenceAssembler.toEntity(p, entity));

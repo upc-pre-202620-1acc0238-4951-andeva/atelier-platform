@@ -3,6 +3,7 @@ package com.andeva.atelier.platform.operations.application.acl;
 import com.andeva.atelier.platform.operations.application.commandservices.WorkOrderCommandService;
 import com.andeva.atelier.platform.operations.application.queryservices.WorkBayQueryService;
 import com.andeva.atelier.platform.operations.application.queryservices.WorkOrderQueryService;
+import com.andeva.atelier.platform.operations.application.queryservices.WorkOrderTaskLabelsQueryService;
 import com.andeva.atelier.platform.operations.domain.model.aggregates.WorkBay;
 import com.andeva.atelier.platform.operations.domain.model.aggregates.WorkOrder;
 import com.andeva.atelier.platform.operations.domain.model.commands.MarkWorkOrderAsPaidCommand;
@@ -35,6 +36,7 @@ public class WorkshopOperationsContextFacadeImpl implements WorkshopOperationsCo
     private final WorkBayQueryService workBayQueryService;
     private final WorkOrderCommandService workOrderCommandService;
     private final ServiceQueryService serviceQueryService;
+    private final WorkOrderTaskLabelsQueryService labelsQueryService;
 
     public WorkshopOperationsContextFacadeImpl(
             WorkOrderQueryService workOrderQueryService,
@@ -43,16 +45,26 @@ public class WorkshopOperationsContextFacadeImpl implements WorkshopOperationsCo
         this(workOrderQueryService, workBayQueryService, workOrderCommandService, null);
     }
 
+    public WorkshopOperationsContextFacadeImpl(
+            WorkOrderQueryService workOrderQueryService,
+            WorkBayQueryService workBayQueryService,
+            WorkOrderCommandService workOrderCommandService,
+            ServiceQueryService serviceQueryService) {
+        this(workOrderQueryService, workBayQueryService, workOrderCommandService, serviceQueryService, null);
+    }
+
     @Autowired
     public WorkshopOperationsContextFacadeImpl(
             WorkOrderQueryService workOrderQueryService,
             WorkBayQueryService workBayQueryService,
             WorkOrderCommandService workOrderCommandService,
-            @Autowired(required = false) ServiceQueryService serviceQueryService) {
+            @Autowired(required = false) ServiceQueryService serviceQueryService,
+            @Autowired(required = false) WorkOrderTaskLabelsQueryService labelsQueryService) {
         this.workOrderQueryService = workOrderQueryService;
         this.workBayQueryService = workBayQueryService;
         this.workOrderCommandService = workOrderCommandService;
         this.serviceQueryService = serviceQueryService;
+        this.labelsQueryService = labelsQueryService != null ? labelsQueryService : WorkOrderTaskLabelsQueryService.IDS_ONLY;
     }
 
     @Override
@@ -130,7 +142,7 @@ public class WorkshopOperationsContextFacadeImpl implements WorkshopOperationsCo
                     for (var prod : task.getConsumedProducts()) {
                         list.add(new WorkOrderConsumedProductDto(
                                 prod.getProductId(),
-                                "Product " + prod.getProductId(),
+                                labelsQueryService.productNameOf(wo.getTenantId().value(), prod.getProductId()),
                                 prod.getQuantity() != null ? prod.getQuantity().value() : BigDecimal.ZERO,
                                 prod.getUnitPrice() != null ? prod.getUnitPrice().amount() : BigDecimal.ZERO,
                                 prod.getTotalAmount() != null ? prod.getTotalAmount().amount() : BigDecimal.ZERO,

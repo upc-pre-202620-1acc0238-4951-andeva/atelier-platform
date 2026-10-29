@@ -4,6 +4,7 @@ import com.andeva.atelier.platform.iam.infrastructure.security.model.CustomUserD
 import com.andeva.atelier.platform.operations.application.commandservices.WorkOrderCommandService;
 import com.andeva.atelier.platform.operations.application.queryservices.WorkBayQueryService;
 import com.andeva.atelier.platform.operations.application.queryservices.WorkOrderQueryService;
+import com.andeva.atelier.platform.operations.application.queryservices.WorkOrderTaskLabelsQueryService;
 import com.andeva.atelier.platform.operations.domain.model.aggregates.WorkOrder;
 import com.andeva.atelier.platform.operations.domain.model.commands.*;
 import com.andeva.atelier.platform.operations.domain.model.entities.TaskProposal;
@@ -27,6 +28,7 @@ import com.andeva.atelier.platform.shared.interfaces.rest.transform.ErrorRespons
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -52,11 +54,22 @@ public class WorkOrdersController {
     private final WorkOrderCommandService workOrderCommandService;
     private final WorkOrderQueryService workOrderQueryService;
     private final WorkBayQueryService workBayQueryService;
+    private final WorkOrderTaskLabelsQueryService labelsQueryService;
 
     public WorkOrdersController(
             WorkOrderCommandService workOrderCommandService,
             WorkOrderQueryService workOrderQueryService,
             WorkBayQueryService workBayQueryService) {
+        this(workOrderCommandService, workOrderQueryService, workBayQueryService, WorkOrderTaskLabelsQueryService.IDS_ONLY);
+    }
+
+    @Autowired
+    public WorkOrdersController(
+            WorkOrderCommandService workOrderCommandService,
+            WorkOrderQueryService workOrderQueryService,
+            WorkBayQueryService workBayQueryService,
+            WorkOrderTaskLabelsQueryService labelsQueryService) {
+        this.labelsQueryService = Objects.requireNonNull(labelsQueryService, "labelsQueryService cannot be null");
         this.workOrderCommandService = Objects.requireNonNull(workOrderCommandService, "workOrderCommandService cannot be null");
         this.workOrderQueryService = Objects.requireNonNull(workOrderQueryService, "workOrderQueryService cannot be null");
         this.workBayQueryService = Objects.requireNonNull(workBayQueryService, "workBayQueryService cannot be null");
@@ -206,7 +219,8 @@ public class WorkOrdersController {
 
         WorkOrder updated = result.getOrThrow();
         WorkOrderTask task = updated.getTasks().get(updated.getTasks().size() - 1);
-        WorkOrderTaskResource taskRes = WorkOrderTaskResourceAssembler.toResourceFromEntity(task, "Service", null);
+        WorkOrderTaskResource taskRes = WorkOrderTaskResourceAssembler.toResourceFromEntity(task, labelsQueryService.serviceNameOf(task), null,
+                productId -> labelsQueryService.productNameOf(updated.getTenantId().value(), productId));
 
         URI location = ucb.path("/api/v1/tasks/{taskId}").buildAndExpand(task.getId().value()).toUri();
         return ResponseEntity.created(location).body(taskRes);
