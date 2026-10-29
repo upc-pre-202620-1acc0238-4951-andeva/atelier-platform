@@ -9,11 +9,21 @@ import com.andeva.atelier.platform.operations.interfaces.rest.resources.response
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import java.util.function.Function;
 
 public final class WorkOrderTaskResourceAssembler {
     private WorkOrderTaskResourceAssembler() {}
 
     public static WorkOrderTaskResource toResourceFromEntity(WorkOrderTask task, String serviceName, String mechanicName) {
+        return toResourceFromEntity(task, serviceName, mechanicName, productId -> "Product " + productId);
+    }
+
+    /**
+     * @param productNames resolves the display name of each charged spare part from its catalog id
+     */
+    public static WorkOrderTaskResource toResourceFromEntity(WorkOrderTask task, String serviceName, String mechanicName,
+                                                             Function<UUID, String> productNames) {
         if (task == null) {
             return null;
         }
@@ -25,7 +35,7 @@ public final class WorkOrderTaskResourceAssembler {
                         prod.getId() != null ? prod.getId().value() : null,
                         task.getId() != null ? task.getId().value() : null,
                         prod.getProductId(),
-                        "Product " + prod.getProductId(),
+                        productNames.apply(prod.getProductId()),
                         prod.getQuantity() != null ? prod.getQuantity().value() : BigDecimal.ZERO,
                         prod.getUnitPrice() != null ? prod.getUnitPrice().amount() : BigDecimal.ZERO,
                         prod.getTotalAmount() != null ? prod.getTotalAmount().amount() : BigDecimal.ZERO,

@@ -357,6 +357,49 @@ public class WorkOrder extends AbstractDomainAggregateRoot<WorkOrder> {
     }
 
     /**
+     * Only the difference moves stock: extra units are allocated FIFO, the units given back return to their batches.
+     *
+     * @param productItemId the task line id, or the catalog product id of the line
+     * @param changedBy user correcting the quantity, recorded by inventory when units go back (may be null)
+     */
+    public WorkOrderTaskProduct updateProductQuantityInTask(WorkOrderTaskId taskId, UUID productItemId, Quantity newQuantity, UUID changedBy) {
+        validateMutable("Cannot update product quantity");
+        Objects.requireNonNull(newQuantity, "newQuantity cannot be null");
+        WorkOrderTask task = findTask(taskId);
+        if (task.getStatus() == WorkOrderTaskStatus.COMPLETED) {
+            throw new IllegalStateException("Task is already completed. Cannot update product quantity.");
+        }
+        WorkOrderTaskProduct found = findTaskProduct(task, productItemId);
+
+        BigDecimal delta = newQuantity.value().subtract(found.getQuantity().value());
+        if (delta.signum() == 0) {
+            return found;
+        }
+        found.updateQuantity(newQuantity);
+        recalculateTotalAmount();
+        if (delta.signum() > 0) {
+            registerDomainEvent(ProductStockReservationRequestedEvent.of(this.id, taskId, found.getProductId(), Quantity.of(delta)));
+        } else {
+            registerDomainEvent(ProductStockReservationCancelledEvent.of(this.id, taskId, found.getProductId(), Quantity.of(delta.negate()), changedBy));
+        }
+        return found;
+    }
+
+    /**
+     * Matches the task line id first, then the catalog product id.
+     */
+    public Optional<WorkOrderTaskProduct> findTaskProduct(WorkOrderTaskId taskId, UUID productItemId) {
+        WorkOrderTask task = findTask(taskId);
+        return task.getConsumedProducts().stream().filter(p -> p.getId().value().equals(productItemId)).findFirst()
+                .or(() -> task.getConsumedProducts().stream().filter(p -> p.getProductId().equals(productItemId)).findFirst());
+    }
+
+    private WorkOrderTaskProduct findTaskProduct(WorkOrderTask task, UUID productItemId) {
+        return findTaskProduct(task.getId(), productItemId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found in task: " + productItemId));
+    }
+
+    /**
      * The same photo (same storage URL) is attached once: a retried upload keeps the stored image.
      */
     public void attachIntakeImage(StorageUrl imageUrl, String description) {

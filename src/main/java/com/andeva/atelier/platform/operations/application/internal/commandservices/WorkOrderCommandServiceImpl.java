@@ -7,6 +7,7 @@ import com.andeva.atelier.platform.operations.domain.model.aggregates.WorkOrder;
 import com.andeva.atelier.platform.operations.domain.model.commands.*;
 import com.andeva.atelier.platform.operations.domain.model.entities.TaskProposal;
 import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTask;
+import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTaskProduct;
 import com.andeva.atelier.platform.operations.domain.model.enums.BayStatus;
 import com.andeva.atelier.platform.operations.domain.model.enums.HoldReason;
 import com.andeva.atelier.platform.operations.domain.model.enums.WorkOrderTaskStatus;
@@ -510,18 +511,34 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
         if (orderOpt.isEmpty()) {
             return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
         }
-        WorkOrder order = orderOpt.get();
-        Optional<WorkOrderTask> taskOpt = order.getTasks().stream().filter(t -> t.getId().equals(command.taskId())).findFirst();
-        if (taskOpt.isEmpty()) {
-            return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        if (command.newQuantity() == null || command.newQuantity().signum() <= 0) {
+            return Result.failure(ApplicationError.badRequest("newQuantity must be strictly positive"));
         }
-        taskOpt.get().getConsumedProducts().stream()
-                .filter(p -> p.getProductId().equals(command.productId()))
-                .findFirst()
-                .ifPresent(p -> p.updateQuantity(Quantity.of(command.newQuantity())));
-        order.recalculateTotalAmount();
-        WorkOrder saved = workOrderRepository.save(order);
-        return Result.success(saved);
+        WorkOrder order = orderOpt.get();
+        Optional<WorkOrderTaskProduct> line = order.findTaskProduct(command.taskId(), command.productId());
+        if (line.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("Product " + command.productId() + " was not found in task " + command.taskId().value()));
+        }
+        BigDecimal extra = command.newQuantity().subtract(line.get().getQuantity().value());
+        if (extra.signum() > 0 && inventoryAclService != null) {
+            UUID tenantId = order.getTenantId().value();
+            UUID productId = line.get().getProductId();
+            // Same up-front check as adding a part: the FIFO allocation of the extra units runs after commit
+            if (!inventoryAclService.checkItemStockAvailability(tenantId, productId, extra)) {
+                String available = inventoryAclService.fetchItemDetails(tenantId, productId)
+                        .map(item -> item.currentStock().stripTrailingZeros().toPlainString())
+                        .orElse("0");
+                return Result.failure(ApplicationError.conflict("Insufficient stock: requested "
+                        + extra.stripTrailingZeros().toPlainString() + " more, available " + available));
+            }
+        }
+        try {
+            order.updateProductQuantityInTask(command.taskId(), command.productId(), Quantity.of(command.newQuantity()), command.changedBy());
+            WorkOrder saved = workOrderRepository.save(order);
+            return Result.success(saved);
+        } catch (Exception e) {
+            return Result.failure(ApplicationError.unprocessableEntity(e.getMessage()));
+        }
     }
 
     @Override

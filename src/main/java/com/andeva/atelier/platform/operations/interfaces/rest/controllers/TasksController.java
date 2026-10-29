@@ -4,6 +4,7 @@ import com.andeva.atelier.platform.operations.application.commandservices.WorkOr
 import com.andeva.atelier.platform.iam.infrastructure.security.model.CustomUserDetails;
 import com.andeva.atelier.platform.operations.application.queryservices.AssignedTaskView;
 import com.andeva.atelier.platform.operations.application.queryservices.WorkOrderQueryService;
+import com.andeva.atelier.platform.operations.application.queryservices.WorkOrderTaskLabelsQueryService;
 import com.andeva.atelier.platform.operations.domain.model.queries.GetTasksAssignedToMechanicQuery;
 import com.andeva.atelier.platform.operations.interfaces.rest.resources.responses.AssignedTaskResource;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
@@ -26,6 +27,7 @@ import com.andeva.atelier.platform.shared.interfaces.rest.transform.ErrorRespons
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -51,10 +53,18 @@ public class TasksController {
 
     private final WorkOrderCommandService workOrderCommandService;
     private final WorkOrderQueryService workOrderQueryService;
+    private final WorkOrderTaskLabelsQueryService labelsQueryService;
 
     public TasksController(WorkOrderCommandService workOrderCommandService, WorkOrderQueryService workOrderQueryService) {
+        this(workOrderCommandService, workOrderQueryService, WorkOrderTaskLabelsQueryService.IDS_ONLY);
+    }
+
+    @Autowired
+    public TasksController(WorkOrderCommandService workOrderCommandService, WorkOrderQueryService workOrderQueryService,
+                           WorkOrderTaskLabelsQueryService labelsQueryService) {
         this.workOrderCommandService = Objects.requireNonNull(workOrderCommandService, "workOrderCommandService cannot be null");
         this.workOrderQueryService = Objects.requireNonNull(workOrderQueryService, "workOrderQueryService cannot be null");
+        this.labelsQueryService = Objects.requireNonNull(labelsQueryService, "labelsQueryService cannot be null");
     }
 
     @GetMapping("/my")
@@ -72,9 +82,9 @@ public class TasksController {
     @GetMapping("/{taskId}")
     @PreAuthorize("hasAuthority('operations:tasks:read')")
     @Operation(summary = "Get detailed technical task by id")
-    public ResponseEntity<?> getTaskById(@PathVariable UUID taskId) {
+    public ResponseEntity<?> getTaskById(@PathVariable UUID taskId, @AuthenticationPrincipal CustomUserDetails userDetails) {
         return workOrderQueryService.handle(new GetWorkOrderTaskByIdQuery(new WorkOrderTaskId(taskId)))
-                .map(task -> WorkOrderTaskResourceAssembler.toResourceFromEntity(task, "Service", null))
+                .map(task -> taskResource(task, tenantOf(userDetails)))
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
@@ -84,7 +94,8 @@ public class TasksController {
     @Operation(summary = "Update task parameters and assigned mechanic")
     public ResponseEntity<?> updateTask(
             @PathVariable UUID taskId,
-            @Valid @RequestBody UpdateWorkOrderTaskResource resource
+            @Valid @RequestBody UpdateWorkOrderTaskResource resource,
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         if (resource.mechanicId() != null) {
             AssignTaskMechanicCommand assignCmd = new AssignTaskMechanicCommand(new WorkOrderTaskId(taskId), resource.mechanicId());
@@ -95,7 +106,7 @@ public class TasksController {
         }
 
         return workOrderQueryService.handle(new GetWorkOrderTaskByIdQuery(new WorkOrderTaskId(taskId)))
-                .map(task -> WorkOrderTaskResourceAssembler.toResourceFromEntity(task, "Service", null))
+                .map(task -> taskResource(task, tenantOf(userDetails)))
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
@@ -256,7 +267,7 @@ public class TasksController {
                 line.getId().value(),
                 taskId,
                 resource.productId(),
-                "Product " + resource.productId(),
+                labelsQueryService.productNameOf(result.getOrThrow().getTenantId().value(), resource.productId()),
                 line.getQuantity().value(),
                 line.getUnitPrice().amount(),
                 line.getTotalAmount().amount(),
@@ -294,27 +305,32 @@ public class TasksController {
     public ResponseEntity<?> updateProductQuantity(
             @PathVariable UUID taskId,
             @PathVariable UUID productId,
-            @Valid @RequestBody UpdateTaskProductResource resource
+            @Valid @RequestBody UpdateTaskProductResource resource,
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        UpdateTaskProductQuantityCommand command = UpdateTaskProductQuantityCommandFromResourceAssembler.toCommandFromResource(taskId, productId, resource);
+        UpdateTaskProductQuantityCommand base = UpdateTaskProductQuantityCommandFromResourceAssembler.toCommandFromResource(taskId, productId, resource);
+        UpdateTaskProductQuantityCommand command = new UpdateTaskProductQuantityCommand(base.taskId(), base.productId(),
+                base.newQuantity(), userDetails != null ? userDetails.getUserId() : null);
         Result<WorkOrder, ApplicationError> result = workOrderCommandService.handle(command);
 
         if (result.isFailure()) {
             return ErrorResponseAssembler.toErrorResponseFromApplicationError(result.getError());
         }
 
-        TaskProductResource productResource = new TaskProductResource(
-                UUID.randomUUID(),
-                taskId,
-                productId,
-                "Product " + productId,
-                resource.quantity(),
-                BigDecimal.ZERO,
-                BigDecimal.ZERO,
-                "PEN"
-        );
-
-        return ResponseEntity.ok(productResource);
+        // Answer with the stored line, matched like the command did: line id first, then catalog id
+        WorkOrder order = result.getOrThrow();
+        return order.findTaskProduct(new WorkOrderTaskId(taskId), productId)
+                .map(line -> ResponseEntity.ok(new TaskProductResource(
+                        line.getId().value(),
+                        taskId,
+                        line.getProductId(),
+                        labelsQueryService.productNameOf(order.getTenantId().value(), line.getProductId()),
+                        line.getQuantity().value(),
+                        line.getUnitPrice().amount(),
+                        line.getTotalAmount().amount(),
+                        line.getUnitPrice().currency().name()
+                )))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{taskId}/products/{productId}")
@@ -376,8 +392,17 @@ public class TasksController {
         return order.getTasks().stream()
                 .filter(t -> t.getId().value().equals(taskId))
                 .findFirst()
-                .map(task -> WorkOrderTaskResourceAssembler.toResourceFromEntity(task, "Service", null))
+                .map(task -> taskResource(task, order.getTenantId().value()))
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    private WorkOrderTaskResource taskResource(WorkOrderTask task, UUID tenantId) {
+        return WorkOrderTaskResourceAssembler.toResourceFromEntity(task, labelsQueryService.serviceNameOf(task), null,
+                productId -> labelsQueryService.productNameOf(tenantId, productId));
+    }
+
+    private static UUID tenantOf(CustomUserDetails userDetails) {
+        return userDetails != null ? userDetails.getTenantId() : null;
     }
 }
