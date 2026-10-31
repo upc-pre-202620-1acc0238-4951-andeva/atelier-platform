@@ -270,6 +270,7 @@ No aplica (Sin parametros en la ruta).
 - **Ruta Base:** `/api/v1/work-orders`
 - **Ruta Completa:** `/api/v1/work-orders/{workOrderId}`
 - **Proposito:** Recupera la ficha completa y pormenorizada de una orden de trabajo. Proyecta las tareas autorizadas con sus mecanicos asignados y repuestos consumidos, el listado de propuestas periciales detectadas en foso y las evidencias fotograficas de recepcion registradas mediante Firebase Storage.
+- **Nombres de catalogo (H11):** `tasks[].serviceName`, `tasks[].products[].productName` y `proposals[].serviceName` traen el nombre real del catalogo de servicios e inventario, igual que `GET /api/v1/tasks/{taskId}`. Solo si el servicio ya no existe se devuelve `Service`, y si el repuesto no se encuentra, `Product <uuid>`.
 
 #### Seguridad y Autorizacion
 - **Nivel de Acceso:** Autenticado
@@ -340,6 +341,7 @@ No aplica (Sin parametros de consulta en la URL).
       "holdReason": null,
       "missingItemDescription": null,
       "totalPausedSeconds": 0,
+      "pausedAt": null,
       "startedAt": "2026-10-03T10:30:00Z",
       "completedAt": null,
       "products": [
@@ -709,6 +711,7 @@ No aplica (Sin parametros de consulta en la URL).
 | holdReason | String | Motivo de pausa (null al crear) |
 | missingItemDescription | String | Descripcion de repuesto faltante (null al crear) |
 | totalPausedSeconds | Long | Segundos acumulados en pausa (0 inicial) |
+| pausedAt | Instant | Inicio (UTC) de la pausa en curso; `null` salvo con la tarea `ON_HOLD`. Tiempo efectivo = `(pausedAt ?? ahora) - startedAt - totalPausedSeconds` |
 | startedAt | Instant | Marca temporal de inicio (null al crear) |
 | completedAt | Instant | Marca temporal de cierre (null al crear) |
 | products | List<TaskProductResource> | Coleccion de repuestos asociados |
@@ -730,6 +733,7 @@ No aplica (Sin parametros de consulta en la URL).
   "holdReason": null,
   "missingItemDescription": null,
   "totalPausedSeconds": 0,
+  "pausedAt": null,
   "startedAt": null,
   "completedAt": null,
   "products": [],
@@ -1034,6 +1038,7 @@ No aplica (Sin parametros de consulta en la URL).
 | holdReason | String | Motivo de suspension (null) |
 | missingItemDescription | String | Repuesto faltante (null) |
 | totalPausedSeconds | Long | Segundos en pausa (0) |
+| pausedAt | Instant | Inicio (UTC) de la pausa en curso; `null` salvo con la tarea `ON_HOLD`. Tiempo efectivo = `(pausedAt ?? ahora) - startedAt - totalPausedSeconds` |
 | startedAt | Instant | Marca de inicio (null) |
 | completedAt | Instant | Marca de cierre (null) |
 | products | List<TaskProductResource> | Repuestos de la tarea |
@@ -1055,6 +1060,7 @@ No aplica (Sin parametros de consulta en la URL).
   "holdReason": null,
   "missingItemDescription": null,
   "totalPausedSeconds": 0,
+  "pausedAt": null,
   "startedAt": null,
   "completedAt": null,
   "products": [],
@@ -1664,6 +1670,7 @@ No aplica (Sin parametros de consulta en la URL).
 | holdReason | String | Causa tecnica de suspension si aplica |
 | missingItemDescription | String | Descripcion de repuesto faltante |
 | totalPausedSeconds | Long | Segundos totales acumulados en estado ON_HOLD |
+| pausedAt | Instant | Inicio (UTC) de la pausa en curso; `null` salvo con la tarea `ON_HOLD`. Tiempo efectivo = `(pausedAt ?? ahora) - startedAt - totalPausedSeconds` |
 | startedAt | Instant | Marca temporal de inicio de cronometro |
 | completedAt | Instant | Marca temporal de conclusion |
 | products | List<TaskProductResource> | Listado de repuestos e insumos consumidos |
@@ -1685,6 +1692,7 @@ No aplica (Sin parametros de consulta en la URL).
   "holdReason": null,
   "missingItemDescription": null,
   "totalPausedSeconds": 0,
+  "pausedAt": null,
   "startedAt": "2026-10-03T10:30:00Z",
   "completedAt": null,
   "products": [],
@@ -1778,6 +1786,7 @@ No aplica (Sin parametros de consulta en la URL).
 | holdReason | String | Motivo de pausa |
 | missingItemDescription | String | Repuesto faltante |
 | totalPausedSeconds | Long | Segundos en pausa |
+| pausedAt | Instant | Inicio (UTC) de la pausa en curso; `null` salvo con la tarea `ON_HOLD`. Tiempo efectivo = `(pausedAt ?? ahora) - startedAt - totalPausedSeconds` |
 | startedAt | Instant | Marca de inicio |
 | completedAt | Instant | Marca de conclusion |
 | products | List<TaskProductResource> | Repuestos asociados |
@@ -1799,6 +1808,7 @@ No aplica (Sin parametros de consulta en la URL).
   "holdReason": null,
   "missingItemDescription": null,
   "totalPausedSeconds": 0,
+  "pausedAt": null,
   "startedAt": null,
   "completedAt": null,
   "products": [],
@@ -1874,6 +1884,7 @@ No aplica (Sin parametros de consulta en la URL).
 | holdReason | String | Motivo de pausa (null) |
 | missingItemDescription | String | Repuesto faltante (null) |
 | totalPausedSeconds | Long | Segundos en pausa (0) |
+| pausedAt | Instant | Inicio (UTC) de la pausa en curso; `null` salvo con la tarea `ON_HOLD`. Tiempo efectivo = `(pausedAt ?? ahora) - startedAt - totalPausedSeconds` |
 | startedAt | Instant | Marca temporal precisa de inicio de labor |
 | completedAt | Instant | Marca de cierre (null) |
 | products | List<TaskProductResource> | Repuestos |
@@ -1895,6 +1906,7 @@ No aplica (Sin parametros de consulta en la URL).
   "holdReason": null,
   "missingItemDescription": null,
   "totalPausedSeconds": 0,
+  "pausedAt": null,
   "startedAt": "2026-10-03T11:48:10Z",
   "completedAt": null,
   "products": [],
@@ -1987,6 +1999,7 @@ No aplica (Sin parametros de consulta en la URL).
 | holdReason | String | Motivo formal de suspension |
 | missingItemDescription | String | Descripcion de material no disponible |
 | totalPausedSeconds | Long | Segundos acumulados en pausa |
+| pausedAt | Instant | Inicio (UTC) de la pausa en curso; `null` salvo con la tarea `ON_HOLD`. Tiempo efectivo = `(pausedAt ?? ahora) - startedAt - totalPausedSeconds` |
 | startedAt | Instant | Marca temporal de inicio original |
 | completedAt | Instant | Marca de conclusion (null) |
 | products | List<TaskProductResource> | Repuestos |
@@ -2008,6 +2021,7 @@ No aplica (Sin parametros de consulta en la URL).
   "holdReason": "Falta de repuestos en almacen",
   "missingItemDescription": "Laminas antiruido y pines guias de mordaza de freno delantero no disponibles en stock de almacen.",
   "totalPausedSeconds": 0,
+  "pausedAt": "2026-10-03T12:30:00Z",
   "startedAt": "2026-10-03T11:48:10Z",
   "completedAt": null,
   "products": [],
@@ -2083,6 +2097,7 @@ No aplica (Sin parametros de consulta en la URL).
 | holdReason | String | Motivo de pausa (restablecido a null) |
 | missingItemDescription | String | Descripcion de repuesto faltante (restablecido a null) |
 | totalPausedSeconds | Long | Segundos totales acumulados en suspension |
+| pausedAt | Instant | Inicio (UTC) de la pausa en curso; `null` salvo con la tarea `ON_HOLD`. Tiempo efectivo = `(pausedAt ?? ahora) - startedAt - totalPausedSeconds` |
 | startedAt | Instant | Marca temporal de inicio |
 | completedAt | Instant | Marca de conclusion (null) |
 | products | List<TaskProductResource> | Repuestos |
@@ -2104,6 +2119,7 @@ No aplica (Sin parametros de consulta en la URL).
   "holdReason": null,
   "missingItemDescription": null,
   "totalPausedSeconds": 1800,
+  "pausedAt": null,
   "startedAt": "2026-10-03T11:48:10Z",
   "completedAt": null,
   "products": [],
@@ -2196,6 +2212,7 @@ No aplica (Sin parametros de consulta en la URL).
 | holdReason | String | Motivo de pausa (null) |
 | missingItemDescription | String | Repuesto faltante (null) |
 | totalPausedSeconds | Long | Segundos totales acumulados en pausa |
+| pausedAt | Instant | Inicio (UTC) de la pausa en curso; `null` salvo con la tarea `ON_HOLD`. Tiempo efectivo = `(pausedAt ?? ahora) - startedAt - totalPausedSeconds` |
 | startedAt | Instant | Marca temporal de inicio |
 | completedAt | Instant | Marca temporal exacta de finalizacion |
 | products | List<TaskProductResource> | Repuestos consumidos |
@@ -2217,6 +2234,7 @@ No aplica (Sin parametros de consulta en la URL).
   "holdReason": null,
   "missingItemDescription": null,
   "totalPausedSeconds": 1800,
+  "pausedAt": null,
   "startedAt": "2026-10-03T11:48:10Z",
   "completedAt": "2026-10-03T13:33:10Z",
   "products": [],
@@ -2293,6 +2311,7 @@ No aplica (Sin parametros de consulta en la URL).
 | holdReason | String | Motivo de pausa (null) |
 | missingItemDescription | String | Repuesto faltante (null) |
 | totalPausedSeconds | Long | Segundos acumulados en pausa |
+| pausedAt | Instant | Inicio (UTC) de la pausa en curso; `null` salvo con la tarea `ON_HOLD`. Tiempo efectivo = `(pausedAt ?? ahora) - startedAt - totalPausedSeconds` |
 | startedAt | Instant | Marca de inicio original |
 | completedAt | Instant | Marca de cierre (restablecida a null) |
 | products | List<TaskProductResource> | Repuestos |
@@ -2314,6 +2333,7 @@ No aplica (Sin parametros de consulta en la URL).
   "holdReason": null,
   "missingItemDescription": null,
   "totalPausedSeconds": 1800,
+  "pausedAt": null,
   "startedAt": "2026-10-03T11:48:10Z",
   "completedAt": null,
   "products": [],

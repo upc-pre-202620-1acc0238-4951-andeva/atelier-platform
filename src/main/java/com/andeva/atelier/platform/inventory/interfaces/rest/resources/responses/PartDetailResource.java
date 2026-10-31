@@ -18,6 +18,8 @@ public record PartDetailResource(
         BigDecimal minimumStock,
         String unitOfMeasure,
         InventoryItemStatus status,
-        List<BatchResource> batches
+        List<BatchResource> batches,
+        // Manufacturer of the part; null when not recorded
+        String brand
 ) {
 }

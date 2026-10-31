@@ -104,6 +104,7 @@ public class PartsCatalogController {
             @RequestHeader(value = "X-Tenant-Id", required = false) UUID tenantHeader,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String category,
+            @RequestParam(required = false) String brand,
             @RequestParam(required = false) String status,
             @RequestParam(required = false, defaultValue = "false") Boolean lowStockOnly,
             @RequestParam(defaultValue = "0") int page,
@@ -122,13 +123,21 @@ public class PartsCatalogController {
         if (search != null && !search.isBlank()) {
             String lowerSearch = search.trim().toLowerCase();
             items = items.stream()
-                    .filter(i -> i.getName().toLowerCase().contains(lowerSearch) || i.getSku().value().toLowerCase().contains(lowerSearch))
+                    .filter(i -> i.getName().toLowerCase().contains(lowerSearch)
+                            || i.getSku().value().toLowerCase().contains(lowerSearch)
+                            || i.getBrand().map(b -> b.toLowerCase().contains(lowerSearch)).orElse(false))
                     .toList();
         }
 
         if (category != null && !category.isBlank()) {
             items = items.stream()
                     .filter(i -> i.getCategory().name().equalsIgnoreCase(category.trim()))
+                    .toList();
+        }
+
+        if (brand != null && !brand.isBlank()) {
+            items = items.stream()
+                    .filter(i -> i.getBrand().map(b -> b.equalsIgnoreCase(brand.trim())).orElse(false))
                     .toList();
         }
 

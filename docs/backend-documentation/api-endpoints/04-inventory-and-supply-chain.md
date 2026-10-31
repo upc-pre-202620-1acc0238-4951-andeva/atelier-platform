@@ -79,6 +79,7 @@ No aplica (Sin parametros de consulta en la URL).
 | name | String | Si | @NotBlank, @Size(max = 150) | Nombre comercial o descripcion tecnica del repuesto |
 | sku | String | Si | @NotBlank, @Size(max = 50) | Codigo SKU alfanumerico estandarizado |
 | category | String | Si | @NotBlank | Categoria funcional (BRAKES, SUSPENSION, ENGINE, FILTERS, FLUIDS, ELECTRICAL) |
+| brand | String | No | @Size(max = 80) | Marca del fabricante (por ejemplo Bosch). En `PUT`: omitida conserva la actual, vacia la borra |
 | basePrice | BigDecimal | Si | @NotNull, @Positive | Precio base de venta fijado para el taller |
 | minStock | BigDecimal | Si | @NotNull, @PositiveOrZero | Cantidad minima de seguridad en inventario |
 | currency | String | Si | @NotBlank, @Pattern(regexp = "PEN|USD") | Codigo ISO de la moneda |
@@ -106,6 +107,7 @@ No aplica (Sin parametros de consulta en la URL).
 | name | String | Nombre del repuesto registrado |
 | sku | String | Codigo SKU unico en el taller |
 | category | String | Categoria del repuesto |
+| brand | String | Marca del fabricante; `null` si no se registro |
 | basePrice | BigDecimal | Precio base de venta |
 | totalStock | BigDecimal | Existencias fisicas consolidadas (0.0 al crear) |
 | minimumStock | BigDecimal | Umbral de stock minimo |
@@ -175,7 +177,15 @@ No aplica (Sin parametros de consulta en la URL).
 No aplica (Sin parametros en la ruta).
 
 **Parametros de Consulta (Query Parameters):**
-No aplica (Sin parametros de consulta en la URL).
+| Parametro | Tipo | Requerido | Descripcion |
+| :--- | :--- | :--- | :--- |
+| search | String | No | Texto contenido en el nombre, el SKU o la marca (sin distinguir mayusculas) |
+| category | String | No | Categoria exacta (`ItemCategory`) |
+| brand | String | No | Marca exacta, sin distinguir mayusculas (por ejemplo `bosch`) |
+| status | String | No | Estado del repuesto (`ACTIVE`, `INACTIVE`, `DISCONTINUED`) |
+| lowStockOnly | Boolean | No | Solo repuestos en o bajo el stock minimo (por defecto `false`) |
+| page | Integer | No | Pagina desde 0 (por defecto `0`) |
+| size | Integer | No | Tamano de pagina (por defecto `20`) |
 
 #### Recurso de Respuesta (Response Body)
 - **Estado HTTP Exitoso:** `200 OK`
@@ -187,6 +197,7 @@ No aplica (Sin parametros de consulta en la URL).
 | name | String | Nombre comercial del repuesto |
 | sku | String | Codigo SKU de identificacion |
 | category | String | Categoria funcional |
+| brand | String | Marca del fabricante; `null` si no se registro |
 | basePrice | BigDecimal | Precio de venta al publico |
 | totalStock | BigDecimal | Saldo total consolidado disponible |
 | currency | String | Divisa de facturacion |
@@ -274,6 +285,7 @@ No aplica (Sin parametros de consulta en la URL).
 | name | String | Nombre comercial del repuesto |
 | sku | String | Codigo SKU |
 | category | String | Categoria |
+| brand | String | Marca del fabricante; `null` si no se registro |
 | basePrice | BigDecimal | Precio base de venta |
 | totalStock | BigDecimal | Saldo total de existencias |
 | minimumStock | BigDecimal | Umbral de reposicion minima |
@@ -378,6 +390,7 @@ No aplica (Sin parametros de consulta en la URL).
 | :--- | :--- | :--- | :--- | :--- |
 | name | String | Si | @NotBlank, @Size(max = 150) | Nombre comercial actualizado del repuesto |
 | category | String | Si | @NotBlank | Categoria funcional rectificada |
+| brand | String | No | @Size(max = 80) | Marca del fabricante (por ejemplo Bosch). En `PUT`: omitida conserva la actual, vacia la borra |
 | basePrice | BigDecimal | Si | @NotNull, @Positive | Nuevo precio base de venta |
 | minStock | BigDecimal | Si | @NotNull, @PositiveOrZero | Nuevo umbral de stock minimo |
 | currency | String | Si | @NotBlank, @Pattern(regexp = "PEN|USD") | Codigo ISO de la moneda |
@@ -404,6 +417,7 @@ No aplica (Sin parametros de consulta en la URL).
 | name | String | Nombre actualizado |
 | sku | String | Codigo SKU inmutable |
 | category | String | Categoria |
+| brand | String | Marca del fabricante; `null` si no se registro |
 | basePrice | BigDecimal | Nuevo precio de venta |
 | totalStock | BigDecimal | Saldo total disponible |
 | minimumStock | BigDecimal | Nuevo stock minimo |
@@ -485,6 +499,7 @@ No aplica (Sin parametros de consulta en la URL).
 | name | String | Nombre comercial del repuesto |
 | sku | String | Codigo SKU |
 | category | String | Categoria del repuesto |
+| brand | String | Marca del fabricante; `null` si no se registro |
 | basePrice | BigDecimal | Precio de venta al publico |
 | totalStock | BigDecimal | Saldo remanente en nivel critico |
 | currency | String | Moneda |

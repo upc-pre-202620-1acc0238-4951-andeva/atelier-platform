@@ -100,7 +100,7 @@ class InventoryControllersTest {
             when(inventoryItemQueryService.handle(any(GetInventoryItemsByTenantIdQuery.class)))
                     .thenReturn(List.of(item));
 
-            ResponseEntity<?> response = controller.getParts(null, tenantId.value(), null, null, null, false, 0, 20);
+            ResponseEntity<?> response = controller.getParts(null, tenantId.value(), null, null, null, null, false, 0, 20);
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody()).isInstanceOf(List.class);
         }
@@ -127,7 +127,8 @@ class InventoryControllersTest {
                     ItemCategory.BRAKES,
                     new BigDecimal("120.00"),
                     new BigDecimal("5.00"),
-                    "SET"
+                    "SET",
+                    null
             );
 
             ResponseEntity<?> response = controller.createPart(null, tenantId.value(), resource, UriComponentsBuilder.newInstance());
