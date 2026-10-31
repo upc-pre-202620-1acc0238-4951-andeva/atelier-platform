@@ -4,6 +4,7 @@ import com.andeva.atelier.platform.inventory.domain.model.enums.ItemCategory;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 
@@ -25,6 +26,9 @@ public record CreatePartResource(
         @DecimalMin(value = "0.00", message = "Minimum stock must be non-negative")
         BigDecimal minimumStock,
 
-        String unitOfMeasure
+        String unitOfMeasure,
+
+        @Size(max = 80, message = "Brand cannot exceed 80 characters")
+        String brand
 ) {
 }

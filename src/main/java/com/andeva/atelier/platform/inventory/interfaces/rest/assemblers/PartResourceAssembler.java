@@ -30,7 +30,8 @@ public final class PartResourceAssembler {
                 resource.category(),
                 Money.of(resource.basePrice(), Currency.PEN),
                 Quantity.of(resource.minimumStock()),
-                resource.unitOfMeasure() != null ? resource.unitOfMeasure() : "UNIT"
+                resource.unitOfMeasure() != null ? resource.unitOfMeasure() : "UNIT",
+                resource.brand()
         );
     }
 
@@ -42,7 +43,8 @@ public final class PartResourceAssembler {
                 Money.of(resource.basePrice(), Currency.PEN),
                 Quantity.of(resource.minimumStock()),
                 resource.unitOfMeasure() != null ? resource.unitOfMeasure() : "UNIT",
-                resource.status()
+                resource.status(),
+                resource.brand()
         );
     }
 
@@ -61,7 +63,8 @@ public final class PartResourceAssembler {
                 item.getTotalStock().value(),
                 item.getMinimumStock().value(),
                 item.getUnitOfMeasure(),
-                item.getStatus()
+                item.getStatus(),
+                item.getBrand().orElse(null)
         );
     }
 
@@ -83,7 +86,8 @@ public final class PartResourceAssembler {
                 item.getMinimumStock().value(),
                 item.getUnitOfMeasure(),
                 item.getStatus(),
-                batchResources
+                batchResources,
+                item.getBrand().orElse(null)
         );
     }
 }

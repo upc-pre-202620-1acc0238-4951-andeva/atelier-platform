@@ -62,7 +62,8 @@ public class InventoryItemCommandServiceImpl implements InventoryItemCommandServ
                 command.category(),
                 command.basePrice(),
                 command.minimumStock(),
-                command.unitOfMeasure()
+                command.unitOfMeasure(),
+                command.brand()
         );
 
         InventoryItem saved = itemRepository.save(item);
@@ -206,7 +207,8 @@ public class InventoryItemCommandServiceImpl implements InventoryItemCommandServ
                 command.category(),
                 command.basePrice(),
                 command.minimumStock(),
-                command.unitOfMeasure() != null ? command.unitOfMeasure() : "UNIT"
+                command.unitOfMeasure() != null ? command.unitOfMeasure() : "UNIT",
+                command.brand()
         );
         InventoryItem saved = itemRepository.save(item);
         return Result.success(saved);

@@ -16,6 +16,8 @@ public record PartResource(
         BigDecimal totalStock,
         BigDecimal minimumStock,
         String unitOfMeasure,
-        InventoryItemStatus status
+        InventoryItemStatus status,
+        // Manufacturer of the part; null when not recorded
+        String brand
 ) {
 }

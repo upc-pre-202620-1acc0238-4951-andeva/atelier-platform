@@ -16,7 +16,8 @@ public record CreateInventoryItemCommand(
         ItemCategory category,
         Money basePrice,
         Quantity minimumStock,
-        String unitOfMeasure
+        String unitOfMeasure,
+        String brand
 ) implements Serializable {
 
     public CreateInventoryItemCommand {

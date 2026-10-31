@@ -17,6 +17,8 @@ import java.util.*;
 
 public class InventoryItem extends AbstractDomainAggregateRoot<InventoryItem> {
 
+    public static final int MAX_BRAND_LENGTH = 80;
+
     private final InventoryItemId id;
     private final TenantId tenantId;
     private String name;
@@ -26,6 +28,8 @@ public class InventoryItem extends AbstractDomainAggregateRoot<InventoryItem> {
     private Quantity totalStock;
     private Quantity minimumStock;
     private String unitOfMeasure;
+    // Manufacturer of the part (e.g. Bosch); optional
+    private String brand;
     private InventoryItemStatus status;
     private final List<InventoryBatch> batches;
 
@@ -40,9 +44,11 @@ public class InventoryItem extends AbstractDomainAggregateRoot<InventoryItem> {
             Quantity minimumStock,
             String unitOfMeasure,
             InventoryItemStatus status,
-            List<InventoryBatch> batches
+            List<InventoryBatch> batches,
+            String brand
     ) {
         this.id = Objects.requireNonNull(id, "InventoryItemId cannot be null");
+        this.brand = normalizeBrand(brand);
         this.tenantId = Objects.requireNonNull(tenantId, "TenantId cannot be null");
         this.name = Objects.requireNonNull(name, "Name cannot be null");
         this.sku = Objects.requireNonNull(sku, "Sku cannot be null");
@@ -64,6 +70,19 @@ public class InventoryItem extends AbstractDomainAggregateRoot<InventoryItem> {
             Quantity minimumStock,
             String unitOfMeasure
     ) {
+        return create(tenantId, name, sku, category, basePrice, minimumStock, unitOfMeasure, null);
+    }
+
+    public static InventoryItem create(
+            TenantId tenantId,
+            String name,
+            Sku sku,
+            ItemCategory category,
+            Money basePrice,
+            Quantity minimumStock,
+            String unitOfMeasure,
+            String brand
+    ) {
         InventoryItem item = new InventoryItem(
                 InventoryItemId.generate(),
                 tenantId,
@@ -75,7 +94,8 @@ public class InventoryItem extends AbstractDomainAggregateRoot<InventoryItem> {
                 minimumStock,
                 unitOfMeasure,
                 InventoryItemStatus.ACTIVE,
-                new ArrayList<>()
+                new ArrayList<>(),
+                brand
         );
         item.registerDomainEvent(InventoryItemCreatedEvent.of(item.id, tenantId, sku, name));
         return item;
@@ -94,6 +114,24 @@ public class InventoryItem extends AbstractDomainAggregateRoot<InventoryItem> {
             InventoryItemStatus status,
             List<InventoryBatch> batches
     ) {
+        return reconstitute(id, tenantId, name, sku, category, basePrice, totalStock, minimumStock, unitOfMeasure,
+                status, batches, null);
+    }
+
+    public static InventoryItem reconstitute(
+            InventoryItemId id,
+            TenantId tenantId,
+            String name,
+            Sku sku,
+            ItemCategory category,
+            Money basePrice,
+            Quantity totalStock,
+            Quantity minimumStock,
+            String unitOfMeasure,
+            InventoryItemStatus status,
+            List<InventoryBatch> batches,
+            String brand
+    ) {
         return new InventoryItem(
                 id,
                 tenantId,
@@ -105,7 +143,8 @@ public class InventoryItem extends AbstractDomainAggregateRoot<InventoryItem> {
                 minimumStock,
                 unitOfMeasure,
                 status,
-                batches
+                batches,
+                brand
         );
     }
 
@@ -196,6 +235,17 @@ public class InventoryItem extends AbstractDomainAggregateRoot<InventoryItem> {
     }
 
     public void updateDetails(String name, ItemCategory category, Money basePrice, Quantity minimumStock, String unitOfMeasure) {
+        updateDetails(name, category, basePrice, minimumStock, unitOfMeasure, null);
+    }
+
+    /**
+     * @param brand null keeps the current brand; a blank value clears it
+     */
+    public void updateDetails(String name, ItemCategory category, Money basePrice, Quantity minimumStock, String unitOfMeasure,
+                              String brand) {
+        if (brand != null) {
+            this.brand = normalizeBrand(brand);
+        }
         if (name != null && !name.isBlank()) {
             this.name = name;
         }
@@ -239,6 +289,7 @@ public class InventoryItem extends AbstractDomainAggregateRoot<InventoryItem> {
     public Quantity getTotalStock() { return totalStock; }
     public Quantity getMinimumStock() { return minimumStock; }
     public String getUnitOfMeasure() { return unitOfMeasure; }
+    public Optional<String> getBrand() { return Optional.ofNullable(brand); }
     public InventoryItemStatus getStatus() { return status; }
     public List<InventoryBatch> getBatches() { return Collections.unmodifiableList(batches); }
 
@@ -246,5 +297,16 @@ public class InventoryItem extends AbstractDomainAggregateRoot<InventoryItem> {
         if (batch != null) {
             this.batches.add(batch);
         }
+    }
+
+    private static String normalizeBrand(String brand) {
+        if (brand == null || brand.isBlank()) {
+            return null;
+        }
+        String trimmed = brand.trim();
+        if (trimmed.length() > MAX_BRAND_LENGTH) {
+            throw new IllegalArgumentException("Brand cannot exceed " + MAX_BRAND_LENGTH + " characters");
+        }
+        return trimmed;
     }
 }

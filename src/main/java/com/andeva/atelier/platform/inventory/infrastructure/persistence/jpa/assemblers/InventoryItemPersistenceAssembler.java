@@ -42,7 +42,8 @@ public final class InventoryItemPersistenceAssembler {
                 Quantity.of(entity.getMinimumStock()),
                 "UNIT",
                 entity.getStatus(),
-                domainBatches
+                domainBatches,
+                entity.getBrand()
         );
     }
 
@@ -62,6 +63,7 @@ public final class InventoryItemPersistenceAssembler {
                 domain.getMinimumStock().value(),
                 domain.getStatus()
         );
+        entity.setBrand(domain.getBrand().orElse(null));
 
         if (domain.getBatches() != null) {
             for (InventoryBatch batch : domain.getBatches()) {
@@ -84,6 +86,7 @@ public final class InventoryItemPersistenceAssembler {
         entity.setTotalStock(domain.getTotalStock().value());
         entity.setMinimumStock(domain.getMinimumStock().value());
         entity.setStatus(domain.getStatus());
+        entity.setBrand(domain.getBrand().orElse(null));
 
         // Synchronize batches
         Map<UUID, InventoryBatchPersistenceEntity> existingBatches = entity.getBatches().stream()
