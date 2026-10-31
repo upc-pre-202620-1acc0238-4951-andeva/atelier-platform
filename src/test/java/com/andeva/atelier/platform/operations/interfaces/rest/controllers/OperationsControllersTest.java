@@ -6,6 +6,7 @@ import com.andeva.atelier.platform.operations.application.commandservices.WorkOr
 import com.andeva.atelier.platform.operations.application.queryservices.ServiceQueryService;
 import com.andeva.atelier.platform.operations.application.queryservices.WorkBayQueryService;
 import com.andeva.atelier.platform.operations.application.queryservices.WorkOrderQueryService;
+import com.andeva.atelier.platform.operations.application.queryservices.WorkOrderTaskLabelsQueryService;
 import com.andeva.atelier.platform.operations.domain.model.aggregates.Service;
 import com.andeva.atelier.platform.operations.domain.model.aggregates.WorkBay;
 import com.andeva.atelier.platform.operations.domain.model.aggregates.WorkOrder;
@@ -27,6 +28,8 @@ import com.andeva.atelier.platform.operations.domain.model.valueobjects.LaborHou
 import com.andeva.atelier.platform.operations.domain.model.valueobjects.Mileage;
 import com.andeva.atelier.platform.operations.domain.model.valueobjects.WorkOrderNumber;
 import com.andeva.atelier.platform.operations.interfaces.rest.resources.requests.*;
+import com.andeva.atelier.platform.operations.interfaces.rest.resources.responses.TaskProposalResource;
+import com.andeva.atelier.platform.operations.interfaces.rest.resources.responses.WorkOrderDetailResource;
 import com.andeva.atelier.platform.shared.application.result.Result;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.BranchId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.CustomerId;
@@ -361,6 +364,51 @@ class OperationsControllersTest {
 
             ResponseEntity<?> byIdRes = workOrdersController.getWorkOrderById(sampleOrder.getId().value());
             assertThat(byIdRes.getStatusCode()).isEqualTo(HttpStatus.OK);
+        }
+
+        @Test
+        @DisplayName("H11: the work order detail and its proposals carry catalog service and part names")
+        void shouldShowCatalogNamesInWorkOrderDetail() {
+            ServiceId suggestedService = ServiceId.generate();
+            UUID partId = UUID.randomUUID();
+            sampleOrder.addProductToTask(sampleTask.getId(), partId,
+                    com.andeva.atelier.platform.operations.domain.model.valueobjects.Quantity.of(new BigDecimal("1")),
+                    Money.soles(new BigDecimal("45.00")));
+            sampleOrder.submitProposal(UUID.randomUUID(), "Fuga en la bomba de agua", ProposalSeverity.MEDIUM,
+                    StorageUrl.of("https://storage.atelier.pe/proposals/bomba.jpg"), suggestedService);
+            WorkOrderTaskLabelsQueryService labels = new WorkOrderTaskLabelsQueryService() {
+                @Override
+                public String serviceNameOf(WorkOrderTask task) {
+                    return serviceNameOf(task.getServiceId());
+                }
+
+                @Override
+                public String serviceNameOf(ServiceId serviceId) {
+                    return serviceId.equals(suggestedService) ? "Cambio de bomba de agua" : "Afinamiento";
+                }
+
+                @Override
+                public String productNameOf(UUID tenant, UUID productId) {
+                    return productId.equals(partId) ? "Aceite sintetico 5W-30 (1 L)" : "?";
+                }
+            };
+            workOrdersController = new WorkOrdersController(workOrderCommandService, workOrderQueryService, workBayQueryService, labels);
+            when(workOrderQueryService.handle(any(GetWorkOrderByIdQuery.class))).thenReturn(Optional.of(sampleOrder));
+            when(workOrderQueryService.handle(any(com.andeva.atelier.platform.operations.domain.model.queries.GetTaskProposalsByWorkOrderIdQuery.class)))
+                    .thenReturn(sampleOrder.getProposals());
+
+            var detail = (WorkOrderDetailResource) workOrdersController.getWorkOrderById(sampleOrder.getId().value()).getBody();
+            var proposals = (List<?>) workOrdersController.getProposals(sampleOrder.getId().value()).getBody();
+
+            assertThat(detail.tasks()).singleElement().satisfies(task -> {
+                assertThat(task.serviceName()).isEqualTo("Afinamiento");
+                assertThat(task.products()).singleElement()
+                        .satisfies(p -> assertThat(p.productName()).isEqualTo("Aceite sintetico 5W-30 (1 L)"));
+            });
+            assertThat(detail.proposals()).singleElement()
+                    .satisfies(p -> assertThat(p.serviceName()).isEqualTo("Cambio de bomba de agua"));
+            assertThat(proposals).singleElement()
+                    .satisfies(p -> assertThat(((TaskProposalResource) p).serviceName()).isEqualTo("Cambio de bomba de agua"));
         }
 
 

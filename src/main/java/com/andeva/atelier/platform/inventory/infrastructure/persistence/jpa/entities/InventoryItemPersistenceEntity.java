@@ -67,6 +67,9 @@ public class InventoryItemPersistenceEntity extends InventoryAuditableAbstractPe
     @Column(name = "status", nullable = false, length = 20)
     private InventoryItemStatus status;
 
+    @Column(name = "brand", length = 80)
+    private String brand;
+
     @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<InventoryBatchPersistenceEntity> batches = new ArrayList<>();
 

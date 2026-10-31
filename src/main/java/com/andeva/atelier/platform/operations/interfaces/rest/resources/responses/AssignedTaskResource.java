@@ -19,5 +19,7 @@ public record AssignedTaskResource(
         String description,
         BigDecimal estimatedHours,
         Instant startedAt,
-        long totalPausedSeconds
+        long totalPausedSeconds,
+        // Start of the running pause; null unless the task is ON_HOLD
+        Instant pausedAt
 ) {}

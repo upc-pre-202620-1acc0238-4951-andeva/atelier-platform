@@ -60,7 +60,8 @@ class InventoryItemCommandServiceTest {
                 ItemCategory.FILTERS,
                 Money.of(new BigDecimal("35.00"), Currency.PEN),
                 Quantity.of(new BigDecimal("10.00")),
-                "UNIT"
+                "UNIT",
+                null
         );
 
         when(itemRepository.existsByTenantIdAndSku(tenantId, sku)).thenReturn(false);
@@ -85,7 +86,8 @@ class InventoryItemCommandServiceTest {
                 ItemCategory.FILTERS,
                 Money.of(new BigDecimal("35.00"), Currency.PEN),
                 Quantity.of(new BigDecimal("10.00")),
-                "UNIT"
+                "UNIT",
+                null
         );
 
         when(itemRepository.existsByTenantIdAndSku(tenantId, sku)).thenReturn(true);

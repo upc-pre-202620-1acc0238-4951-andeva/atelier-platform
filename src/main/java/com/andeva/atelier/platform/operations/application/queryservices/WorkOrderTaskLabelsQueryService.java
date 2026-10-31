@@ -1,6 +1,7 @@
 package com.andeva.atelier.platform.operations.application.queryservices;
 
 import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTask;
+import com.andeva.atelier.platform.operations.domain.model.ids.ServiceId;
 
 import java.util.UUID;
 
@@ -27,6 +28,13 @@ public interface WorkOrderTaskLabelsQueryService {
     };
 
     String serviceNameOf(WorkOrderTask task);
+
+    /**
+     * Catalog name of a service, such as the one suggested by a proposal.
+     */
+    default String serviceNameOf(ServiceId serviceId) {
+        return SERVICE_FALLBACK;
+    }
 
     /**
      * @param tenantId workshop owning the inventory item; without it only the id is shown

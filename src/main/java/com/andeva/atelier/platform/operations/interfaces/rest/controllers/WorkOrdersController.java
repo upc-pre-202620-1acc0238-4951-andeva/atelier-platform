@@ -9,6 +9,7 @@ import com.andeva.atelier.platform.operations.domain.model.aggregates.WorkOrder;
 import com.andeva.atelier.platform.operations.domain.model.commands.*;
 import com.andeva.atelier.platform.operations.domain.model.entities.TaskProposal;
 import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTask;
+import com.andeva.atelier.platform.operations.domain.model.ids.ServiceId;
 import com.andeva.atelier.platform.operations.domain.model.ids.WorkBayId;
 import com.andeva.atelier.platform.operations.domain.model.ids.WorkOrderId;
 import com.andeva.atelier.platform.operations.domain.model.queries.GetTaskProposalsByWorkOrderIdQuery;
@@ -36,10 +37,11 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * REST controller for managing workshop vehicle work orders, bay allocation, and lifecycle orchestration.
@@ -139,15 +141,11 @@ public class WorkOrdersController {
                             .map(b -> b.getName())
                             .orElse(null);
 
-                    List<WorkOrderTaskResource> taskResources = order.getTasks().stream()
-                            .map(t -> WorkOrderTaskResourceAssembler.toResourceFromEntity(t, "Standard Service", null))
-                            .collect(Collectors.toList());
-
                     List<TaskProposalResource> proposalResources = order.getProposals().stream()
-                            .map(p -> TaskProposalResourceAssembler.toResourceFromEntity(p, "Suggested Service", null))
-                            .collect(Collectors.toList());
+                            .map(this::proposalResource)
+                            .toList();
 
-                    return WorkOrderResourceAssembler.toDetailResourceFromEntity(order, bayName, taskResources, proposalResources);
+                    return WorkOrderResourceAssembler.toDetailResourceFromEntity(order, bayName, taskResources(order), proposalResources);
                 })
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -242,7 +240,7 @@ public class WorkOrdersController {
         }
 
         TaskProposal proposal = result.getOrThrow();
-        TaskProposalResource proposalRes = TaskProposalResourceAssembler.toResourceFromEntity(proposal, "Suggested Service", null);
+        TaskProposalResource proposalRes = proposalResource(proposal);
         URI location = ucb.path("/api/v1/work-orders/{workOrderId}/proposals/{id}")
                 .buildAndExpand(workOrderId, proposal.getId()).toUri();
         return ResponseEntity.created(location).body(proposalRes);
@@ -254,7 +252,7 @@ public class WorkOrdersController {
     public ResponseEntity<?> getProposals(@PathVariable UUID workOrderId) {
         List<TaskProposal> proposals = workOrderQueryService.handle(new GetTaskProposalsByWorkOrderIdQuery(new WorkOrderId(workOrderId)));
         List<TaskProposalResource> resources = proposals.stream()
-                .map(p -> TaskProposalResourceAssembler.toResourceFromEntity(p, "Suggested Service", null))
+                .map(this::proposalResource)
                 .toList();
 
         return ResponseEntity.ok(resources);
@@ -275,7 +273,8 @@ public class WorkOrdersController {
             return ErrorResponseAssembler.toErrorResponseFromApplicationError(result.getError());
         }
 
-        return ResponseEntity.ok(WorkOrderTaskResourceAssembler.toResourceFromEntity(result.getOrThrow(), "Approved Service", null));
+        WorkOrderTask approved = result.getOrThrow();
+        return ResponseEntity.ok(WorkOrderTaskResourceAssembler.toResourceFromEntity(approved, labelsQueryService.serviceNameOf(approved), null));
     }
 
     @PostMapping("/{workOrderId}/proposals/{proposalId}/reject")
@@ -293,7 +292,7 @@ public class WorkOrdersController {
             return ErrorResponseAssembler.toErrorResponseFromApplicationError(result.getError());
         }
 
-        return ResponseEntity.ok(TaskProposalResourceAssembler.toResourceFromEntity(result.getOrThrow(), "Rejected Service", null));
+        return ResponseEntity.ok(proposalResource(result.getOrThrow()));
     }
 
     @PostMapping("/{workOrderId}/intake-images")
@@ -397,5 +396,27 @@ public class WorkOrdersController {
         }
 
         return ResponseEntity.ok(WorkOrderResourceAssembler.toResourceFromEntity(result.getOrThrow()));
+    }
+
+    /**
+     * Tasks of an order with catalog names; each service and spare part is looked up once per request.
+     */
+    private List<WorkOrderTaskResource> taskResources(WorkOrder order) {
+        UUID tenantId = order.getTenantId().value();
+        Map<ServiceId, String> serviceNames = new HashMap<>();
+        Map<UUID, String> productNames = new HashMap<>();
+        return order.getTasks().stream()
+                .map(task -> WorkOrderTaskResourceAssembler.toResourceFromEntity(task,
+                        serviceNames.computeIfAbsent(task.getServiceId(), id -> labelsQueryService.serviceNameOf(task)),
+                        null,
+                        productId -> productNames.computeIfAbsent(productId, id -> labelsQueryService.productNameOf(tenantId, id))))
+                .toList();
+    }
+
+    private TaskProposalResource proposalResource(TaskProposal proposal) {
+        String serviceName = proposal.getServiceId()
+                .map(serviceId -> labelsQueryService.serviceNameOf(serviceId))
+                .orElse(WorkOrderTaskLabelsQueryService.SERVICE_FALLBACK);
+        return TaskProposalResourceAssembler.toResourceFromEntity(proposal, serviceName, null);
     }
 }

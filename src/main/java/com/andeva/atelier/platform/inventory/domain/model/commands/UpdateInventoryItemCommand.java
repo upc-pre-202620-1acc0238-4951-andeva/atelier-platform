@@ -15,7 +15,8 @@ public record UpdateInventoryItemCommand(
         Money basePrice,
         Quantity minimumStock,
         String unitOfMeasure,
-        String status
+        String status,
+        String brand
 ) implements Serializable {
 
     public UpdateInventoryItemCommand {

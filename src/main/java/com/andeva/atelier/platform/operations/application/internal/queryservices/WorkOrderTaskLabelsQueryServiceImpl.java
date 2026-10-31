@@ -4,6 +4,7 @@ import com.andeva.atelier.platform.operations.application.internal.outbound.acl.
 import com.andeva.atelier.platform.operations.application.queryservices.WorkOrderTaskLabelsQueryService;
 import com.andeva.atelier.platform.operations.domain.model.aggregates.Service;
 import com.andeva.atelier.platform.operations.domain.model.entities.WorkOrderTask;
+import com.andeva.atelier.platform.operations.domain.model.ids.ServiceId;
 import com.andeva.atelier.platform.operations.domain.repositories.ServiceRepository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,8 +25,13 @@ public class WorkOrderTaskLabelsQueryServiceImpl implements WorkOrderTaskLabelsQ
 
     @Override
     public String serviceNameOf(WorkOrderTask task) {
-        if (task == null || task.getServiceId() == null) return SERVICE_FALLBACK;
-        return serviceRepository.findById(task.getServiceId()).map(Service::getName).orElse(SERVICE_FALLBACK);
+        return task == null ? SERVICE_FALLBACK : serviceNameOf(task.getServiceId());
+    }
+
+    @Override
+    public String serviceNameOf(ServiceId serviceId) {
+        if (serviceId == null) return SERVICE_FALLBACK;
+        return serviceRepository.findById(serviceId).map(Service::getName).orElse(SERVICE_FALLBACK);
     }
 
     @Override

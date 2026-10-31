@@ -379,7 +379,7 @@ public class DemoWorkshopSeeder {
     private void part(TenantId tenantId, Supplier supplier, String name, String sku, ItemCategory category, String price,
                       String unitCost, int stock, int minimum, String unit) {
         InventoryItem item = require("part " + sku, inventoryItemCommandService.handle(new CreateInventoryItemCommand(tenantId, name,
-                Sku.of(sku), category, Money.of(new BigDecimal(price), Currency.PEN), Quantity.of(minimum), unit)));
+                Sku.of(sku), category, Money.of(new BigDecimal(price), Currency.PEN), Quantity.of(minimum), unit, null)));
         require("batch " + sku, inventoryItemCommandService.handle(new AddInventoryBatchCommand(item.getId(), supplier.getId(), null,
                 "L-" + LocalDate.now(LIMA).getYear() + "-" + sku, Quantity.of(stock), Money.of(new BigDecimal(unitCost), Currency.PEN),
                 Instant.now().minus(20, ChronoUnit.DAYS), null)));
