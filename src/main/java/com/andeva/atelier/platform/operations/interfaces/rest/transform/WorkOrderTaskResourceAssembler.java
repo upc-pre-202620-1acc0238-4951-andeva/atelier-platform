@@ -75,6 +75,7 @@ public final class WorkOrderTaskResourceAssembler {
                 task.getHoldReason().map(HoldReason::name).orElse(null),
                 task.getMissingItemDescription().orElse(null),
                 task.getTotalPausedSeconds(),
+                task.getPausedAt().orElse(null),
                 task.getStartedAt().orElse(null),
                 task.getCompletedAt().orElse(null),
                 task.getSuspensionRequestReason().orElse(null),

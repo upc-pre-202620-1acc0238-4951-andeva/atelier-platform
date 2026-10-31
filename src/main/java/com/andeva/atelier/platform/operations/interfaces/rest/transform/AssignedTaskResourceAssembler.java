@@ -28,7 +28,8 @@ public final class AssignedTaskResourceAssembler {
                 task.getDescription(),
                 task.getEstimatedHours().value(),
                 task.getStartedAt().orElse(null),
-                task.getTotalPausedSeconds()
+                task.getTotalPausedSeconds(),
+                task.getPausedAt().orElse(null)
         );
     }
 }

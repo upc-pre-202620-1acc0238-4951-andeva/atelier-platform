@@ -19,6 +19,8 @@ public record WorkOrderTaskResource(
         String holdReason,
         String missingItemDescription,
         Long totalPausedSeconds,
+        // Start of the running pause; null unless the task is ON_HOLD
+        Instant pausedAt,
         Instant startedAt,
         Instant completedAt,
         String pendingSuspensionReason,
