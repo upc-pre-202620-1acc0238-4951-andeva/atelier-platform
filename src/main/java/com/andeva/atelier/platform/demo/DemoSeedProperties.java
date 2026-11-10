@@ -28,7 +28,7 @@ public class DemoSeedProperties {
     @Value("${app.demo.branch.name:Sede Principal}") private String branchName;
     @Value("${app.demo.branch.latitude:-12.0464}") private double branchLatitude;
     @Value("${app.demo.branch.longitude:-77.0428}") private double branchLongitude;
-    @Value("${app.demo.branch.radius-meters:300}") private int branchRadiusMeters;
+    @Value("${app.demo.branch.radius-meters:30000}") private int branchRadiusMeters;
     @Value("${app.demo.plan-days:365}") private int planDays;
 
     public boolean isComplete() {
