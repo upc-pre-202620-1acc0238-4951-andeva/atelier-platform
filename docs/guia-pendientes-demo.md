@@ -183,7 +183,7 @@ También puedes usar `/release` (tu skill), que hace los pasos 4 y 5.
    | `DEMO_WORKSHOP_LEGAL_NAME` | No | `Suárez Servicios Automotrices S.A.C.` |
    | `DEMO_WORKSHOP_RUC` | No | `20612345679`; si cambias el RUC, debe pasar el dígito verificador de SUNAT |
    | `DEMO_BRANCH_LAT` / `DEMO_BRANCH_LNG` | No | `-12.0464` / `-77.0428` (centro de Lima). **Pon las coordenadas de tu universidad**: el marcado de asistencia del mecánico exige estar dentro del radio |
-   | `DEMO_BRANCH_RADIUS` | No | `300` (metros) |
+   | `DEMO_BRANCH_RADIUS` | No | `30000` (metros, 30 km: cubre Chorrillos, Lima Centro y Lima Sur para probar la asistencia) |
 
 3. Guarda con **Save, rebuild, and deploy**. Si el auto-deploy desde `main` está activo, el push de A4 ya disparó un despliegue; guardar las variables dispara otro.
 4. En **Logs**, busca:
