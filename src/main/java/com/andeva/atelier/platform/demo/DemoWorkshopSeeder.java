@@ -143,7 +143,12 @@ public class DemoWorkshopSeeder {
     private static final Logger log = LoggerFactory.getLogger(DemoWorkshopSeeder.class);
     private static final ZoneId LIMA = ZoneId.of("America/Lima");
     private static final int TELEMETRY_DAYS = 10;
-    private static final String SEDAN_PLATE = "BXR482";
+    static final String SEDAN_PLATE = "BXR482";
+    static final String VAN_PLATE = "D4K719";
+    static final String SHIFT_NAME = "Turno mañana";
+    static final String OIL_CHANGE = "Cambio de aceite y filtro";
+    static final String COOLING_CHECK = "Revisión del sistema de refrigeración";
+    static final String OBD_SCAN = "Diagnóstico electrónico OBD-II";
 
     private final DemoSeedProperties props;
     private final TenantCommandService tenantCommandService;
@@ -302,7 +307,7 @@ public class DemoWorkshopSeeder {
                 invitation.token(), props.mechanicPassword(), props.mechanicFirstName(), props.mechanicLastName(), props.mechanicPhone())));
         UUID mechanicMembershipId = mechanic.membershipId();
 
-        WorkShift shift = require("shift", workShiftCommandService.handle(new CreateWorkShiftCommand(tenantId, "Turno mañana",
+        WorkShift shift = require("shift", workShiftCommandService.handle(new CreateWorkShiftCommand(tenantId, SHIFT_NAME,
                 LocalTime.of(8, 0), LocalTime.of(17, 0), 15, EnumSet.range(DayOfWeek.MONDAY, DayOfWeek.SATURDAY))));
         require("mechanic profile", employeeProfileCommandService.handle(new RegisterEmployeeProfileCommand(tenantId, branchId,
                 TenantMembershipId.of(mechanicMembershipId), shift.getId(), Money.soles(new BigDecimal("2200.00")),
@@ -315,7 +320,7 @@ public class DemoWorkshopSeeder {
                 tenantId, "Transportes Andinos S.A.C.", "20601234573", props.aliasOfAdmin("transportes"), "+51912345678")));
         Vehicle sedan = require("sedan", vehicleCommandService.handle(new RegisterVehicleCommand(tenantId, SEDAN_PLATE,
                 "JTDBR32E720123456", "Toyota", "Yaris", 2019, EngineType.GASOLINE, Optional.of(person.id()), Optional.empty())));
-        Vehicle van = require("van", vehicleCommandService.handle(new RegisterVehicleCommand(tenantId, "D4K719",
+        Vehicle van = require("van", vehicleCommandService.handle(new RegisterVehicleCommand(tenantId, VAN_PLATE,
                 "KMHWH81KBMU123456", "Hyundai", "H-1", 2021, EngineType.DIESEL, Optional.of(company.id()), Optional.empty())));
 
         // 5. Inventory with stock, service catalog and a bay
@@ -330,11 +335,11 @@ public class DemoWorkshopSeeder {
         part(tenantId, supplier, "Batería 12 V 75 Ah", "BAT-12V-75", ItemCategory.ELECTRICAL, "420.00", "300.00", 3, 2, "UNIT");
 
         Service oilChange = require("service", serviceCommandService.handle(new CreateServiceItemCommand(tenantId,
-                "Cambio de aceite y filtro", new BigDecimal("120.00"), "PEN", 45)));
+                OIL_CHANGE, new BigDecimal("120.00"), "PEN", 45)));
         Service cooling = require("service", serviceCommandService.handle(new CreateServiceItemCommand(tenantId,
-                "Revisión del sistema de refrigeración", new BigDecimal("180.00"), "PEN", 90)));
+                COOLING_CHECK, new BigDecimal("180.00"), "PEN", 90)));
         Service obdScan = require("service", serviceCommandService.handle(new CreateServiceItemCommand(tenantId,
-                "Diagnóstico electrónico OBD-II", new BigDecimal("90.00"), "PEN", 30)));
+                OBD_SCAN, new BigDecimal("90.00"), "PEN", 30)));
         WorkBay lift = require("bay", workBayCommandService.handle(new CreateWorkBayCommand(tenantId, branchId, "Elevador 1", BayType.LIFT)));
         require("bay", workBayCommandService.handle(new CreateWorkBayCommand(tenantId, branchId, "Elevador 2", BayType.LIFT)));
 
@@ -422,7 +427,7 @@ public class DemoWorkshopSeeder {
         }
     }
 
-    private static <T> T require(String what, Result<T, ApplicationError> result) {
+    static <T> T require(String what, Result<T, ApplicationError> result) {
         if (result.isFailure()) {
             throw new IllegalStateException("Demo seed failed creating the " + what + ": " + result.getError().message());
         }
