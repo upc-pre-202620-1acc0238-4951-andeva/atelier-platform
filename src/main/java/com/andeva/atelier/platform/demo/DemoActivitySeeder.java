@@ -25,7 +25,11 @@ import com.andeva.atelier.platform.hr.domain.model.valueobjects.GeoCoordinates;
 import com.andeva.atelier.platform.hr.domain.repositories.AttendanceRecordRepository;
 import com.andeva.atelier.platform.hr.domain.repositories.WorkShiftRepository;
 import com.andeva.atelier.platform.hr.domain.services.HaversineGeofencingService;
+import com.andeva.atelier.platform.iam.application.commandservices.BranchCommandService;
 import com.andeva.atelier.platform.iam.application.queryservices.BranchQueryService;
+import com.andeva.atelier.platform.iam.domain.model.commands.UpdateBranchLocationCommand;
+import com.andeva.atelier.platform.iam.domain.model.entities.Branch;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.GeoPoint;
 import com.andeva.atelier.platform.iam.domain.model.queries.GetBranchesByTenantIdQuery;
 import com.andeva.atelier.platform.iam.domain.repositories.TenantMembershipRepository;
 import com.andeva.atelier.platform.iam.domain.repositories.UserRepository;
@@ -156,6 +160,7 @@ public class DemoActivitySeeder {
     private final UserRepository userRepository;
     private final TenantMembershipRepository membershipRepository;
     private final BranchQueryService branchQueryService;
+    private final BranchCommandService branchCommandService;
     private final CustomerRepository customerRepository;
     private final VehicleRepository vehicleRepository;
     private final AppointmentRepository appointmentRepository;
@@ -186,6 +191,7 @@ public class DemoActivitySeeder {
                               UserRepository userRepository,
                               TenantMembershipRepository membershipRepository,
                               BranchQueryService branchQueryService,
+                              BranchCommandService branchCommandService,
                               CustomerRepository customerRepository,
                               VehicleRepository vehicleRepository,
                               AppointmentRepository appointmentRepository,
@@ -216,6 +222,7 @@ public class DemoActivitySeeder {
         this.userRepository = userRepository;
         this.membershipRepository = membershipRepository;
         this.branchQueryService = branchQueryService;
+        this.branchCommandService = branchCommandService;
         this.customerRepository = customerRepository;
         this.vehicleRepository = vehicleRepository;
         this.appointmentRepository = appointmentRepository;
@@ -312,7 +319,9 @@ public class DemoActivitySeeder {
             log.warn("Demo activity skipped: owner, mechanic or shift of the demo workshop not found");
             return Optional.empty();
         }
-        BranchId branchId = branchQueryService.handle(new GetBranchesByTenantIdQuery(tenantId)).getFirst().id();
+        Branch branch = branchQueryService.handle(new GetBranchesByTenantIdQuery(tenantId)).getFirst();
+        syncGeofenceRadius(branch);
+        BranchId branchId = branch.id();
 
         Map<String, Service> services = new HashMap<>();
         read(() -> serviceRepository.findByTenantId(tenantId)).forEach(service -> services.put(service.getName(), service));
@@ -339,6 +348,21 @@ public class DemoActivitySeeder {
 
     private Optional<Vehicle> vehicleByPlate(String plate) {
         return read(() -> vehicleRepository.findByPlate(LicensePlate.of(plate)));
+    }
+
+    /**
+     * A branch seeded earlier keeps the radius it was created with: bring it to DEMO_BRANCH_RADIUS on every start,
+     * keeping its name and location, so attendance can be tested from wherever the demo runs.
+     */
+    private void syncGeofenceRadius(Branch branch) {
+        if (branch.geofenceRadiusMeters() == props.branchRadiusMeters()) {
+            return;
+        }
+        GeoPoint location = branch.location() != null ? branch.location()
+                : GeoPoint.of(props.branchLatitude(), props.branchLongitude());
+        branchCommandService.handle(new UpdateBranchLocationCommand(branch.id(), branch.name(), branch.sunatCode(),
+                location, props.branchRadiusMeters()));
+        log.info("Demo branch geofence radius changed from {} m to {} m", branch.geofenceRadiusMeters(), props.branchRadiusMeters());
     }
 
     private Optional<TenantMembershipId> membershipOf(TenantId tenantId, String email) {
