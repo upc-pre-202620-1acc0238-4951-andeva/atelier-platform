@@ -121,7 +121,11 @@ public class WorkOrderRepositoryImpl implements WorkOrderRepository {
 
     @Override
     public Optional<WorkOrder> findByCurrentBayId(WorkBayId bayId) {
-        return workOrderPersistenceRepository.findByCurrentBayId(bayId.value())
+        List<WorkOrderPersistenceEntity> matches = workOrderPersistenceRepository.findAllByCurrentBayId(bayId.value());
+        return matches.stream()
+                .filter(e -> e.getStatus() == WorkOrderStatus.DRAFT || e.getStatus() == WorkOrderStatus.IN_PROGRESS)
+                .findFirst()
+                .or(() -> matches.stream().findFirst())
                 .map(WorkOrderPersistenceAssembler::toDomain);
     }
 

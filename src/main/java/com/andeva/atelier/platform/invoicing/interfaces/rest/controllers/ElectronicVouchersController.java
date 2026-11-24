@@ -244,6 +244,10 @@ public class ElectronicVouchersController {
             throw new AccessDeniedException("Voucher does not belong to the authenticated workshop");
         }
 
+        if (voucher.getStatus() == VoucherStatus.ISSUED) {
+            voucher = voucherCommandService.syncPendingSunatStatus(voucher.getId()).orElse(voucher);
+        }
+
         return ResponseEntity.ok(voucherAssembler.toResource(voucher));
     }
 

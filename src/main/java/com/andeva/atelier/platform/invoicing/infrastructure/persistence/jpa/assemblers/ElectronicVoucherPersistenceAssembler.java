@@ -127,6 +127,29 @@ public class ElectronicVoucherPersistenceAssembler {
         return entity;
     }
 
+    /**
+     * Updates mutable lifecycle fields on an existing managed entity without replacing its
+     * orphan-removal child collections ({@code lines} and {@code payments}).
+     */
+    public void updateEntity(ElectronicVoucherPersistenceEntity existing, ElectronicVoucher domain) {
+        if (existing == null || domain == null) {
+            return;
+        }
+        DigitalReceiptUrls urls = domain.getDigitalReceiptUrls();
+        SunatResponse sunat = domain.getSunatResponse().orElse(null);
+        VoidedInfo voided = domain.getVoidedInfo().orElse(null);
+
+        existing.setStatus(domain.getStatus().name());
+        existing.setSunatPdfUrl(urls != null ? urls.pdfUrl() : null);
+        existing.setSunatXmlUrl(urls != null ? urls.xmlUrl() : null);
+        existing.setSunatCdrUrl(urls != null ? urls.cdrUrl() : null);
+        existing.setDigitalSignatureHash(sunat != null ? sunat.digitalSignatureHash() : null);
+        existing.setSunatResponseCode(sunat != null ? sunat.responseCode() : null);
+        existing.setSunatDescription(sunat != null ? sunat.description() : null);
+        existing.setVoidedReason(voided != null ? voided.reason() : null);
+        existing.setVoidedAt(voided != null ? voided.voidedAt() : null);
+    }
+
     public ElectronicVoucher toDomain(ElectronicVoucherPersistenceEntity entity) {
         if (entity == null) {
             return null;

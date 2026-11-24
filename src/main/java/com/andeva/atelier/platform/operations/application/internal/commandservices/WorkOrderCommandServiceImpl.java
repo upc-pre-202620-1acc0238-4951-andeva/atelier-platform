@@ -155,6 +155,25 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
     }
 
     @Override
+    public Result<WorkOrder, ApplicationError> handle(UpdateWorkOrderCommand command) {
+        if (command == null || command.workOrderId() == null) {
+            return Result.failure(ApplicationError.badRequest("Command and workOrderId cannot be null"));
+        }
+        Optional<WorkOrder> orderOpt = workOrderRepository.findById(command.workOrderId());
+        if (orderOpt.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("WorkOrder with identifier " + command.workOrderId().value() + " was not found"));
+        }
+        WorkOrder order = orderOpt.get();
+        try {
+            order.updateDiagnosticAndMileage(command.diagnosticSummary(), command.mileageIn());
+            WorkOrder saved = workOrderRepository.save(order);
+            return Result.success(saved);
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            return Result.failure(ApplicationError.unprocessableEntity(e.getMessage()));
+        }
+    }
+
+    @Override
     public Result<WorkOrder, ApplicationError> handle(AssignWorkBayCommand command) {
         Optional<WorkOrder> orderOpt = workOrderRepository.findById(command.workOrderId());
         if (orderOpt.isEmpty()) {
@@ -169,14 +188,40 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
         WorkOrder workOrder = orderOpt.get();
         WorkBay bay = bayOpt.get();
 
+        // Idempotent reassignment to the same bay
+        if (workOrder.getCurrentBayId().map(bay.getId()::equals).orElse(false)) {
+            if (bay.getStatus() == BayStatus.AVAILABLE) {
+                bay.occupy(workOrder.getId());
+                workBayRepository.save(bay);
+            }
+            return Result.success(workOrder);
+        }
+
+        // Self-heal orphaned OCCUPIED bays that have no open work order referencing them
+        if (bay.getStatus() == BayStatus.OCCUPIED && bay.getCurrentWorkOrderId().isEmpty()) {
+            Optional<WorkOrder> existingOnBay = workOrderRepository.findByCurrentBayId(bay.getId());
+            boolean occupiedByOpenOrder = existingOnBay
+                    .filter(existing -> !existing.getStatus().isTerminal() && existing.getStatus() != WorkOrderStatus.COMPLETED)
+                    .isPresent();
+            if (!occupiedByOpenOrder) {
+                existingOnBay.ifPresent(stale -> {
+                    stale.releaseBay();
+                    workOrderRepository.save(stale);
+                });
+                bay.release();
+            }
+        }
+
         if (bay.getStatus() != BayStatus.AVAILABLE) {
             return Result.failure(ApplicationError.conflict("Work bay " + bay.getId().value() + " is not available (status: " + bay.getStatus() + ")"));
         }
 
         workOrder.getCurrentBayId().ifPresent(prevBayId -> {
             workBayRepository.findById(prevBayId).ifPresent(prevBay -> {
-                prevBay.release();
-                workBayRepository.save(prevBay);
+                if (prevBay.getStatus() == BayStatus.OCCUPIED) {
+                    prevBay.release();
+                    workBayRepository.save(prevBay);
+                }
             });
         });
 
@@ -256,6 +301,30 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
                     LaborHours.of(estimatedHours)
             );
             WorkOrder saved = workOrderRepository.save(workOrder);
+            return Result.success(saved);
+        } catch (Exception e) {
+            return Result.failure(ApplicationError.unprocessableEntity(e.getMessage()));
+        }
+    }
+
+    @Override
+    public Result<WorkOrder, ApplicationError> handle(UpdateWorkOrderTaskCommand command) {
+        if (command == null || command.taskId() == null) {
+            return Result.failure(ApplicationError.badRequest("Command and taskId cannot be null"));
+        }
+        Optional<WorkOrder> orderOpt = workOrderRepository.findByTaskId(command.taskId());
+        if (orderOpt.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        }
+        WorkOrder order = orderOpt.get();
+        if (command.mechanicId() != null && tenancyAclService != null
+                && !tenancyAclService.isMechanicEligible(command.mechanicId(), order.getTenantId().value())) {
+            return Result.failure(ApplicationError.unprocessableEntity("Mechanic is not eligible or active in this tenant"));
+        }
+        try {
+            Money newPrice = command.price() != null ? Money.soles(command.price()) : null;
+            order.updateTaskDetails(command.taskId(), command.description(), newPrice, command.mechanicId());
+            WorkOrder saved = workOrderRepository.save(order);
             return Result.success(saved);
         } catch (Exception e) {
             return Result.failure(ApplicationError.unprocessableEntity(e.getMessage()));
@@ -437,6 +506,15 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
         WorkOrder order = orderOpt.get();
         try {
             order.completeTask(command.taskId(), LaborHours.of(command.actualHours()));
+            if (order.getStatus() == WorkOrderStatus.COMPLETED && order.getCurrentBayId().isPresent()) {
+                order.getCurrentBayId().ifPresent(bayId -> workBayRepository.findById(bayId).ifPresent(bay -> {
+                    if (bay.getStatus() == BayStatus.OCCUPIED) {
+                        bay.release();
+                        workBayRepository.save(bay);
+                    }
+                }));
+                order.releaseBay();
+            }
             WorkOrder saved = workOrderRepository.save(order);
             return Result.success(saved);
         } catch (Exception e) {
@@ -701,6 +779,12 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
 
         WorkOrder order = orderOpt.get();
         try {
+            order.getCurrentBayId().ifPresent(bayId -> workBayRepository.findById(bayId).ifPresent(bay -> {
+                if (bay.getStatus() == BayStatus.OCCUPIED) {
+                    bay.release();
+                    workBayRepository.save(bay);
+                }
+            }));
             order.deliverVehicle();
             WorkOrder saved = workOrderRepository.save(order);
             return Result.success(saved);

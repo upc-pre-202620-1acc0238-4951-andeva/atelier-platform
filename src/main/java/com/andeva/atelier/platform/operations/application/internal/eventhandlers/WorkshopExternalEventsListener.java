@@ -49,7 +49,7 @@ public class WorkshopExternalEventsListener {
                 VehicleId.of(event.vehicleId()),
                 CustomerId.of(event.customerId()),
                 Mileage.of(0),
-                DiagnosticSummary.of("Ingreso por cita programada: " + event.appointmentId())
+                DiagnosticSummary.of("Ingreso por cita programada")
         );
         workOrderCommandService.handle(command);
     }

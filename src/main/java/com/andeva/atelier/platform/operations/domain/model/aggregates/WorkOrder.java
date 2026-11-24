@@ -227,6 +227,19 @@ public class WorkOrder extends AbstractDomainAggregateRoot<WorkOrder> {
         registerDomainEvent(WorkOrderTaskAssignedEvent.of(this.id, taskId, mechanicId));
     }
 
+    public void updateTaskDetails(WorkOrderTaskId taskId, String description, Money price, UUID mechanicId) {
+        validateMutable("Cannot update task");
+        WorkOrderTask task = findTask(taskId);
+        task.updateDetails(description, price);
+        if (mechanicId != null) {
+            task.assignMechanic(mechanicId);
+            registerDomainEvent(WorkOrderTaskAssignedEvent.of(this.id, taskId, mechanicId));
+        }
+        if (price != null) {
+            recalculateTotalAmount();
+        }
+    }
+
     public void holdTask(WorkOrderTaskId taskId, String missingDesc, UUID missingItemId) {
         validateMutable("Cannot hold task");
         WorkOrderTask task = findTask(taskId);

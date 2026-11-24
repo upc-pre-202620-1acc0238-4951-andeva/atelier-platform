@@ -158,15 +158,18 @@ public class WorkOrdersController {
             @PathVariable UUID workOrderId,
             @Valid @RequestBody UpdateWorkOrderResource resource
     ) {
-        return workOrderQueryService.handle(new GetWorkOrderByIdQuery(new WorkOrderId(workOrderId)))
-                .map(order -> {
-                    order.updateDiagnosticAndMileage(
-                            resource.diagnosticSummary() != null ? DiagnosticSummary.of(resource.diagnosticSummary()) : null,
-                            resource.mileageIn() != null ? Mileage.of(resource.mileageIn()) : null
-                    );
-                    return ResponseEntity.ok(WorkOrderResourceAssembler.toResourceFromEntity(order));
-                })
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        UpdateWorkOrderCommand command = new UpdateWorkOrderCommand(
+                new WorkOrderId(workOrderId),
+                resource.diagnosticSummary() != null ? DiagnosticSummary.of(resource.diagnosticSummary()) : null,
+                resource.mileageIn() != null ? Mileage.of(resource.mileageIn()) : null
+        );
+        Result<WorkOrder, ApplicationError> result = workOrderCommandService.handle(command);
+
+        if (result.isFailure()) {
+            return ErrorResponseAssembler.toErrorResponseFromApplicationError(result.getError());
+        }
+
+        return ResponseEntity.ok(WorkOrderResourceAssembler.toResourceFromEntity(result.getOrThrow()));
     }
 
     @PutMapping("/{workOrderId}/bay")

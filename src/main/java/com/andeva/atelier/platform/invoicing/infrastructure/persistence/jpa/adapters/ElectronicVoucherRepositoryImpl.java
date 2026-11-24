@@ -48,7 +48,12 @@ public class ElectronicVoucherRepositoryImpl implements ElectronicVoucherReposit
     @Override
     public ElectronicVoucher save(ElectronicVoucher voucher) {
         Objects.requireNonNull(voucher, "ElectronicVoucher cannot be null");
-        ElectronicVoucherPersistenceEntity entity = assembler.toEntity(voucher);
+        ElectronicVoucherPersistenceEntity entity = jpaRepository.findById(voucher.getId().value())
+                .map(existing -> {
+                    assembler.updateEntity(existing, voucher);
+                    return existing;
+                })
+                .orElseGet(() -> assembler.toEntity(voucher));
         ElectronicVoucherPersistenceEntity saved = jpaRepository.save(entity);
         ElectronicVoucher domain = assembler.toDomain(saved);
 

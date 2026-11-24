@@ -35,6 +35,8 @@ public interface WorkOrderPersistenceRepository extends JpaRepository<WorkOrderP
 
     Optional<WorkOrderPersistenceEntity> findByCurrentBayId(UUID currentBayId);
 
+    List<WorkOrderPersistenceEntity> findAllByCurrentBayId(UUID currentBayId);
+
     Optional<WorkOrderPersistenceEntity> findFirstByTenantIdAndVehicleIdAndStatusIn(UUID tenantId, UUID vehicleId, Collection<WorkOrderStatus> statuses);
 
     @Query("SELECT w FROM WorkOrderPersistenceEntity w " +

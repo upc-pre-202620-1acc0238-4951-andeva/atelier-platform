@@ -285,6 +285,58 @@ public class DemoActivitySeeder {
         step("work order history", () -> seedHistory(workshop));
         step("vehicle insights and appointments", () -> seedInsightsAndAppointments(workshop));
         step("attendance and payroll", () -> seedAttendanceAndPayroll(workshop));
+        step("reconcile orphaned bays and demo data", () -> reconcileOrphanedState(workshop));
+    }
+
+    private void reconcileOrphanedState(Workshop w) {
+        int clearedClosedOrderBays = jdbc.update("""
+                UPDATE work_orders
+                   SET current_bay_id = NULL
+                 WHERE tenant_id = ?
+                   AND current_bay_id IS NOT NULL
+                   AND status IN ('COMPLETED', 'PAID', 'CANCELED')""", w.tenantId().value());
+        if (clearedClosedOrderBays > 0) {
+            log.info("Demo reconciliation cleared bay references on {} closed work order(s)", clearedClosedOrderBays);
+        }
+
+        int releasedBays = jdbc.update("""
+                UPDATE work_bays b
+                   SET status = 'AVAILABLE'
+                 WHERE b.tenant_id = ?
+                   AND b.status = 'OCCUPIED'
+                   AND NOT EXISTS (
+                       SELECT 1 FROM work_orders o
+                        WHERE o.current_bay_id = b.id
+                          AND o.status IN ('DRAFT', 'IN_PROGRESS')
+                   )""", w.tenantId().value());
+        if (releasedBays > 0) {
+            log.info("Demo reconciliation released {} orphaned occupied work bay(s)", releasedBays);
+        }
+
+        int cleanedSummaries = jdbc.update("""
+                UPDATE work_orders
+                   SET diagnostic_summary = 'Ingreso por cita programada'
+                 WHERE tenant_id = ?
+                   AND diagnostic_summary LIKE 'Ingreso por cita programada:%'""", w.tenantId().value());
+        if (cleanedSummaries > 0) {
+            log.info("Demo reconciliation cleaned UUID suffix from {} appointment work order(s)", cleanedSummaries);
+        }
+
+        List<UUID> pendingVoucherIds = jdbc.queryForList("""
+                SELECT id FROM electronic_vouchers
+                 WHERE tenant_id = ? AND status = 'ISSUED'""", UUID.class, w.tenantId().value());
+        int synced = 0;
+        for (UUID voucherId : pendingVoucherIds) {
+            var updated = voucherCommandService.syncPendingSunatStatus(
+                    com.andeva.atelier.platform.invoicing.domain.model.ids.VoucherId.of(voucherId));
+            if (updated.isPresent() && updated.get().getStatus()
+                    == com.andeva.atelier.platform.invoicing.domain.model.enums.VoucherStatus.ACCEPTED_SUNAT) {
+                synced++;
+            }
+        }
+        if (synced > 0) {
+            log.info("Demo reconciliation synced {} pending ISSUED voucher(s) to ACCEPTED_SUNAT", synced);
+        }
     }
 
     private void step(String name, Runnable block) {
