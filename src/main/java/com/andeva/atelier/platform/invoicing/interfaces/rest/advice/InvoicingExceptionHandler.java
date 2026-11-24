@@ -8,6 +8,7 @@ import com.andeva.atelier.platform.invoicing.domain.exceptions.InvalidVoucherAmo
 import com.andeva.atelier.platform.invoicing.domain.exceptions.InvoicingDomainException;
 import com.andeva.atelier.platform.invoicing.domain.exceptions.SeriesNotFoundException;
 import com.andeva.atelier.platform.invoicing.domain.exceptions.SunatIntegrationException;
+import com.andeva.atelier.platform.invoicing.domain.exceptions.VoucherAlreadyIssuedForWorkOrderException;
 import com.andeva.atelier.platform.invoicing.domain.exceptions.VoucherAlreadyPaidException;
 import com.andeva.atelier.platform.invoicing.domain.exceptions.VoucherImmutableException;
 import com.andeva.atelier.platform.invoicing.domain.exceptions.VoucherNotFoundException;
@@ -81,6 +82,12 @@ public class InvoicingExceptionHandler {
     public ResponseEntity<ErrorResource> handleVoucherAlreadyPaid(VoucherAlreadyPaidException ex, HttpServletRequest request) {
         log.warn("Voucher already paid or payment overflow: {}", ex.getMessage());
         return buildResponse(HttpStatus.CONFLICT, "voucher-already-paid", "Voucher Already Paid", ex.getMessage(), ex.errorCode(), request);
+    }
+
+    @ExceptionHandler(VoucherAlreadyIssuedForWorkOrderException.class)
+    public ResponseEntity<ErrorResource> handleVoucherAlreadyIssued(VoucherAlreadyIssuedForWorkOrderException ex, HttpServletRequest request) {
+        log.warn("Duplicate voucher issuance attempt for work order: {}", ex.getMessage());
+        return buildResponse(HttpStatus.CONFLICT, "voucher-already-issued", "Voucher Already Issued", ex.getMessage(), ex.errorCode(), request);
     }
 
     @ExceptionHandler(VoucherNotFoundException.class)

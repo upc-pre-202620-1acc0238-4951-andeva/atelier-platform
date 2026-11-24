@@ -95,6 +95,7 @@ public class ElectronicVoucherPersistenceAssembler {
                 ref != null ? ref.reason().name() : null,
                 ref != null ? ref.reasonDescription() : null
         );
+        entity.setSunatQrCode(urls != null ? urls.qrCodeData() : null);
 
         List<VoucherLinePersistenceEntity> lineEntities = new ArrayList<>();
         if (domain.getLines() != null) {
@@ -143,6 +144,7 @@ public class ElectronicVoucherPersistenceAssembler {
         existing.setSunatPdfUrl(urls != null ? urls.pdfUrl() : null);
         existing.setSunatXmlUrl(urls != null ? urls.xmlUrl() : null);
         existing.setSunatCdrUrl(urls != null ? urls.cdrUrl() : null);
+        existing.setSunatQrCode(urls != null ? urls.qrCodeData() : null);
         existing.setDigitalSignatureHash(sunat != null ? sunat.digitalSignatureHash() : null);
         existing.setSunatResponseCode(sunat != null ? sunat.responseCode() : null);
         existing.setSunatDescription(sunat != null ? sunat.description() : null);
@@ -179,7 +181,8 @@ public class ElectronicVoucherPersistenceAssembler {
         DigitalReceiptUrls urls = DigitalReceiptUrls.of(
                 entity.getSunatPdfUrl(),
                 entity.getSunatXmlUrl(),
-                entity.getSunatCdrUrl()
+                entity.getSunatCdrUrl(),
+                entity.getSunatQrCode()
         );
 
         SunatResponse sunatResponse = null;
