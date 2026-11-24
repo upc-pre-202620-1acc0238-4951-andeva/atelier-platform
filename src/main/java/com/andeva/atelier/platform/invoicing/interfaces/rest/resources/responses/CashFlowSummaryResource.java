@@ -16,6 +16,22 @@ public record CashFlowSummaryResource(
         BigDecimal accountsReceivable,
         BigDecimal netCashFlow,
         String currency,
-        List<CashFlowMovementResource> movements
+        List<CashFlowMovementResource> movements,
+        BigDecimal laborRevenue,
+        BigDecimal partsRevenue,
+        BigDecimal igvCollected,
+        List<BranchCashFlowBreakdownResource> branchBreakdowns
 ) implements Serializable {
+
+    public CashFlowSummaryResource(
+            BigDecimal totalIncome,
+            BigDecimal totalExpenses,
+            BigDecimal accountsReceivable,
+            BigDecimal netCashFlow,
+            String currency,
+            List<CashFlowMovementResource> movements
+    ) {
+        this(totalIncome, totalExpenses, accountsReceivable, netCashFlow, currency, movements,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, List.of());
+    }
 }
