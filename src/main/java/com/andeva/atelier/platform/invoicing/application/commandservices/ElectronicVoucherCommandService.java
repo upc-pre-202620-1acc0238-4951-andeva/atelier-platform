@@ -33,4 +33,13 @@ public interface ElectronicVoucherCommandService {
      * Processes asynchronous SUNAT CDR response from Nubefact or webhook.
      */
     ElectronicVoucher handle(ProcessSunatResponseCommand command);
+
+    /**
+     * Retries SUNAT/PSE dispatch when a voucher is still pending in {@code ISSUED} status.
+     */
+    default java.util.Optional<ElectronicVoucher> syncPendingSunatStatus(
+            com.andeva.atelier.platform.invoicing.domain.model.ids.VoucherId voucherId
+    ) {
+        return java.util.Optional.empty();
+    }
 }

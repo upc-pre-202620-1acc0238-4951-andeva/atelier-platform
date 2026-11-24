@@ -297,4 +297,32 @@ public class ElectronicVoucherCommandServiceImpl implements ElectronicVoucherCom
 
         return voucherRepository.save(voucher);
     }
+
+    @Override
+    public java.util.Optional<ElectronicVoucher> syncPendingSunatStatus(VoucherId voucherId) {
+        if (voucherId == null) {
+            return java.util.Optional.empty();
+        }
+        return voucherRepository.findById(voucherId).map(voucher -> {
+            if (voucher.getStatus() != com.andeva.atelier.platform.invoicing.domain.model.enums.VoucherStatus.ISSUED) {
+                return voucher;
+            }
+            try {
+                NubefactPseFiscalGateway.NubefactDispatchResult dispatch =
+                        voucher.getVoucherType() == VoucherType.NOTA_CREDITO
+                                ? nubefactGateway.dispatchCreditNote(voucher)
+                                : nubefactGateway.dispatchVoucher(voucher);
+                if (dispatch.isAccepted()) {
+                    voucher.markAcceptedBySunat(dispatch.digitalSignatureHash(), dispatch.description(), dispatch.urls());
+                } else {
+                    voucher.markRejectedBySunat(dispatch.responseCode(), dispatch.description());
+                }
+                return voucherRepository.save(voucher);
+            } catch (Exception e) {
+                log.warn("SUNAT sync retry failed for voucher {}-{}: {}",
+                        voucher.getSerie().value(), voucher.getNumber().format(), e.getMessage());
+                return voucher;
+            }
+        });
+    }
 }

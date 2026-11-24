@@ -210,4 +210,53 @@ class InvoicingRepositoryAdaptersTest {
         List<VoucherPayment> byVoucher = paymentRepo.findAllByVoucherId(voucherId);
         assertThat(byVoucher).hasSize(1);
     }
+
+    @Test
+    @DisplayName("Should update existing ElectronicVoucher in place without replacing orphanRemoval collections")
+    void testElectronicVoucherInPlaceUpdatePreservesCollections() {
+        TenantId tenantId = TenantId.generate();
+        BranchId branchId = BranchId.generate();
+        CustomerId customerId = CustomerId.generate();
+        WorkOrderId workOrderId = WorkOrderId.generate();
+        VoucherId voucherId = VoucherId.generate();
+
+        CustomerFiscalInfo fiscal = CustomerFiscalInfo.of(
+                TaxId.ruc("20100070970"), "CLIENTE SAC", "LIMA", DocumentType.RUC
+        );
+        TaxCalculation taxCalc = TaxCalculation.of(
+                Money.of(new BigDecimal("100.00"), Currency.PEN),
+                Money.of(new BigDecimal("18.00"), Currency.PEN),
+                Money.of(new BigDecimal("118.00"), Currency.PEN)
+        );
+        ElectronicVoucher voucher = ElectronicVoucher.issue(
+                tenantId, branchId, customerId, workOrderId,
+                VoucherType.FACTURA, VoucherSerie.of("F001"), VoucherNumber.of(2),
+                fiscal, Currency.PEN, taxCalc,
+                List.of(taxEngine.calculateLine(null, voucherId, Optional.empty(), VoucherItemType.SERVICE, "Servicio", Quantity.ofUnits(1), Money.of(new BigDecimal("118.00"), Currency.PEN)))
+        );
+
+        ElectronicVoucherPersistenceEntity existingEntity = voucherAssembler.toEntity(voucher);
+        var originalLinesRef = existingEntity.getLines();
+        var originalPaymentsRef = existingEntity.getPayments();
+
+        voucher.markAcceptedBySunat(
+                "HASH123",
+                "Aceptado por SUNAT",
+                com.andeva.atelier.platform.invoicing.domain.model.valueobjects.DigitalReceiptUrls.of(
+                        "https://pdf", "https://xml", "https://cdr"
+                )
+        );
+
+        when(voucherJpaRepo.findById(voucher.getId().value())).thenReturn(Optional.of(existingEntity));
+        when(voucherJpaRepo.save(existingEntity)).thenReturn(existingEntity);
+
+        ElectronicVoucher saved = voucherRepo.save(voucher);
+
+        assertThat(saved.getStatus()).isEqualTo(com.andeva.atelier.platform.invoicing.domain.model.enums.VoucherStatus.ACCEPTED_SUNAT);
+        assertThat(existingEntity.getStatus()).isEqualTo("ACCEPTED_SUNAT");
+        assertThat(existingEntity.getDigitalSignatureHash()).isEqualTo("HASH123");
+        assertThat(existingEntity.getLines()).isSameAs(originalLinesRef);
+        assertThat(existingEntity.getPayments()).isSameAs(originalPaymentsRef);
+        verify(voucherJpaRepo).save(existingEntity);
+    }
 }
