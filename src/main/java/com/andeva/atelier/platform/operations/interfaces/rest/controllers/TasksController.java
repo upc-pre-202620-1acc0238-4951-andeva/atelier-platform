@@ -97,18 +97,17 @@ public class TasksController {
             @Valid @RequestBody UpdateWorkOrderTaskResource resource,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        if (resource.mechanicId() != null) {
-            AssignTaskMechanicCommand assignCmd = new AssignTaskMechanicCommand(new WorkOrderTaskId(taskId), resource.mechanicId());
-            Result<WorkOrder, ApplicationError> assignRes = workOrderCommandService.handle(assignCmd);
-            if (assignRes.isFailure()) {
-                return ErrorResponseAssembler.toErrorResponseFromApplicationError(assignRes.getError());
-            }
+        UpdateWorkOrderTaskCommand command = new UpdateWorkOrderTaskCommand(
+                new WorkOrderTaskId(taskId),
+                resource.description(),
+                resource.price(),
+                resource.mechanicId()
+        );
+        Result<WorkOrder, ApplicationError> result = workOrderCommandService.handle(command);
+        if (result.isFailure()) {
+            return ErrorResponseAssembler.toErrorResponseFromApplicationError(result.getError());
         }
-
-        return workOrderQueryService.handle(new GetWorkOrderTaskByIdQuery(new WorkOrderTaskId(taskId)))
-                .map(task -> taskResource(task, tenantOf(userDetails)))
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        return findTaskAndBuildResponse(result.getOrThrow(), taskId);
     }
 
     @PutMapping("/{taskId}/mechanic")

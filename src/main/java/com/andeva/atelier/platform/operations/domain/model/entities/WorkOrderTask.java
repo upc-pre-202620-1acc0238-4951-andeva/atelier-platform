@@ -92,6 +92,18 @@ public class WorkOrderTask {
         }
     }
 
+    public void updateDetails(String newDescription, Money newPrice) {
+        if (this.status == WorkOrderTaskStatus.COMPLETED || this.status == WorkOrderTaskStatus.CANCELLED) {
+            throw new IllegalStateException("Cannot update task in terminal task state: " + this.status);
+        }
+        if (newDescription != null && !newDescription.isBlank()) {
+            this.description = newDescription.trim();
+        }
+        if (newPrice != null) {
+            this.price = newPrice;
+        }
+    }
+
     public void start() {
         if (this.status == WorkOrderTaskStatus.IN_PROGRESS) {
             return;

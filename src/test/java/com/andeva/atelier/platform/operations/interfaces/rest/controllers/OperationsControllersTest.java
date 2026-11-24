@@ -189,12 +189,12 @@ class OperationsControllersTest {
         @DisplayName("Endpoint 3.4 & 3.5: Update task, assign mechanic, reopen task")
         void shouldUpdateTaskAndAssignMechanicAndReopen() {
             UUID mechanicId = UUID.randomUUID();
+            when(workOrderCommandService.handle(any(UpdateWorkOrderTaskCommand.class)))
+                    .thenReturn(Result.success(sampleOrder));
             when(workOrderCommandService.handle(any(AssignTaskMechanicCommand.class)))
                     .thenReturn(Result.success(sampleOrder));
 
-            // updateTask with mechanicId
-            when(workOrderQueryService.handle(any(GetWorkOrderTaskByIdQuery.class)))
-                    .thenReturn(Optional.of(sampleTask));
+            // updateTask with description, price and mechanicId
             UpdateWorkOrderTaskResource updateReq = new UpdateWorkOrderTaskResource("Nueva descripcion", new BigDecimal("180.00"), mechanicId);
             ResponseEntity<?> updateRes = tasksController.updateTask(sampleTask.getId().value(), updateReq, null);
             assertThat(updateRes.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -415,8 +415,8 @@ class OperationsControllersTest {
         @Test
         @DisplayName("Endpoint 2.4: PUT /api/v1/work-orders/{workOrderId} update diagnostic and mileage")
         void shouldUpdateWorkOrder() {
-            when(workOrderQueryService.handle(any(GetWorkOrderByIdQuery.class)))
-                    .thenReturn(Optional.of(sampleOrder));
+            when(workOrderCommandService.handle(any(UpdateWorkOrderCommand.class)))
+                    .thenReturn(Result.success(sampleOrder));
 
             UpdateWorkOrderResource updateReq = new UpdateWorkOrderResource(28000, "Diagnóstico actualizado");
             ResponseEntity<?> updateRes = workOrdersController.updateWorkOrder(sampleOrder.getId().value(), updateReq);

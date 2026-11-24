@@ -11,6 +11,8 @@ public interface WorkOrderCommandService {
 
     Result<WorkOrder, ApplicationError> handle(CreateWorkOrderCommand command);
 
+    Result<WorkOrder, ApplicationError> handle(UpdateWorkOrderCommand command);
+
     Result<WorkOrder, ApplicationError> handle(AssignWorkBayCommand command);
 
     Result<WorkOrder, ApplicationError> handle(ReleaseWorkBayCommand command);
@@ -18,6 +20,8 @@ public interface WorkOrderCommandService {
     Result<WorkOrder, ApplicationError> handle(StartWorkOrderCommand command);
 
     Result<WorkOrder, ApplicationError> handle(AddTaskToWorkOrderCommand command);
+
+    Result<WorkOrder, ApplicationError> handle(UpdateWorkOrderTaskCommand command);
 
     Result<WorkOrder, ApplicationError> handle(AssignTaskMechanicCommand command);
 
