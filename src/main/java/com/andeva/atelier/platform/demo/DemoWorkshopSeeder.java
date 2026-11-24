@@ -145,10 +145,14 @@ public class DemoWorkshopSeeder {
     private static final int TELEMETRY_DAYS = 10;
     static final String SEDAN_PLATE = "BXR482";
     static final String VAN_PLATE = "D4K719";
+    static final String OBD_MAC_SEDAN = "AA:01:23:45:67:01";
+    static final String OBD_MAC_VAN = "AA:01:23:45:67:02";
+    static final String OBD_MAC_SPARE = "AA:01:23:45:67:03";
     static final String SHIFT_NAME = "Turno mañana";
     static final String OIL_CHANGE = "Cambio de aceite y filtro";
     static final String COOLING_CHECK = "Revisión del sistema de refrigeración";
-    static final String OBD_SCAN = "Diagnóstico electrónico OBD-II";
+    static final String ELECTRICAL_CHECK = "Revisión del sistema eléctrico y alternador";
+    static final String LEGACY_OBD_SCAN = "Diagnóstico electrónico OBD-II";
 
     private final DemoSeedProperties props;
     private final TenantCommandService tenantCommandService;
@@ -338,27 +342,31 @@ public class DemoWorkshopSeeder {
                 OIL_CHANGE, new BigDecimal("120.00"), "PEN", 45)));
         Service cooling = require("service", serviceCommandService.handle(new CreateServiceItemCommand(tenantId,
                 COOLING_CHECK, new BigDecimal("180.00"), "PEN", 90)));
-        Service obdScan = require("service", serviceCommandService.handle(new CreateServiceItemCommand(tenantId,
-                OBD_SCAN, new BigDecimal("90.00"), "PEN", 30)));
+        Service electricalCheck = require("service", serviceCommandService.handle(new CreateServiceItemCommand(tenantId,
+                ELECTRICAL_CHECK, new BigDecimal("110.00"), "PEN", 45)));
         WorkBay lift = require("bay", workBayCommandService.handle(new CreateWorkBayCommand(tenantId, branchId, "Elevador 1", BayType.LIFT)));
         require("bay", workBayCommandService.handle(new CreateWorkBayCommand(tenantId, branchId, "Elevador 2", BayType.LIFT)));
 
-        // 6. OBD-II devices and telemetry: the sedan is healthy, the van overheats with a weak battery in the last days
-        installDevice(tenantId, sedan.id(), "AA:01:23:45:67:01", 48210);
-        installDevice(tenantId, van.id(), "AA:01:23:45:67:02", 96540);
+        // 6. Three OBD-II devices: two linked (sedan + van) with 10-day telemetry history and Spanish DTCs, plus one free device for live binding
+        installDevice(tenantId, sedan.id(), OBD_MAC_SEDAN, 48210);
+        installDevice(tenantId, van.id(), OBD_MAC_VAN, 96540);
+        deviceCommandService.handle(new RegisterObd2DeviceCommand(tenantId, DeviceIdentifier.of(OBD_MAC_SPARE),
+                ConnectionType.BLUETOOTH_BLE, "OBDLink MX+ Bluetooth", "2.1"));
         ingest(tenantId, sedan.id(), false);
         ingest(tenantId, van.id(), true);
         faultCommandService.handle(new RegisterVehicleFaultCommand(van.id(), tenantId, DtcCode.of("P0217"), FaultSeverity.CRITICAL,
-                "Engine coolant over temperature condition"));
+                "Sobrecalentamiento crítico del refrigerante del motor"));
         faultCommandService.handle(new RegisterVehicleFaultCommand(van.id(), tenantId, DtcCode.of("P0562"), FaultSeverity.MEDIUM,
-                "System voltage low"));
+                "Voltaje bajo en el sistema eléctrico y batería"));
+        faultCommandService.handle(new RegisterVehicleFaultCommand(sedan.id(), tenantId, DtcCode.of("P0420"), FaultSeverity.LOW,
+                "Eficiencia del sistema catalítico por debajo del umbral (Banco 1)"));
 
         // 7. A work order on the van with two tasks for the mechanic, in the first bay
         WorkOrder order = require("work order", workOrderCommandService.handle(new CreateWorkOrderCommand(tenantId, branchId, null,
                 van.id(), company.id(), Mileage.of(96540),
                 DiagnosticSummary.of("La unidad se sobrecalienta en subida y el testigo de batería se enciende al arrancar"))));
-        require("task", workOrderCommandService.handle(new AddTaskToWorkOrderCommand(order.getId(), obdScan.getId(),
-                mechanicMembershipId, "Lectura de códigos y prueba de carga de la batería", new BigDecimal("90.00"), new BigDecimal("0.5"), "PEN")));
+        require("task", workOrderCommandService.handle(new AddTaskToWorkOrderCommand(order.getId(), electricalCheck.getId(),
+                mechanicMembershipId, "Revisión de alternador, voltaje de carga y bornes de batería", new BigDecimal("110.00"), new BigDecimal("0.75"), "PEN")));
         require("task", workOrderCommandService.handle(new AddTaskToWorkOrderCommand(order.getId(), cooling.getId(),
                 mechanicMembershipId, "Revisar termostato, bomba de agua y nivel de refrigerante", new BigDecimal("180.00"), new BigDecimal("1.5"), "PEN")));
         require("bay", workOrderCommandService.handle(new AssignWorkBayCommand(order.getId(), lift.getId())));
@@ -400,7 +408,7 @@ public class DemoWorkshopSeeder {
      * Ten days of drives (every 20 minutes, 8:00–12:00 Lima). With {@code degrading}, the last three days run hot and
      * the battery sags, which the anomaly engine turns into predictive alerts.
      */
-    private void ingest(TenantId tenantId, VehicleId vehicleId, boolean degrading) {
+    void ingest(TenantId tenantId, VehicleId vehicleId, boolean degrading) {
         Random random = new Random(vehicleId.value().getMostSignificantBits());
         List<TelemetryRecord> readings = new ArrayList<>();
         LocalDate firstDay = LocalDate.now(LIMA).minusDays(TELEMETRY_DAYS);

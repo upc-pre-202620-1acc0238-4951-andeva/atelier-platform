@@ -101,6 +101,11 @@ public final class WorkOrderPersistenceAssembler {
         entity.setStatus(domain.getStatus());
 
         if (domain.getTasks() != null) {
+            java.util.Set<java.util.UUID> domainTaskIds = domain.getTasks().stream()
+                    .map(t -> t.getId().value())
+                    .collect(java.util.stream.Collectors.toSet());
+            entity.getTasks().removeIf(t -> !domainTaskIds.contains(t.getId()));
+
             java.util.Map<java.util.UUID, com.andeva.atelier.platform.operations.infrastructure.persistence.jpa.entities.WorkOrderTaskPersistenceEntity> existingTaskMap =
                     entity.getTasks().stream().collect(java.util.stream.Collectors.toMap(
                             com.andeva.atelier.platform.operations.infrastructure.persistence.jpa.entities.WorkOrderTaskPersistenceEntity::getId,

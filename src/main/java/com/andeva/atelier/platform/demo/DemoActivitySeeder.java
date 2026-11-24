@@ -50,15 +50,28 @@ import com.andeva.atelier.platform.invoicing.domain.model.enums.VoucherType;
 import com.andeva.atelier.platform.invoicing.domain.model.valueobjects.CustomerFiscalInfo;
 import com.andeva.atelier.platform.invoicing.domain.model.valueobjects.VoucherSerie;
 import com.andeva.atelier.platform.invoicing.domain.repositories.SeriesConfigurationRepository;
+import com.andeva.atelier.platform.iot.application.commandservices.DeviceInstallationCommandService;
+import com.andeva.atelier.platform.iot.application.commandservices.Obd2DeviceCommandService;
 import com.andeva.atelier.platform.iot.application.commandservices.PredictiveAlertCommandService;
+import com.andeva.atelier.platform.iot.application.commandservices.VehicleFaultCommandService;
 import com.andeva.atelier.platform.iot.application.commandservices.VehicleHealthReportCommandService;
-import com.andeva.atelier.platform.iot.domain.model.commands.AcknowledgePredictiveAlertCommand;
 import com.andeva.atelier.platform.iot.domain.model.commands.GeneratePredictiveAlertCommand;
 import com.andeva.atelier.platform.iot.domain.model.commands.GenerateVehicleHealthReportCommand;
+import com.andeva.atelier.platform.iot.domain.model.commands.InstallDeviceOnVehicleCommand;
+import com.andeva.atelier.platform.iot.domain.model.commands.RegisterObd2DeviceCommand;
+import com.andeva.atelier.platform.iot.domain.model.commands.RegisterVehicleFaultCommand;
 import com.andeva.atelier.platform.iot.domain.model.enums.AlertType;
-import com.andeva.atelier.platform.iot.domain.model.ids.AlertId;
+import com.andeva.atelier.platform.iot.domain.model.enums.ConnectionType;
+import com.andeva.atelier.platform.iot.domain.model.enums.FaultSeverity;
+import com.andeva.atelier.platform.iot.domain.model.ids.DeviceId;
 import com.andeva.atelier.platform.iot.domain.model.valueobjects.ConfidenceScore;
+import com.andeva.atelier.platform.iot.domain.model.valueobjects.DeviceIdentifier;
+import com.andeva.atelier.platform.iot.domain.model.valueobjects.DtcCode;
+import com.andeva.atelier.platform.iot.domain.repositories.DeviceInstallationRepository;
+import com.andeva.atelier.platform.iot.domain.repositories.Obd2DeviceRepository;
 import com.andeva.atelier.platform.iot.domain.repositories.PredictiveAlertRepository;
+import com.andeva.atelier.platform.iot.domain.repositories.TelemetryLogRepository;
+import com.andeva.atelier.platform.iot.domain.repositories.VehicleFaultRepository;
 import com.andeva.atelier.platform.iot.domain.repositories.VehicleHealthReportRepository;
 import com.andeva.atelier.platform.operations.application.commandservices.ServiceCommandService;
 import com.andeva.atelier.platform.operations.application.commandservices.WorkOrderCommandService;
@@ -68,6 +81,7 @@ import com.andeva.atelier.platform.operations.domain.model.commands.AddProductTo
 import com.andeva.atelier.platform.operations.domain.model.commands.AddTaskToWorkOrderCommand;
 import com.andeva.atelier.platform.operations.domain.model.commands.CompleteWorkOrderTaskCommand;
 import com.andeva.atelier.platform.operations.domain.model.commands.CreateServiceItemCommand;
+import com.andeva.atelier.platform.operations.domain.model.commands.UpdateServiceItemCommand;
 import com.andeva.atelier.platform.operations.domain.model.commands.CreateWorkOrderCommand;
 import com.andeva.atelier.platform.operations.domain.model.commands.DeliverVehicleCommand;
 import com.andeva.atelier.platform.operations.domain.model.commands.MarkWorkOrderAsPaidCommand;
@@ -119,7 +133,12 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.function.Supplier;
 
-import static com.andeva.atelier.platform.demo.DemoWorkshopSeeder.OBD_SCAN;
+import static com.andeva.atelier.platform.demo.DemoWorkshopSeeder.COOLING_CHECK;
+import static com.andeva.atelier.platform.demo.DemoWorkshopSeeder.ELECTRICAL_CHECK;
+import static com.andeva.atelier.platform.demo.DemoWorkshopSeeder.LEGACY_OBD_SCAN;
+import static com.andeva.atelier.platform.demo.DemoWorkshopSeeder.OBD_MAC_SEDAN;
+import static com.andeva.atelier.platform.demo.DemoWorkshopSeeder.OBD_MAC_SPARE;
+import static com.andeva.atelier.platform.demo.DemoWorkshopSeeder.OBD_MAC_VAN;
 import static com.andeva.atelier.platform.demo.DemoWorkshopSeeder.OIL_CHANGE;
 import static com.andeva.atelier.platform.demo.DemoWorkshopSeeder.SEDAN_PLATE;
 import static com.andeva.atelier.platform.demo.DemoWorkshopSeeder.SHIFT_NAME;
@@ -180,6 +199,14 @@ public class DemoActivitySeeder {
     private final PredictiveAlertCommandService alertCommandService;
     private final VehicleHealthReportRepository healthReportRepository;
     private final VehicleHealthReportCommandService healthReportCommandService;
+    private final Obd2DeviceRepository obd2DeviceRepository;
+    private final Obd2DeviceCommandService obd2DeviceCommandService;
+    private final DeviceInstallationRepository deviceInstallationRepository;
+    private final DeviceInstallationCommandService deviceInstallationCommandService;
+    private final TelemetryLogRepository telemetryLogRepository;
+    private final VehicleFaultRepository vehicleFaultRepository;
+    private final VehicleFaultCommandService vehicleFaultCommandService;
+    private final DemoWorkshopSeeder workshopSeeder;
     private final WorkShiftRepository workShiftRepository;
     private final AttendanceRecordRepository attendanceRepository;
     private final HaversineGeofencingService geofencingService;
@@ -211,6 +238,14 @@ public class DemoActivitySeeder {
                               PredictiveAlertCommandService alertCommandService,
                               VehicleHealthReportRepository healthReportRepository,
                               VehicleHealthReportCommandService healthReportCommandService,
+                              Obd2DeviceRepository obd2DeviceRepository,
+                              Obd2DeviceCommandService obd2DeviceCommandService,
+                              DeviceInstallationRepository deviceInstallationRepository,
+                              DeviceInstallationCommandService deviceInstallationCommandService,
+                              TelemetryLogRepository telemetryLogRepository,
+                              VehicleFaultRepository vehicleFaultRepository,
+                              VehicleFaultCommandService vehicleFaultCommandService,
+                              DemoWorkshopSeeder workshopSeeder,
                               WorkShiftRepository workShiftRepository,
                               AttendanceRecordRepository attendanceRepository,
                               HaversineGeofencingService geofencingService,
@@ -242,6 +277,14 @@ public class DemoActivitySeeder {
         this.alertCommandService = alertCommandService;
         this.healthReportRepository = healthReportRepository;
         this.healthReportCommandService = healthReportCommandService;
+        this.obd2DeviceRepository = obd2DeviceRepository;
+        this.obd2DeviceCommandService = obd2DeviceCommandService;
+        this.deviceInstallationRepository = deviceInstallationRepository;
+        this.deviceInstallationCommandService = deviceInstallationCommandService;
+        this.telemetryLogRepository = telemetryLogRepository;
+        this.vehicleFaultRepository = vehicleFaultRepository;
+        this.vehicleFaultCommandService = vehicleFaultCommandService;
+        this.workshopSeeder = workshopSeeder;
         this.workShiftRepository = workShiftRepository;
         this.attendanceRepository = attendanceRepository;
         this.geofencingService = geofencingService;
@@ -283,9 +326,115 @@ public class DemoActivitySeeder {
         }
         Workshop workshop = found.get();
         step("work order history", () -> seedHistory(workshop));
+        step("iot devices, telemetry and spanish predictive alerts", () -> ensureIoTExpoReady(workshop));
         step("vehicle insights and appointments", () -> seedInsightsAndAppointments(workshop));
         step("attendance and payroll", () -> seedAttendanceAndPayroll(workshop));
         step("reconcile orphaned bays and demo data", () -> reconcileOrphanedState(workshop));
+    }
+
+    /**
+     * Ensures the demo workshop has 3 OBD-II devices (2 actively linked to sedan and van with
+     * telemetry history and Spanish DTCs, plus 1 free device for live binding), translates legacy
+     * English IoT rows to Spanish, and keeps active DISPATCHED predictive alerts ready for the expo.
+     */
+    private void ensureIoTExpoReady(Workshop w) {
+        // 1. Register the 3 OBD-II devices if missing (2 for linking + 1 free spare)
+        DeviceId sedanDeviceId = ensureObdDevice(w.tenantId(), OBD_MAC_SEDAN, "ELM327 Bluetooth v1.5", "1.5");
+        DeviceId vanDeviceId = ensureObdDevice(w.tenantId(), OBD_MAC_VAN, "ELM327 Bluetooth v1.5", "1.5");
+        ensureObdDevice(w.tenantId(), OBD_MAC_SPARE, "OBDLink MX+ Bluetooth", "2.1");
+
+        // 2. Ensure the first two devices are actively linked to sedan and van
+        ensureActiveInstallation(w.tenantId(), sedanDeviceId, w.sedan().id(), 48210);
+        ensureActiveInstallation(w.tenantId(), vanDeviceId, w.van().id(), 96540);
+
+        // 3. Ensure 10-day telemetry history exists for both linked vehicles
+        if (read(() -> telemetryLogRepository.findLatestByVehicleId(w.sedan().id())).isEmpty()) {
+            workshopSeeder.ingest(w.tenantId(), w.sedan().id(), false);
+        }
+        if (read(() -> telemetryLogRepository.findLatestByVehicleId(w.van().id())).isEmpty()) {
+            workshopSeeder.ingest(w.tenantId(), w.van().id(), true);
+        }
+
+        // 4. Translate any legacy English DTC descriptions or predictive alert messages to Spanish
+        jdbc.update("""
+                UPDATE vehicle_faults
+                   SET description = 'Sobrecalentamiento crítico del refrigerante del motor'
+                 WHERE tenant_id = ? AND description = 'Engine coolant over temperature condition'""", w.tenantId().value());
+        jdbc.update("""
+                UPDATE vehicle_faults
+                   SET description = 'Voltaje bajo en el sistema eléctrico y batería'
+                 WHERE tenant_id = ? AND description = 'System voltage low'""", w.tenantId().value());
+        jdbc.update("""
+                UPDATE predictive_alerts
+                   SET message = 'Temperatura crítica del refrigerante detectada por telemetría. Riesgo inminente de falla en la empaquetadura de culata.'
+                 WHERE tenant_id = ? AND message LIKE 'Critical coolant temperature reached%'""", w.tenantId().value());
+        jdbc.update("""
+                UPDATE predictive_alerts
+                   SET message = 'Voltaje peligroso de batería en reposo detectado por telemetría. Se recomienda recarga o reemplazo preventivo antes de una falla de arranque.'
+                 WHERE tenant_id = ? AND message LIKE 'Dangerous battery voltage at rest%'""", w.tenantId().value());
+        jdbc.update("""
+                UPDATE predictive_alerts
+                   SET message = 'Revoluciones excesivas del motor con temperatura elevada del refrigerante. Alto riesgo de esfuerzo mecánico en los cilindros.'
+                 WHERE tenant_id = ? AND message LIKE 'Excessive engine RPM%'""", w.tenantId().value());
+
+        // 5. Ensure active Spanish DTCs exist on both linked vehicles
+        if (read(() -> vehicleFaultRepository.findActiveByVehicleId(w.van().id())).isEmpty()) {
+            vehicleFaultCommandService.handle(new RegisterVehicleFaultCommand(
+                    w.van().id(), w.tenantId(), DtcCode.of("P0217"), FaultSeverity.CRITICAL,
+                    "Sobrecalentamiento crítico del refrigerante del motor"));
+            vehicleFaultCommandService.handle(new RegisterVehicleFaultCommand(
+                    w.van().id(), w.tenantId(), DtcCode.of("P0562"), FaultSeverity.MEDIUM,
+                    "Voltaje bajo en el sistema eléctrico y batería"));
+        }
+        if (read(() -> vehicleFaultRepository.findActiveByVehicleId(w.sedan().id())).isEmpty()) {
+            vehicleFaultCommandService.handle(new RegisterVehicleFaultCommand(
+                    w.sedan().id(), w.tenantId(), DtcCode.of("P0420"), FaultSeverity.LOW,
+                    "Eficiencia del sistema catalítico por debajo del umbral (Banco 1)"));
+        }
+
+        // 6. Ensure active (DISPATCHED) Spanish predictive alerts exist for the expo appointment flow
+        Optional<ServiceId> coolingServiceId = Optional.ofNullable(w.services().get(COOLING_CHECK))
+                .map(s -> ServiceId.of(s.getId().value()));
+        Optional<ServiceId> batteryServiceId = Optional.ofNullable(w.services().get(BATTERY_SWAP))
+                .or(() -> Optional.ofNullable(w.services().get(ELECTRICAL_CHECK)))
+                .map(s -> ServiceId.of(s.getId().value()));
+        Optional<ServiceId> oilServiceId = Optional.ofNullable(w.services().get(OIL_CHANGE))
+                .map(s -> ServiceId.of(s.getId().value()));
+
+        if (!read(() -> alertRepository.existsOpenAlert(w.van().id(), AlertType.ENGINE_OVERHEATING_RISK))) {
+            alertCommandService.handle(new GeneratePredictiveAlertCommand(
+                    w.van().id(), w.tenantId(), coolingServiceId, AlertType.ENGINE_OVERHEATING_RISK,
+                    ConfidenceScore.of(94),
+                    "Temperatura del refrigerante por encima de 108°C en los últimos 3 días. Se recomienda revisión urgente de termostato y bomba de agua."));
+        }
+        if (!read(() -> alertRepository.existsOpenAlert(w.van().id(), AlertType.BATTERY_FAILURE_RISK))) {
+            alertCommandService.handle(new GeneratePredictiveAlertCommand(
+                    w.van().id(), w.tenantId(), batteryServiceId, AlertType.BATTERY_FAILURE_RISK,
+                    ConfidenceScore.of(91),
+                    "Voltaje de batería en reposo por debajo de 12.1V. Se recomienda prueba de alternador y cambio preventivo de batería."));
+        }
+        if (!read(() -> alertRepository.existsOpenAlert(w.sedan().id(), AlertType.OIL_LIFE_DEPLETION))) {
+            alertCommandService.handle(new GeneratePredictiveAlertCommand(
+                    w.sedan().id(), w.tenantId(), oilServiceId, AlertType.OIL_LIFE_DEPLETION,
+                    ConfidenceScore.of(88),
+                    "Vida útil del aceite estimada en 12%: cambio de aceite sintético 5W-30 y filtro recomendado en los próximos 500 km."));
+        }
+    }
+
+    private DeviceId ensureObdDevice(TenantId tenantId, String mac, String model, String firmware) {
+        DeviceIdentifier identifier = DeviceIdentifier.of(mac);
+        return read(() -> obd2DeviceRepository.findByIdentifier(identifier))
+                .map(com.andeva.atelier.platform.iot.domain.model.aggregates.Obd2Device::getId)
+                .orElseGet(() -> obd2DeviceCommandService.handle(new RegisterObd2DeviceCommand(
+                        tenantId, identifier, ConnectionType.BLUETOOTH_BLE, model, firmware)));
+    }
+
+    private void ensureActiveInstallation(TenantId tenantId, DeviceId deviceId, VehicleId vehicleId, int odometerKm) {
+        boolean vehicleLinked = read(() -> deviceInstallationRepository.findActiveByVehicleId(vehicleId)).isPresent();
+        boolean deviceLinked = read(() -> deviceInstallationRepository.findActiveByDeviceId(deviceId)).isPresent();
+        if (!vehicleLinked && !deviceLinked) {
+            deviceInstallationCommandService.handle(new InstallDeviceOnVehicleCommand(deviceId, vehicleId, tenantId, odometerKm));
+        }
     }
 
     private void reconcileOrphanedState(Workshop w) {
@@ -377,6 +526,17 @@ public class DemoActivitySeeder {
 
         Map<String, Service> services = new HashMap<>();
         read(() -> serviceRepository.findByTenantId(tenantId)).forEach(service -> services.put(service.getName(), service));
+        // Align legacy demo databases: OBD-II monitoring is an external monthly IoT service,
+        // not a work-order labor catalog item. Rename the legacy item in place so historical FKs stay intact.
+        if (services.containsKey(LEGACY_OBD_SCAN) && !services.containsKey(ELECTRICAL_CHECK)) {
+            Service legacy = services.remove(LEGACY_OBD_SCAN);
+            Service renamed = require("service rename", serviceCommandService.handle(
+                    new UpdateServiceItemCommand(legacy.getId(), ELECTRICAL_CHECK, new BigDecimal("110.00"), "PEN", 45)));
+            services.put(ELECTRICAL_CHECK, renamed);
+            log.info("Demo catalog aligned: renamed '{}' to '{}'", LEGACY_OBD_SCAN, ELECTRICAL_CHECK);
+        }
+        services.computeIfAbsent(ELECTRICAL_CHECK, name -> require("service", serviceCommandService.handle(
+                new CreateServiceItemCommand(tenantId, name, new BigDecimal("110.00"), "PEN", 45))));
         services.computeIfAbsent(BRAKE_PADS, name -> require("service", serviceCommandService.handle(
                 new CreateServiceItemCommand(tenantId, name, new BigDecimal("150.00"), "PEN", 60))));
         services.computeIfAbsent(BATTERY_SWAP, name -> require("service", serviceCommandService.handle(
@@ -452,11 +612,11 @@ public class DemoActivitySeeder {
                         new PastTask(BRAKE_PADS, "Cambio de pastillas delanteras y limpieza de calipers", "150.00", "1.0", "1.2",
                                 List.of(new PastPart("BRK-PAD-H1", "1"))))),
                 new PastOrder(21, SENTRA_PLATE, 73400, "Testigo de check engine encendido y consumo elevado", PaymentMethod.DEBIT_CARD, List.of(
-                        new PastTask(OBD_SCAN, "Lectura de códigos: sensor de oxígeno con lectura lenta", "90.00", "0.5", "0.5", List.of()),
+                        new PastTask(ELECTRICAL_CHECK, "Inspección de sensor de oxígeno y circuito eléctrico", "110.00", "0.75", "0.75", List.of()),
                         new PastTask(OIL_CHANGE, "Cambio de aceite vencido y filtro", "120.00", "0.75", "0.8",
                                 List.of(new PastPart("OIL-5W30-1L", "4"), new PastPart("FLT-OIL-YRS", "1"))))),
                 new PastOrder(9, RIO_PLATE, 59100, "El vehículo no arranca por las mañanas", PaymentMethod.CREDIT_CARD, List.of(
-                        new PastTask(OBD_SCAN, "Prueba de carga: batería con 9,8 V en arranque", "90.00", "0.5", "0.4", List.of()),
+                        new PastTask(ELECTRICAL_CHECK, "Prueba de carga de alternador: batería con 9,8 V en arranque", "110.00", "0.75", "0.6", List.of()),
                         new PastTask(BATTERY_SWAP, "Reemplazo de batería y limpieza de bornes", "40.00", "0.35", "0.3",
                                 List.of(new PastPart("BAT-12V-75", "1"))))));
 
@@ -621,14 +781,9 @@ public class DemoActivitySeeder {
             return;
         }
 
-        // The sedan's oil is due: the predictive alert turns into a confirmed appointment on the real branch
-        AlertId oilAlert = alertCommandService.handle(new GeneratePredictiveAlertCommand(sedanId, w.tenantId(),
-                Optional.of(ServiceId.of(w.services().get(OIL_CHANGE).getId().value())), AlertType.OIL_LIFE_DEPLETION,
-                ConfidenceScore.of(88), "Vida útil del aceite al 12 %: cambio recomendado en los próximos 500 km"));
         LocalDate first = nextWorkday(LocalDate.now(LIMA));
         appointment(w, w.sedan(), first, LocalTime.of(9, 0), 45,
                 "Cambio de aceite y filtro recomendado por la alerta predictiva del OBD-II", true);
-        alertCommandService.handle(new AcknowledgePredictiveAlertCommand(oilAlert));
 
         vehicleByPlate(RIO_PLATE).ifPresent(rio ->
                 appointment(w, rio, first, LocalTime.of(11, 30), 60,

@@ -398,7 +398,7 @@ class CrmControllersTest {
         void shouldGetAppointments() {
             when(appointmentQueryService.handle(any(GetAppointmentsByTenantAndBranchQuery.class))).thenReturn(List.of(sampleAppointment));
 
-            ResponseEntity<?> response = controller.getAppointments(testUser, UUID.randomUUID(), LocalDate.now(), null);
+            ResponseEntity<?> response = controller.getAppointments(testUser, UUID.randomUUID(), LocalDate.now(), null, null, null);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         }

@@ -127,4 +127,15 @@ public interface CustomerFleetContextFacade {
      * @return Optional appointment ID if created successfully
      */
     Optional<UUID> schedulePreventiveAppointment(UUID tenantId, UUID vehicleId, String description);
+
+    default Optional<UUID> schedulePreventiveAppointment(
+            UUID tenantId,
+            UUID branchId,
+            UUID vehicleId,
+            java.time.Instant scheduledAt,
+            Integer estimatedDurationMinutes,
+            String description
+    ) {
+        return schedulePreventiveAppointment(tenantId, vehicleId, description);
+    }
 }

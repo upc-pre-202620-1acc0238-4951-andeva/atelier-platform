@@ -187,7 +187,10 @@ public class WorkOrder extends AbstractDomainAggregateRoot<WorkOrder> {
         validateMutable("Cannot remove task");
         WorkOrderTask task = findTask(taskId);
         if (task.getStatus() == WorkOrderTaskStatus.COMPLETED) {
-            throw new IllegalStateException("Cannot remove already COMPLETED task");
+            throw new IllegalStateException("No se puede eliminar una tarea que ya fue completada");
+        }
+        if (!task.getConsumedProducts().isEmpty()) {
+            throw new IllegalStateException("Retira primero los repuestos consumidos antes de eliminar la tarea");
         }
         this.tasks.remove(task);
         recalculateTotalAmount();

@@ -3,6 +3,7 @@ package com.andeva.atelier.platform.operations.application.internal.commandservi
 import com.andeva.atelier.platform.operations.application.commandservices.ServiceCommandService;
 import com.andeva.atelier.platform.operations.domain.model.aggregates.Service;
 import com.andeva.atelier.platform.operations.domain.model.commands.CreateServiceItemCommand;
+import com.andeva.atelier.platform.operations.domain.model.commands.DeleteServiceItemCommand;
 import com.andeva.atelier.platform.operations.domain.model.commands.UpdateServiceItemCommand;
 import com.andeva.atelier.platform.operations.domain.repositories.ServiceRepository;
 import com.andeva.atelier.platform.shared.application.result.ApplicationError;
@@ -46,10 +47,38 @@ public class ServiceCommandServiceImpl implements ServiceCommandService {
 
         return serviceRepository.findById(command.serviceId())
                 .map(service -> {
+                    var duplicate = serviceRepository.findByTenantIdAndName(service.getTenantId(), command.name());
+                    if (duplicate.isPresent() && !duplicate.get().getId().equals(service.getId())) {
+                        return Result.<Service, ApplicationError>failure(
+                                ApplicationError.conflict("Ya existe otro servicio con el nombre '" + command.name() + "' en este taller"));
+                    }
                     service.updateDetails(command.name(), Money.soles(command.basePrice()), command.estimatedMinutes());
                     Service updated = serviceRepository.save(service);
                     return Result.<Service, ApplicationError>success(updated);
                 })
                 .orElseGet(() -> Result.failure(ApplicationError.notFound("Service with identifier " + command.serviceId().value() + " was not found")));
+    }
+
+    @Override
+    public Result<Void, ApplicationError> handle(DeleteServiceItemCommand command) {
+        if (command == null || command.serviceId() == null) {
+            return Result.failure(ApplicationError.badRequest("DeleteServiceItemCommand and serviceId cannot be null"));
+        }
+
+        var found = serviceRepository.findById(command.serviceId());
+        if (found.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("Service with identifier " + command.serviceId().value() + " was not found"));
+        }
+        Service service = found.get();
+        if (command.tenantId() != null && !service.getTenantId().equals(command.tenantId())) {
+            return Result.failure(ApplicationError.notFound("Service with identifier " + command.serviceId().value() + " was not found"));
+        }
+        if (serviceRepository.isReferencedByTasks(command.serviceId())) {
+            return Result.failure(ApplicationError.conflict(
+                    "No se puede eliminar este servicio porque está asociado a tareas en órdenes de trabajo."));
+        }
+
+        serviceRepository.deleteById(command.serviceId());
+        return Result.success(null);
     }
 }

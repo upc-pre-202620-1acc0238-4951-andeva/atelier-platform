@@ -23,6 +23,8 @@ public interface WorkOrderCommandService {
 
     Result<WorkOrder, ApplicationError> handle(UpdateWorkOrderTaskCommand command);
 
+    Result<WorkOrder, ApplicationError> handle(RemoveWorkOrderTaskCommand command);
+
     Result<WorkOrder, ApplicationError> handle(AssignTaskMechanicCommand command);
 
     Result<WorkOrder, ApplicationError> handle(StartWorkOrderTaskCommand command);

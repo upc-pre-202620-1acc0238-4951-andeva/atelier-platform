@@ -332,6 +332,25 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
     }
 
     @Override
+    public Result<WorkOrder, ApplicationError> handle(RemoveWorkOrderTaskCommand command) {
+        if (command == null || command.taskId() == null) {
+            return Result.failure(ApplicationError.badRequest("Command and taskId cannot be null"));
+        }
+        Optional<WorkOrder> orderOpt = workOrderRepository.findByTaskId(command.taskId());
+        if (orderOpt.isEmpty()) {
+            return Result.failure(ApplicationError.notFound("Task with identifier " + command.taskId().value() + " was not found"));
+        }
+        WorkOrder order = orderOpt.get();
+        try {
+            order.removeTask(command.taskId());
+            WorkOrder saved = workOrderRepository.save(order);
+            return Result.success(saved);
+        } catch (Exception e) {
+            return Result.failure(ApplicationError.unprocessableEntity(e.getMessage()));
+        }
+    }
+
+    @Override
     public Result<WorkOrder, ApplicationError> handle(AssignTaskMechanicCommand command) {
         if (command == null || command.taskId() == null) {
             return Result.failure(ApplicationError.badRequest("Command and taskId cannot be null"));
@@ -713,12 +732,38 @@ public class WorkOrderCommandServiceImpl implements WorkOrderCommandService {
         }
 
         WorkOrder order = orderOpt.get();
+        if (command.mechanicId() != null && tenancyAclService != null
+                && !tenancyAclService.isMechanicEligible(command.mechanicId(), order.getTenantId().value())) {
+            return Result.failure(ApplicationError.unprocessableEntity("Mechanic is not eligible or active in this tenant"));
+        }
+
+        Optional<com.andeva.atelier.platform.operations.domain.model.aggregates.Service> catalogService =
+                command.serviceId() != null ? serviceRepository.findById(command.serviceId()) : Optional.empty();
+
+        Money resolvedPrice = catalogService
+                .map(com.andeva.atelier.platform.operations.domain.model.aggregates.Service::getBasePrice)
+                .orElseGet(() -> command.finalPrice() != null ? Money.soles(command.finalPrice()) : null);
+        if (resolvedPrice == null) {
+            return Result.failure(ApplicationError.badRequest("Service base price or finalPrice is required"));
+        }
+
+        BigDecimal resolvedHoursValue = command.laborHours() != null
+                ? command.laborHours()
+                : catalogService
+                        .map(s -> BigDecimal.valueOf(s.getEstimatedDurationMinutes())
+                                .divide(MINUTES_PER_HOUR, 2, java.math.RoundingMode.HALF_UP)
+                                .max(new BigDecimal("0.25")))
+                        .orElse(null);
+        if (resolvedHoursValue == null) {
+            return Result.failure(ApplicationError.badRequest("Service estimated duration or laborHours is required"));
+        }
+
         try {
             WorkOrderTask task = order.approveProposal(
                     command.proposalId(),
                     command.serviceId(),
-                    Money.soles(command.finalPrice()),
-                    LaborHours.of(command.laborHours()),
+                    resolvedPrice,
+                    LaborHours.of(resolvedHoursValue),
                     command.mechanicId(),
                     command.notes()
             );

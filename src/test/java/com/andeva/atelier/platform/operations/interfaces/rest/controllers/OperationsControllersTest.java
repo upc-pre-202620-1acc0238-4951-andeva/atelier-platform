@@ -268,6 +268,16 @@ class OperationsControllersTest {
             ResponseEntity<?> response = tasksController.attachEvidence(sampleTask.getId().value(), req, UriComponentsBuilder.newInstance());
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         }
+
+        @Test
+        @DisplayName("DELETE /api/v1/tasks/{taskId} should return 204 No Content when task is removed")
+        void shouldDeleteTaskSuccessfully() {
+            when(workOrderCommandService.handle(any(RemoveWorkOrderTaskCommand.class)))
+                    .thenReturn(Result.success(sampleOrder));
+
+            ResponseEntity<?> response = tasksController.deleteTask(sampleTask.getId().value());
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        }
     }
 
     @Nested
@@ -587,6 +597,11 @@ class OperationsControllersTest {
             UpdateServiceResource updateReq = new UpdateServiceResource("Afinamiento Premium", new BigDecimal("150.00"), "PEN", 75);
             ResponseEntity<?> updateRes = servicesController.updateService(service.getId().value(), updateReq);
             assertThat(updateRes.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+            when(serviceCommandService.handle(any(DeleteServiceItemCommand.class)))
+                    .thenReturn(Result.success(null));
+            ResponseEntity<?> deleteRes = servicesController.deleteService(testUser, service.getId().value());
+            assertThat(deleteRes.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         }
     }
 }

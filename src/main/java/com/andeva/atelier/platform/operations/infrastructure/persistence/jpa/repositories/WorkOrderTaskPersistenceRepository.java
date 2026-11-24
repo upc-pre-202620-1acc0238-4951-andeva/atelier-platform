@@ -20,6 +20,8 @@ public interface WorkOrderTaskPersistenceRepository extends JpaRepository<WorkOr
 
     List<WorkOrderTaskPersistenceEntity> findAllByMechanicIdAndStatus(UUID mechanicId, WorkOrderTaskStatus status);
 
+    boolean existsByServiceId(UUID serviceId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT t FROM WorkOrderTaskPersistenceEntity t WHERE t.id = :id")
     Optional<WorkOrderTaskPersistenceEntity> findByIdForUpdate(@Param("id") UUID id);

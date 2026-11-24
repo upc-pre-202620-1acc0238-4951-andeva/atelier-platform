@@ -220,6 +220,19 @@ public class CustomerFleetContextFacadeImpl implements CustomerFleetContextFacad
     @Override
     @Transactional
     public Optional<UUID> schedulePreventiveAppointment(UUID tenantId, UUID vehicleId, String description) {
+        return schedulePreventiveAppointment(tenantId, null, vehicleId, null, null, description);
+    }
+
+    @Override
+    @Transactional
+    public Optional<UUID> schedulePreventiveAppointment(
+            UUID tenantId,
+            UUID branchId,
+            UUID vehicleId,
+            java.time.Instant scheduledAt,
+            Integer estimatedDurationMinutes,
+            String description
+    ) {
         if (tenantId == null || vehicleId == null) {
             return Optional.empty();
         }
@@ -230,12 +243,14 @@ public class CustomerFleetContextFacadeImpl implements CustomerFleetContextFacad
         try {
             ScheduleAppointmentCommand command = new ScheduleAppointmentCommand(
                     TenantId.of(tenantId),
-                    BranchId.generate(),
+                    branchId != null ? BranchId.of(branchId) : BranchId.generate(),
                     CustomerId.of(ownerIdOpt.get()),
                     VehicleId.of(vehicleId),
-                    Instant.now().plus(Duration.ofDays(1)),
-                    60,
-                    description != null ? description : "Preventative maintenance scheduled from IoT Telemetry"
+                    scheduledAt != null ? scheduledAt : Instant.now().plus(Duration.ofDays(1)),
+                    estimatedDurationMinutes != null && estimatedDurationMinutes > 0 ? estimatedDurationMinutes : 60,
+                    description != null && !description.isBlank()
+                            ? description
+                            : "Preventative maintenance scheduled from IoT Telemetry"
             );
             Result<Appointment, ApplicationError> result = appointmentCommandService.handle(command);
             if (result.isSuccess() && result.toOptional().isPresent()) {

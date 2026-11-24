@@ -82,7 +82,7 @@ public class DeviceInstallationsController {
                 DeviceId.of(request.deviceId()),
                 VehicleId.of(request.vehicleId()),
                 tenantId,
-                request.currentOdometerKm()
+                request.currentOdometerKm() != null ? request.currentOdometerKm() : 0
         );
 
         InstallationId installationId = installationCommandService.handle(command);
@@ -118,9 +118,12 @@ public class DeviceInstallationsController {
             throw new AccessDeniedException("Installation does not belong to the authenticated workshop");
         }
 
+        int finalOdometer = request != null && request.finalOdometerKm() != null
+                ? request.finalOdometerKm()
+                : installation.getInitialOdometerKm();
         UninstallDeviceFromVehicleCommand command = new UninstallDeviceFromVehicleCommand(
                 installationId,
-                request.finalOdometerKm()
+                finalOdometer
         );
 
         installationCommandService.handle(command);

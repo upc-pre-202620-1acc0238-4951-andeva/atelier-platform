@@ -19,6 +19,6 @@ public record InstallDeviceRequest(
         UUID vehicleId,
 
         @Min(value = 0, message = "{error.iot.installation.odometer.negative}")
-        int currentOdometerKm
+        Integer currentOdometerKm
 ) implements Serializable {
 }

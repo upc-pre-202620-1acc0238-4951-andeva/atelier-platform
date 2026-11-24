@@ -102,14 +102,36 @@ public class CrmFleetAclAdapter implements CrmFleetAclPort {
             VehicleId vehicleId,
             String description,
             RecommendedServiceActionDto recommendedAction) {
+        return convertAlertToAppointment(alertId, tenantId, null, vehicleId, null, null, description, recommendedAction);
+    }
+
+    @Override
+    public UUID convertAlertToAppointment(
+            AlertId alertId,
+            TenantId tenantId,
+            UUID branchId,
+            VehicleId vehicleId,
+            java.time.Instant scheduledAt,
+            Integer estimatedDurationMinutes,
+            String description,
+            RecommendedServiceActionDto recommendedAction) {
 
         if (customerFleetContextFacade != null && tenantId != null && vehicleId != null) {
             try {
-                Optional<UUID> appointmentIdOpt = customerFleetContextFacade.schedulePreventiveAppointment(
-                        tenantId.value(),
-                        vehicleId.value(),
-                        description
-                );
+                Optional<UUID> appointmentIdOpt = (branchId != null || scheduledAt != null || estimatedDurationMinutes != null)
+                        ? customerFleetContextFacade.schedulePreventiveAppointment(
+                                tenantId.value(),
+                                branchId,
+                                vehicleId.value(),
+                                scheduledAt,
+                                estimatedDurationMinutes,
+                                description
+                        )
+                        : customerFleetContextFacade.schedulePreventiveAppointment(
+                                tenantId.value(),
+                                vehicleId.value(),
+                                description
+                        );
                 if (appointmentIdOpt.isPresent()) {
                     return appointmentIdOpt.get();
                 }

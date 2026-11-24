@@ -32,14 +32,14 @@ public class WorkOrderTaskImagePersistenceEntity extends OperationsChildPersiste
     @JoinColumn(name = "task_id", nullable = false)
     private WorkOrderTaskPersistenceEntity task;
 
-    @Column(name = "image_url", nullable = false, length = 255)
+    @Column(name = "image_url", nullable = false, length = 512)
     private String imageUrl;
 
     @Convert(converter = EvidenceTypeAttributeConverter.class)
     @Column(name = "evidence_type", nullable = false, length = 30)
     private EvidenceType evidenceType;
 
-    @Column(name = "description", length = 200)
+    @Column(name = "description", length = 500)
     private String description;
 
     @Column(name = "uploaded_at", nullable = false)
