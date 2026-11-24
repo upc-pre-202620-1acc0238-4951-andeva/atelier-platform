@@ -10,6 +10,11 @@ import java.io.Serializable;
 public record DigitalReceiptUrlsResponse(
         String pdfUrl,
         String xmlUrl,
-        String cdrUrl
+        String cdrUrl,
+        String qrCodeData
 ) implements Serializable {
+
+    public DigitalReceiptUrlsResponse(String pdfUrl, String xmlUrl, String cdrUrl) {
+        this(pdfUrl, xmlUrl, cdrUrl, "");
+    }
 }

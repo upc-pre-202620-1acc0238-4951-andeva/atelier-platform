@@ -11,14 +11,23 @@ import java.io.Serializable;
 public record DigitalReceiptUrls(
         String pdfUrl,
         String xmlUrl,
-        String cdrUrl
+        String cdrUrl,
+        String qrCodeData
 ) implements Serializable {
 
+    public DigitalReceiptUrls(String pdfUrl, String xmlUrl, String cdrUrl) {
+        this(pdfUrl, xmlUrl, cdrUrl, null);
+    }
+
     public static DigitalReceiptUrls empty() {
-        return new DigitalReceiptUrls(null, null, null);
+        return new DigitalReceiptUrls(null, null, null, null);
     }
 
     public static DigitalReceiptUrls of(String pdfUrl, String xmlUrl, String cdrUrl) {
-        return new DigitalReceiptUrls(pdfUrl, xmlUrl, cdrUrl);
+        return new DigitalReceiptUrls(pdfUrl, xmlUrl, cdrUrl, null);
+    }
+
+    public static DigitalReceiptUrls of(String pdfUrl, String xmlUrl, String cdrUrl, String qrCodeData) {
+        return new DigitalReceiptUrls(pdfUrl, xmlUrl, cdrUrl, qrCodeData);
     }
 }

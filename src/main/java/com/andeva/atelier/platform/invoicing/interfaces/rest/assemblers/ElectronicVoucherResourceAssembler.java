@@ -44,7 +44,8 @@ public class ElectronicVoucherResourceAssembler {
         DigitalReceiptUrlsResponse receiptsResponse = new DigitalReceiptUrlsResponse(
                 urls != null ? urls.pdfUrl() : "",
                 urls != null ? urls.xmlUrl() : "",
-                urls != null ? urls.cdrUrl() : ""
+                urls != null ? urls.cdrUrl() : "",
+                urls != null && urls.qrCodeData() != null ? urls.qrCodeData() : ""
         );
 
         SunatResponseDto sunatResponse = null;

@@ -429,19 +429,15 @@ public class WorkOrder extends AbstractDomainAggregateRoot<WorkOrder> {
 
     public void recalculateTotalAmount() {
         Currency cur = this.subtotal.currency();
-        BigDecimal laborTotal = BigDecimal.ZERO;
-        BigDecimal productsTotal = BigDecimal.ZERO;
+        BigDecimal consolidatedTasksTotal = BigDecimal.ZERO;
 
         for (WorkOrderTask task : this.tasks) {
             if (task.getStatus() != WorkOrderTaskStatus.CANCELLED) {
-                laborTotal = laborTotal.add(task.getPrice().amount());
-                for (WorkOrderTaskProduct product : task.getConsumedProducts()) {
-                    productsTotal = productsTotal.add(product.getTotalAmount().amount());
-                }
+                consolidatedTasksTotal = consolidatedTasksTotal.add(task.getConsolidatedPrice().amount());
             }
         }
 
-        BigDecimal sub = laborTotal.add(productsTotal).setScale(2, RoundingMode.HALF_EVEN);
+        BigDecimal sub = consolidatedTasksTotal.setScale(2, RoundingMode.HALF_EVEN);
         BigDecimal computedTax = sub.multiply(IGV_RATE).setScale(2, RoundingMode.HALF_EVEN);
         BigDecimal total = sub.add(computedTax).setScale(2, RoundingMode.HALF_EVEN);
 

@@ -69,6 +69,7 @@ public final class WorkOrderTaskResourceAssembler {
                 task.getStatus() != null ? task.getStatus().name() : null,
                 task.getDescription(),
                 task.getPrice() != null ? task.getPrice().amount() : BigDecimal.ZERO,
+                task.getConsolidatedPrice().amount(),
                 task.getPrice() != null && task.getPrice().currency() != null
                         ? task.getPrice().currency().name()
                         : "PEN",

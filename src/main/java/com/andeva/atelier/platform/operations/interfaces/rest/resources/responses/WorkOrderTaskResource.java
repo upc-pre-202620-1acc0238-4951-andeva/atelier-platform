@@ -15,6 +15,7 @@ public record WorkOrderTaskResource(
         String status,
         String description,
         BigDecimal price,
+        BigDecimal consolidatedPrice,
         String currency,
         String holdReason,
         String missingItemDescription,
@@ -27,4 +28,32 @@ public record WorkOrderTaskResource(
         Instant pendingSuspensionRequestedAt,
         List<TaskProductResource> products,
         List<WorkOrderTaskImageResource> evidenceImages
-) {}
+) {
+    public WorkOrderTaskResource(
+            UUID id,
+            UUID workOrderId,
+            UUID serviceId,
+            String serviceName,
+            UUID mechanicId,
+            String mechanicName,
+            String status,
+            String description,
+            BigDecimal price,
+            String currency,
+            String holdReason,
+            String missingItemDescription,
+            Long totalPausedSeconds,
+            Instant pausedAt,
+            Instant startedAt,
+            Instant completedAt,
+            String pendingSuspensionReason,
+            Instant pendingSuspensionRequestedAt,
+            List<TaskProductResource> products,
+            List<WorkOrderTaskImageResource> evidenceImages
+    ) {
+        this(id, workOrderId, serviceId, serviceName, mechanicId, mechanicName, status, description,
+                price, price, currency, holdReason, missingItemDescription, totalPausedSeconds,
+                pausedAt, startedAt, completedAt, pendingSuspensionReason, pendingSuspensionRequestedAt,
+                products, evidenceImages);
+    }
+}
