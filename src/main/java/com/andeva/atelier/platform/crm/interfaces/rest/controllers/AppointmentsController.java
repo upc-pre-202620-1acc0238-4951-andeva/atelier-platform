@@ -9,6 +9,7 @@ import com.andeva.atelier.platform.crm.domain.model.enums.AppointmentStatus;
 import com.andeva.atelier.platform.crm.domain.model.ids.AppointmentId;
 import com.andeva.atelier.platform.crm.domain.model.queries.GetAppointmentByIdQuery;
 import com.andeva.atelier.platform.crm.domain.model.queries.GetAppointmentsByCustomerQuery;
+import com.andeva.atelier.platform.crm.domain.model.queries.GetAppointmentsByDateRangeQuery;
 import com.andeva.atelier.platform.crm.domain.model.queries.GetAppointmentsByTenantAndBranchQuery;
 import com.andeva.atelier.platform.crm.domain.model.queries.GetAppointmentsByVehicleQuery;
 import com.andeva.atelier.platform.crm.interfaces.rest.resources.requests.CancelAppointmentResource;
@@ -120,11 +121,13 @@ public class AppointmentsController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('crm:appointments:read')")
-    @Operation(summary = "Query appointments for branch and date agenda")
+    @Operation(summary = "Query appointments for branch by date or date range")
     public ResponseEntity<?> getAppointments(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam UUID branchId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(required = false) String status
     ) {
         if (userDetails == null || userDetails.getTenantId() == null) {
@@ -132,19 +135,44 @@ public class AppointmentsController {
                     ApplicationError.unauthorized("Authentication required"));
         }
 
-        LocalDate queryDate = date != null ? date : LocalDate.now();
-
         AppointmentStatus appointmentStatus = status != null && !status.isBlank()
                 ? AppointmentStatus.valueOf(status.trim().toUpperCase(Locale.ROOT))
                 : null;
 
-        List<Appointment> appointments = appointmentQueryService.handle(
-                new GetAppointmentsByTenantAndBranchQuery(
-                        TenantId.of(userDetails.getTenantId()),
-                        BranchId.of(branchId),
-                        queryDate,
-                        appointmentStatus
-                ));
+        List<Appointment> appointments;
+        if (from != null || to != null) {
+            java.time.ZoneId lima = java.time.ZoneId.of("America/Lima");
+            LocalDate startDay = from != null ? from : to;
+            LocalDate endDay = to != null ? to : from;
+            if (endDay.isBefore(startDay)) {
+                LocalDate tmp = startDay;
+                startDay = endDay;
+                endDay = tmp;
+            }
+            java.time.Instant rangeStart = startDay.atStartOfDay(lima).toInstant();
+            java.time.Instant rangeEnd = endDay.plusDays(1).atStartOfDay(lima).minusNanos(1).toInstant();
+            appointments = appointmentQueryService.handle(
+                    new GetAppointmentsByDateRangeQuery(
+                            TenantId.of(userDetails.getTenantId()),
+                            BranchId.of(branchId),
+                            rangeStart,
+                            rangeEnd
+                    ));
+            if (appointmentStatus != null) {
+                appointments = appointments.stream()
+                        .filter(a -> a.status() == appointmentStatus)
+                        .toList();
+            }
+        } else {
+            LocalDate queryDate = date != null ? date : LocalDate.now();
+            appointments = appointmentQueryService.handle(
+                    new GetAppointmentsByTenantAndBranchQuery(
+                            TenantId.of(userDetails.getTenantId()),
+                            BranchId.of(branchId),
+                            queryDate,
+                            appointmentStatus
+                    ));
+        }
 
         List<AppointmentResource> resources = appointments.stream()
                 .map(AppointmentResourceFromAggregateAssembler::toResourceFromEntity)
