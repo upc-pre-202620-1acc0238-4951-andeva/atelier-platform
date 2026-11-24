@@ -6,6 +6,7 @@ import com.andeva.atelier.platform.operations.domain.repositories.ServiceReposit
 import com.andeva.atelier.platform.operations.infrastructure.persistence.jpa.assemblers.ServicePersistenceAssembler;
 import com.andeva.atelier.platform.operations.infrastructure.persistence.jpa.entities.ServicePersistenceEntity;
 import com.andeva.atelier.platform.operations.infrastructure.persistence.jpa.repositories.ServicePersistenceRepository;
+import com.andeva.atelier.platform.operations.infrastructure.persistence.jpa.repositories.WorkOrderTaskPersistenceRepository;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import org.springframework.stereotype.Repository;
 
@@ -17,9 +18,14 @@ import java.util.Optional;
 public class ServiceRepositoryImpl implements ServiceRepository {
 
     private final ServicePersistenceRepository servicePersistenceRepository;
+    private final WorkOrderTaskPersistenceRepository taskPersistenceRepository;
 
-    public ServiceRepositoryImpl(ServicePersistenceRepository servicePersistenceRepository) {
+    public ServiceRepositoryImpl(
+            ServicePersistenceRepository servicePersistenceRepository,
+            WorkOrderTaskPersistenceRepository taskPersistenceRepository
+    ) {
         this.servicePersistenceRepository = Objects.requireNonNull(servicePersistenceRepository);
+        this.taskPersistenceRepository = Objects.requireNonNull(taskPersistenceRepository);
     }
 
     @Override
@@ -52,5 +58,15 @@ public class ServiceRepositoryImpl implements ServiceRepository {
     public Optional<Service> findByTenantIdAndName(TenantId tenantId, String name) {
         return servicePersistenceRepository.findByTenantIdAndName(tenantId.value(), name)
                 .map(ServicePersistenceAssembler::toDomain);
+    }
+
+    @Override
+    public void deleteById(ServiceId id) {
+        servicePersistenceRepository.deleteById(id.value());
+    }
+
+    @Override
+    public boolean isReferencedByTasks(ServiceId id) {
+        return taskPersistenceRepository.existsByServiceId(id.value());
     }
 }

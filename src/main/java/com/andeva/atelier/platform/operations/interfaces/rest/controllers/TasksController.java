@@ -110,6 +110,19 @@ public class TasksController {
         return findTaskAndBuildResponse(result.getOrThrow(), taskId);
     }
 
+    @DeleteMapping("/{taskId}")
+    @PreAuthorize("hasAuthority('operations:work_orders:update')")
+    @Operation(summary = "Remove a non-completed technical task from its work order")
+    public ResponseEntity<?> deleteTask(@PathVariable UUID taskId) {
+        Result<WorkOrder, ApplicationError> result = workOrderCommandService.handle(
+                new RemoveWorkOrderTaskCommand(new WorkOrderTaskId(taskId))
+        );
+        if (result.isFailure()) {
+            return ErrorResponseAssembler.toErrorResponseFromApplicationError(result.getError());
+        }
+        return ResponseEntity.noContent().build();
+    }
+
     @PutMapping("/{taskId}/mechanic")
     @PreAuthorize("hasAuthority('operations:bays:reassign')")
     @Operation(summary = "Assign or change mechanic for technical task")

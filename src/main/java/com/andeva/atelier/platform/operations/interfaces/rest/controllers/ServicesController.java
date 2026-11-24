@@ -5,6 +5,7 @@ import com.andeva.atelier.platform.operations.application.commandservices.Servic
 import com.andeva.atelier.platform.operations.application.queryservices.ServiceQueryService;
 import com.andeva.atelier.platform.operations.domain.model.aggregates.Service;
 import com.andeva.atelier.platform.operations.domain.model.commands.CreateServiceItemCommand;
+import com.andeva.atelier.platform.operations.domain.model.commands.DeleteServiceItemCommand;
 import com.andeva.atelier.platform.operations.domain.model.commands.UpdateServiceItemCommand;
 import com.andeva.atelier.platform.operations.domain.model.ids.ServiceId;
 import com.andeva.atelier.platform.operations.domain.model.queries.GetServiceByIdQuery;
@@ -26,6 +27,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -124,5 +126,24 @@ public class ServicesController {
         }
 
         return ResponseEntity.ok(ServiceResourceAssembler.toResourceFromEntity(result.getOrThrow()));
+    }
+
+    @DeleteMapping("/{serviceId}")
+    @PreAuthorize("hasAuthority('operations:services:manage')")
+    @Operation(summary = "Delete standard service catalog item if not referenced by work order tasks")
+    public ResponseEntity<?> deleteService(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable UUID serviceId
+    ) {
+        TenantId tenantId = userDetails != null && userDetails.getTenantId() != null
+                ? new TenantId(userDetails.getTenantId())
+                : null;
+        Result<Void, ApplicationError> result = serviceCommandService.handle(
+                new DeleteServiceItemCommand(new ServiceId(serviceId), tenantId)
+        );
+        if (result.isFailure()) {
+            return ErrorResponseAssembler.toErrorResponseFromApplicationError(result.getError());
+        }
+        return ResponseEntity.noContent().build();
     }
 }

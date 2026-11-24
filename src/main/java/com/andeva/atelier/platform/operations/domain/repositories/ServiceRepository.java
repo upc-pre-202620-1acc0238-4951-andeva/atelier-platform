@@ -16,4 +16,8 @@ public interface ServiceRepository {
     List<Service> findByTenantId(TenantId tenantId);
 
     Optional<Service> findByTenantIdAndName(TenantId tenantId, String name);
+
+    void deleteById(ServiceId id);
+
+    boolean isReferencedByTasks(ServiceId id);
 }
