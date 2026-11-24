@@ -1,6 +1,7 @@
 package com.andeva.atelier.platform.invoicing.infrastructure.persistence.jpa.adapters;
 
 import com.andeva.atelier.platform.invoicing.domain.model.aggregates.ElectronicVoucher;
+import com.andeva.atelier.platform.invoicing.domain.model.enums.VoucherStatus;
 import com.andeva.atelier.platform.invoicing.domain.model.ids.VoucherId;
 import com.andeva.atelier.platform.invoicing.domain.model.valueobjects.VoucherNumber;
 import com.andeva.atelier.platform.invoicing.domain.model.valueobjects.VoucherSerie;
@@ -8,6 +9,7 @@ import com.andeva.atelier.platform.invoicing.domain.repositories.ElectronicVouch
 import com.andeva.atelier.platform.invoicing.infrastructure.persistence.jpa.assemblers.ElectronicVoucherPersistenceAssembler;
 import com.andeva.atelier.platform.invoicing.infrastructure.persistence.jpa.entities.ElectronicVoucherPersistenceEntity;
 import com.andeva.atelier.platform.invoicing.infrastructure.persistence.jpa.repositories.ElectronicVoucherPersistenceRepository;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.BranchId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.WorkOrderId;
 import org.springframework.context.ApplicationEventPublisher;
@@ -104,6 +106,35 @@ public class ElectronicVoucherRepositoryImpl implements ElectronicVoucherReposit
         Instant end = to != null ? to.atTime(LocalTime.MAX).toInstant(ZoneOffset.UTC) : Instant.now();
 
         return jpaRepository.findAllByTenantAndDateRange(tenantId.value(), start, end).stream()
+                .map(assembler::toDomain)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ElectronicVoucher> findAllByTenantIdAndBranchIdAndDateRange(
+            TenantId tenantId,
+            BranchId branchId,
+            LocalDate from,
+            LocalDate to
+    ) {
+        Objects.requireNonNull(tenantId, "TenantId cannot be null");
+        if (branchId == null) {
+            return findAllByTenantIdAndDateRange(tenantId, from, to);
+        }
+        Instant start = from != null ? from.atStartOfDay().toInstant(ZoneOffset.UTC) : LocalDate.now().minusMonths(1).atStartOfDay().toInstant(ZoneOffset.UTC);
+        Instant end = to != null ? to.atTime(LocalTime.MAX).toInstant(ZoneOffset.UTC) : Instant.now();
+
+        return jpaRepository.findAllByTenantAndBranchAndDateRange(tenantId.value(), branchId.value(), start, end).stream()
+                .map(assembler::toDomain)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ElectronicVoucher> findAllByStatus(VoucherStatus status) {
+        Objects.requireNonNull(status, "VoucherStatus cannot be null");
+        return jpaRepository.findAllByStatusOrderByCreatedAtAsc(status.name()).stream()
                 .map(assembler::toDomain)
                 .toList();
     }

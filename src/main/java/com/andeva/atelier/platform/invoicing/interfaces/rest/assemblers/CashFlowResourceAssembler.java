@@ -1,7 +1,9 @@
 package com.andeva.atelier.platform.invoicing.interfaces.rest.assemblers;
 
+import com.andeva.atelier.platform.invoicing.domain.model.valueobjects.BranchCashFlowBreakdown;
 import com.andeva.atelier.platform.invoicing.domain.model.valueobjects.CashFlowMovement;
 import com.andeva.atelier.platform.invoicing.domain.model.valueobjects.CashFlowSummary;
+import com.andeva.atelier.platform.invoicing.interfaces.rest.resources.responses.BranchCashFlowBreakdownResource;
 import com.andeva.atelier.platform.invoicing.interfaces.rest.resources.responses.CashFlowMovementResource;
 import com.andeva.atelier.platform.invoicing.interfaces.rest.resources.responses.CashFlowSummaryResource;
 import org.springframework.stereotype.Component;
@@ -29,13 +31,32 @@ public class CashFlowResourceAssembler {
             }
         }
 
+        List<BranchCashFlowBreakdownResource> branchResources = new ArrayList<>();
+        if (summary.branchBreakdowns() != null) {
+            for (BranchCashFlowBreakdown b : summary.branchBreakdowns()) {
+                branchResources.add(new BranchCashFlowBreakdownResource(
+                        b.branchId(),
+                        b.branchName(),
+                        b.laborRevenue().amount(),
+                        b.partsRevenue().amount(),
+                        b.igvCollected().amount(),
+                        b.totalRevenue().amount(),
+                        b.totalRevenue().currency().name()
+                ));
+            }
+        }
+
         return new CashFlowSummaryResource(
                 summary.grossRevenue().amount(),
                 summary.purchaseExpenses().add(summary.payrollExpenses()).amount(),
                 java.math.BigDecimal.ZERO,
                 summary.netCashFlow().amount(),
                 summary.grossRevenue().currency().name(),
-                movementResources
+                movementResources,
+                summary.laborRevenue().amount(),
+                summary.partsRevenue().amount(),
+                summary.igvCollected().amount(),
+                branchResources
         );
     }
 
