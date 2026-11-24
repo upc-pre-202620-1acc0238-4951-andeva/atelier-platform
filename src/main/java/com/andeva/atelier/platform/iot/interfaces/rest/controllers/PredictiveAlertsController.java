@@ -144,6 +144,7 @@ public class PredictiveAlertsController {
     @PreAuthorize("hasAuthority('crm:appointments:create')")
     public ResponseEntity<AppointmentResponse> convertAlertToAppointment(
             @PathVariable UUID id,
+            @RequestBody(required = false) com.andeva.atelier.platform.iot.interfaces.rest.resources.requests.ConvertAlertToAppointmentRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         TenantId tenantId = resolveTenantId(userDetails);
@@ -156,15 +157,28 @@ public class PredictiveAlertsController {
             throw new AccessDeniedException("Alert does not belong to the authenticated workshop");
         }
 
-        UUID appointmentId = alertCommandService.handle(new ConvertAlertToAppointmentCommand(alertId));
+        UUID branchId = request != null ? request.branchId() : null;
+        Instant scheduledAt = request != null ? request.scheduledAt() : null;
+        Integer estimatedDuration = request != null ? request.estimatedDurationMinutes() : null;
+        String reason = request != null && request.reason() != null && !request.reason().isBlank()
+                ? request.reason().trim()
+                : null;
+
+        UUID appointmentId = alertCommandService.handle(new ConvertAlertToAppointmentCommand(
+                alertId,
+                branchId,
+                scheduledAt,
+                estimatedDuration,
+                reason
+        ));
 
         AppointmentResponse response = new AppointmentResponse(
                 appointmentId,
                 alert.getVehicleId().value(),
                 UUID.randomUUID(), // Resolved CRM CustomerId
-                Instant.now().plus(2, ChronoUnit.DAYS),
+                scheduledAt != null ? scheduledAt : Instant.now().plus(1, ChronoUnit.DAYS),
                 "SCHEDULED",
-                "Preventative appointment scheduled from predictive alert: " + alert.getMessage()
+                reason != null ? reason : "Preventative appointment scheduled from predictive alert: " + alert.getMessage()
         );
 
         return ResponseEntity.ok(response);

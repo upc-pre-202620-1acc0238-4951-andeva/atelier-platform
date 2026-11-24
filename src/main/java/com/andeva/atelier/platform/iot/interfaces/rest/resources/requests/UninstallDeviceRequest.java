@@ -12,7 +12,7 @@ import java.time.Instant;
  */
 public record UninstallDeviceRequest(
         @Min(value = 0, message = "{error.iot.installation.odometer.negative}")
-        int finalOdometerKm,
+        Integer finalOdometerKm,
 
         Instant uninstalledAt
 ) implements Serializable {

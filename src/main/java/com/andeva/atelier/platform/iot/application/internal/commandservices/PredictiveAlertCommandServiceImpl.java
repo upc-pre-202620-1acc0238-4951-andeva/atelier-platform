@@ -92,13 +92,27 @@ public class PredictiveAlertCommandServiceImpl implements PredictiveAlertCommand
         PredictiveAlert alert = predictiveAlertRepository.findById(command.alertId())
                 .orElseThrow(() -> new PredictiveAlertNotFoundException(command.alertId()));
 
-        UUID appointmentId = crmFleetAclPort.convertAlertToAppointment(
-                alert.getId(),
-                alert.getTenantId(),
-                alert.getVehicleId(),
-                alert.getMessage(),
-                null
-        );
+        String description = (command.reason() != null && !command.reason().isBlank())
+                ? command.reason().trim()
+                : alert.getMessage();
+        UUID appointmentId = (command.branchId() != null || command.scheduledAt() != null || command.estimatedDurationMinutes() != null)
+                ? crmFleetAclPort.convertAlertToAppointment(
+                        alert.getId(),
+                        alert.getTenantId(),
+                        command.branchId(),
+                        alert.getVehicleId(),
+                        command.scheduledAt(),
+                        command.estimatedDurationMinutes(),
+                        description,
+                        null
+                )
+                : crmFleetAclPort.convertAlertToAppointment(
+                        alert.getId(),
+                        alert.getTenantId(),
+                        alert.getVehicleId(),
+                        description,
+                        null
+                );
 
         alert.resolve();
         predictiveAlertRepository.save(alert);

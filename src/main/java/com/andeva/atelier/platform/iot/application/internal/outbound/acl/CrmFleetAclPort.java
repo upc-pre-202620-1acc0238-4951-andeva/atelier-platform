@@ -49,6 +49,19 @@ public interface CrmFleetAclPort {
             RecommendedServiceActionDto recommendedAction
     );
 
+    default UUID convertAlertToAppointment(
+            AlertId alertId,
+            TenantId tenantId,
+            UUID branchId,
+            VehicleId vehicleId,
+            java.time.Instant scheduledAt,
+            Integer estimatedDurationMinutes,
+            String description,
+            RecommendedServiceActionDto recommendedAction
+    ) {
+        return convertAlertToAppointment(alertId, tenantId, vehicleId, description, recommendedAction);
+    }
+
     /**
      * Retrieves vehicle administrative and technical metadata for PDF reports.
      *

@@ -7,6 +7,7 @@ import com.andeva.atelier.platform.iot.domain.model.valueobjects.EngineTemperatu
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -47,7 +48,8 @@ public class PredictiveAnomalyDetectionEngine {
                     AlertType.CYLINDER_MISFIRE_HAZARD,
                     new ConfidenceScore(new BigDecimal("85.00")),
                     String.format(
-                            "Excessive engine RPM (%d RPM) under elevated coolant temperature (%.1f°C). High risk of mechanical cylinder strain.",
+                            Locale.US,
+                            "Revoluciones excesivas del motor (%d RPM) con temperatura elevada del refrigerante (%.1f°C). Alto riesgo de esfuerzo mecánico en los cilindros.",
                             record.engineRpm().rpm(),
                             coolantTemp.get()
                     )
@@ -66,7 +68,11 @@ public class PredictiveAnomalyDetectionEngine {
             return Optional.of(new AnomalyEvaluationResult(
                     AlertType.ENGINE_OVERHEATING_RISK,
                     new ConfidenceScore(confidence),
-                    String.format("Critical coolant temperature reached (%.1f°C). Imminent risk of cylinder head gasket failure.", temp)
+                    String.format(
+                            Locale.US,
+                            "Temperatura crítica del refrigerante alcanzada (%.1f°C). Riesgo inminente de falla en la empaquetadura de culata.",
+                            temp
+                    )
             ));
         }
         return Optional.empty();
@@ -79,7 +85,11 @@ public class PredictiveAnomalyDetectionEngine {
             return Optional.of(new AnomalyEvaluationResult(
                     AlertType.BATTERY_FAILURE_RISK,
                     new ConfidenceScore(new BigDecimal("91.20")),
-                    String.format("Dangerous battery voltage at rest (%.2fV). Requires recharge or preventive battery replacement before starting failure.", voltage)
+                    String.format(
+                            Locale.US,
+                            "Voltaje peligroso de batería en reposo (%.2fV). Requiere recarga o reemplazo preventivo antes de una falla de arranque.",
+                            voltage
+                    )
             ));
         }
         return Optional.empty();
