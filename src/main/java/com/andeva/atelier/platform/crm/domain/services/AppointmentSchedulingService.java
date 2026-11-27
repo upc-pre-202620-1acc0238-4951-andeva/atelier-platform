@@ -1,6 +1,6 @@
 package com.andeva.atelier.platform.crm.domain.services;
 
-import com.andeva.atelier.platform.crm.domain.exceptions.AppointmentPastDateException;
+import com.andeva.atelier.platform.crm.domain.exceptions.AppointmentLeadTimeException;
 import com.andeva.atelier.platform.crm.domain.exceptions.AppointmentSlotUnavailableException;
 import com.andeva.atelier.platform.crm.domain.model.aggregates.Appointment;
 import com.andeva.atelier.platform.crm.domain.repositories.AppointmentRepository;
@@ -21,6 +21,8 @@ import java.util.Objects;
  */
 public class AppointmentSchedulingService {
 
+    private static final Duration MINIMUM_LEAD_TIME = Duration.ofHours(2);
+
     private final AppointmentRepository appointmentRepository;
 
     public AppointmentSchedulingService(AppointmentRepository appointmentRepository) {
@@ -35,8 +37,8 @@ public class AppointmentSchedulingService {
             int maxConcurrentSlots
     ) {
         Instant now = Instant.now();
-        if (scheduledAt.isBefore(now.plus(Duration.ofHours(2)))) {
-            return Result.failure(new AppointmentPastDateException(scheduledAt));
+        if (scheduledAt.isBefore(now.plus(MINIMUM_LEAD_TIME))) {
+            return Result.failure(new AppointmentLeadTimeException(scheduledAt, MINIMUM_LEAD_TIME));
         }
 
         Instant slotEnd = scheduledAt.plus(Duration.ofMinutes(estimatedDurationMinutes));
