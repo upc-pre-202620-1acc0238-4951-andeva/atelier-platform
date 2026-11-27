@@ -7,6 +7,7 @@ import com.andeva.atelier.platform.invoicing.domain.model.valueobjects.CashFlowM
 import com.andeva.atelier.platform.invoicing.domain.model.valueobjects.CashFlowSummary;
 import com.andeva.atelier.platform.invoicing.interfaces.rest.assemblers.CashFlowResourceAssembler;
 import com.andeva.atelier.platform.invoicing.interfaces.rest.resources.responses.CashFlowSummaryResource;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.BranchId;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.TenantId;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -66,6 +67,7 @@ public class FinancialReportsController {
             @RequestParam(name = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromParam,
             @RequestParam(name = "endDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDateParam,
             @RequestParam(name = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toParam,
+            @RequestParam(name = "branchId", required = false) UUID branchIdParam,
             @RequestHeader(value = "X-Tenant-Id", required = false) UUID headerTenantId,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
@@ -76,9 +78,12 @@ public class FinancialReportsController {
 
         LocalDate startDate = from != null ? from : LocalDate.now().minusMonths(1);
         LocalDate endDate = to != null ? to : LocalDate.now();
+        BranchId branchId = branchIdParam != null ? BranchId.of(branchIdParam) : null;
 
-        CashFlowSummary summary = cashFlowQueryService.handle(new GetCashFlowSummaryQuery(tenantId, startDate, endDate));
-        List<CashFlowMovement> movements = cashFlowQueryService.getCashFlowMovements(tenantId, startDate, endDate);
+        CashFlowSummary summary = cashFlowQueryService.handle(new GetCashFlowSummaryQuery(tenantId, branchId, startDate, endDate));
+        List<CashFlowMovement> movements = branchId != null
+                ? cashFlowQueryService.getCashFlowMovements(tenantId, branchId, startDate, endDate)
+                : cashFlowQueryService.getCashFlowMovements(tenantId, startDate, endDate);
 
         return ResponseEntity.ok(cashFlowAssembler.toResource(summary, movements));
     }
@@ -97,6 +102,7 @@ public class FinancialReportsController {
             @RequestParam(name = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromParam,
             @RequestParam(name = "endDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDateParam,
             @RequestParam(name = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toParam,
+            @RequestParam(name = "branchId", required = false) UUID branchIdParam,
             @RequestHeader(value = "X-Tenant-Id", required = false) UUID headerTenantId,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
@@ -107,12 +113,18 @@ public class FinancialReportsController {
 
         LocalDate startDate = from != null ? from : LocalDate.now().minusMonths(1);
         LocalDate endDate = to != null ? to : LocalDate.now();
+        BranchId branchId = branchIdParam != null ? BranchId.of(branchIdParam) : null;
 
-        byte[] pdfBytes = cashFlowQueryService.exportCashFlowPdf(tenantId, startDate, endDate);
+        byte[] pdfBytes = branchId != null
+                ? cashFlowQueryService.exportCashFlowPdf(tenantId, branchId, startDate, endDate)
+                : cashFlowQueryService.exportCashFlowPdf(tenantId, startDate, endDate);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
-        headers.setContentDispositionFormData("attachment", "cash-flow-" + startDate + "-to-" + endDate + ".pdf");
+        String filename = branchId != null
+                ? "flujo-caja-sede-" + startDate + "-a-" + endDate + ".pdf"
+                : "flujo-caja-consolidado-" + startDate + "-a-" + endDate + ".pdf";
+        headers.setContentDispositionFormData("attachment", filename);
         headers.setContentLength(pdfBytes.length);
 
         return ResponseEntity.ok()

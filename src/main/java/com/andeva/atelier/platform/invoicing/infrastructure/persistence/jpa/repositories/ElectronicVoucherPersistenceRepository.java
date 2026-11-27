@@ -23,9 +23,19 @@ public interface ElectronicVoucherPersistenceRepository extends JpaRepository<El
 
     List<ElectronicVoucherPersistenceEntity> findAllByWorkOrderId(UUID workOrderId);
 
+    List<ElectronicVoucherPersistenceEntity> findAllByStatusOrderByCreatedAtAsc(String status);
+
     @Query("SELECT v FROM ElectronicVoucherPersistenceEntity v WHERE v.tenantId = :tenantId AND v.createdAt >= :from AND v.createdAt <= :to ORDER BY v.createdAt DESC")
     List<ElectronicVoucherPersistenceEntity> findAllByTenantAndDateRange(
             @Param("tenantId") UUID tenantId,
+            @Param("from") Instant from,
+            @Param("to") Instant to
+    );
+
+    @Query("SELECT v FROM ElectronicVoucherPersistenceEntity v WHERE v.tenantId = :tenantId AND v.branchId = :branchId AND v.createdAt >= :from AND v.createdAt <= :to ORDER BY v.createdAt DESC")
+    List<ElectronicVoucherPersistenceEntity> findAllByTenantAndBranchAndDateRange(
+            @Param("tenantId") UUID tenantId,
+            @Param("branchId") UUID branchId,
             @Param("from") Instant from,
             @Param("to") Instant to
     );

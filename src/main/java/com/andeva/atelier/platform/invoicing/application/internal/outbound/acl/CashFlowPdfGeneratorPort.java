@@ -1,6 +1,7 @@
 package com.andeva.atelier.platform.invoicing.application.internal.outbound.acl;
 
 import com.andeva.atelier.platform.invoicing.domain.model.valueobjects.CashFlowMovement;
+import com.andeva.atelier.platform.invoicing.domain.model.valueobjects.CashFlowReportContext;
 import com.andeva.atelier.platform.invoicing.domain.model.valueobjects.CashFlowSummary;
 
 import java.util.List;
@@ -18,4 +19,16 @@ public interface CashFlowPdfGeneratorPort {
      * Generates vector PDF document of cash flow movements and executive financial summary.
      */
     byte[] generateCashFlowPdf(UUID tenantId, CashFlowSummary summary, List<CashFlowMovement> movements);
+
+    /**
+     * Generates vector PDF document with institutional letterhead, fiscal breakdown, and optional multi-branch consolidation.
+     */
+    default byte[] generateCashFlowPdf(
+            UUID tenantId,
+            CashFlowReportContext context,
+            CashFlowSummary summary,
+            List<CashFlowMovement> movements
+    ) {
+        return generateCashFlowPdf(tenantId, summary, movements);
+    }
 }

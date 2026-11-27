@@ -10,7 +10,11 @@ import com.andeva.atelier.platform.operations.domain.model.ids.WorkOrderTaskProd
 import com.andeva.atelier.platform.operations.domain.model.valueobjects.LaborHours;
 import com.andeva.atelier.platform.operations.domain.model.valueobjects.Quantity;
 import com.andeva.atelier.platform.operations.domain.model.valueobjects.StorageUrl;
+import com.andeva.atelier.platform.shared.domain.model.valueobjects.Currency;
 import com.andeva.atelier.platform.shared.domain.model.valueobjects.Money;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -280,6 +284,20 @@ public class WorkOrderTask {
     public WorkOrderTaskStatus getStatus() { return status; }
     public String getDescription() { return description; }
     public Money getPrice() { return price; }
+
+    /**
+     * Consolidated task price: base service cost plus the total amount of all consumed products.
+     */
+    public Money getConsolidatedPrice() {
+        Currency currency = this.price != null ? this.price.currency() : Currency.PEN;
+        BigDecimal total = this.price != null ? this.price.amount() : BigDecimal.ZERO;
+        for (WorkOrderTaskProduct product : this.consumedProducts) {
+            if (product.getTotalAmount() != null) {
+                total = total.add(product.getTotalAmount().amount());
+            }
+        }
+        return new Money(total.setScale(2, RoundingMode.HALF_EVEN), currency);
+    }
     public LaborHours getEstimatedHours() { return estimatedHours; }
     public Optional<LaborHours> getActualHours() { return Optional.ofNullable(actualHours); }
     public Optional<HoldReason> getHoldReason() { return Optional.ofNullable(holdReason); }

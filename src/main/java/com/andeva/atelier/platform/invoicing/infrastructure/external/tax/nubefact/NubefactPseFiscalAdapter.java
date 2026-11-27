@@ -124,13 +124,15 @@ public class NubefactPseFiscalAdapter implements NubefactPseFiscalGateway {
 
         if (mockMode) {
             log.info("[Simulated Nubefact] Simulating SUNAT acceptance for voucher {}", voucherRef);
-            // No PDF/XML/CDR exists for a simulated voucher, so no links are stored
+            String simulatedHash = SIMULATED_PREFIX + computeHash(voucher.getTenantId().value() + ":" + voucherRef + ":" + voucher.getTaxCalculation().totalAmount().amount());
+            String simulatedQr = buildSimulatedQrData(voucher, simulatedHash);
+            // No PDF/XML/CDR exists for a simulated voucher, so only QR verification data is populated
             return new NubefactDispatchResult(
                     true,
                     "0",
                     SIMULATED_TAG + " Comprobante " + voucherRef + " aceptado en modo demostración, sin validez ante SUNAT.",
-                    SIMULATED_PREFIX + computeHash(voucher.getTenantId().value() + ":" + voucherRef + ":" + voucher.getTaxCalculation().totalAmount().amount()),
-                    DigitalReceiptUrls.empty()
+                    simulatedHash,
+                    DigitalReceiptUrls.of(null, null, null, simulatedQr)
             );
         }
 
@@ -228,7 +230,8 @@ public class NubefactPseFiscalAdapter implements NubefactPseFiscalGateway {
         DigitalReceiptUrls urls = DigitalReceiptUrls.of(
                 asString(response.get("enlace_del_pdf")),
                 asString(response.get("enlace_del_xml")),
-                asString(response.get("enlace_del_cdr"))
+                asString(response.get("enlace_del_cdr")),
+                asString(response.get("cadena_para_codigo_qr"))
         );
         return new NubefactDispatchResult(
                 !rejected,
@@ -321,6 +324,26 @@ public class NubefactPseFiscalAdapter implements NubefactPseFiscalGateway {
         } catch (NumberFormatException ex) {
             return 0;
         }
+    }
+
+    private String buildSimulatedQrData(ElectronicVoucher voucher, String hash) {
+        TaxCalculation tax = voucher.getTaxCalculation();
+        CustomerFiscalInfo customer = voucher.getCustomerFiscalInfo();
+        String issueDate = LocalDate.ofInstant(voucher.getIssuedAt(), LIMA_ZONE).format(NUBEFACT_DATE);
+        String docType = customer.taxId() != null ? customer.documentType().getSunatCode() : "-";
+        String docNumber = customer.taxId() != null ? customer.taxId().value() : "-";
+        return String.join("|",
+                voucher.getTenantId().value().toString(),
+                voucher.getVoucherType().getSunatCode(),
+                voucher.getSerie().value(),
+                voucher.getNumber().format(),
+                money(tax.igvAmount().amount()).toPlainString(),
+                money(tax.totalAmount().amount()).toPlainString(),
+                issueDate,
+                docType,
+                docNumber,
+                hash
+        );
     }
 
     private String computeHash(String input) {

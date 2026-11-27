@@ -5,6 +5,7 @@ import com.andeva.atelier.platform.invoicing.application.internal.outbound.acl.C
 import com.andeva.atelier.platform.invoicing.application.internal.outbound.acl.NubefactPseFiscalGateway;
 import com.andeva.atelier.platform.invoicing.domain.exceptions.CreditNoteReferenceNotFoundException;
 import com.andeva.atelier.platform.invoicing.domain.exceptions.SeriesNotFoundException;
+import com.andeva.atelier.platform.invoicing.domain.exceptions.VoucherAlreadyIssuedForWorkOrderException;
 import com.andeva.atelier.platform.invoicing.domain.exceptions.VoucherNotFoundException;
 import com.andeva.atelier.platform.invoicing.domain.model.aggregates.ElectronicVoucher;
 import com.andeva.atelier.platform.invoicing.domain.model.aggregates.SeriesConfiguration;
@@ -29,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -77,6 +79,26 @@ public class ElectronicVoucherCommandServiceImpl implements ElectronicVoucherCom
     @Override
     public ElectronicVoucher handle(IssueElectronicVoucherCommand command) {
         Objects.requireNonNull(command, "IssueElectronicVoucherCommand cannot be null");
+
+        // 0. Idempotency guard: prevent duplicate active sales vouchers (and wasted correlatives) for the same work order
+        if (command.workOrderId().isPresent()) {
+            var workOrderId = command.workOrderId().get();
+            List<ElectronicVoucher> existingForOrder = voucherRepository.findAllByWorkOrderId(workOrderId);
+            if (existingForOrder != null) {
+                for (ElectronicVoucher existing : existingForOrder) {
+                    boolean isSalesVoucher = existing.getVoucherType() == VoucherType.FACTURA
+                            || existing.getVoucherType() == VoucherType.BOLETA;
+                    boolean isActive = existing.getStatus() == com.andeva.atelier.platform.invoicing.domain.model.enums.VoucherStatus.ISSUED
+                            || existing.getStatus() == com.andeva.atelier.platform.invoicing.domain.model.enums.VoucherStatus.ACCEPTED_SUNAT;
+                    if (isSalesVoucher && isActive) {
+                        throw new VoucherAlreadyIssuedForWorkOrderException(
+                                workOrderId,
+                                existing.getSerie().value() + "-" + existing.getNumber().format()
+                        );
+                    }
+                }
+            }
+        }
 
         // 1. Resolve customer fiscal info if omitted or incomplete
         CustomerFiscalInfo fiscalInfo = command.customerInfo();
@@ -299,6 +321,7 @@ public class ElectronicVoucherCommandServiceImpl implements ElectronicVoucherCom
     }
 
     @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public java.util.Optional<ElectronicVoucher> syncPendingSunatStatus(VoucherId voucherId) {
         if (voucherId == null) {
             return java.util.Optional.empty();

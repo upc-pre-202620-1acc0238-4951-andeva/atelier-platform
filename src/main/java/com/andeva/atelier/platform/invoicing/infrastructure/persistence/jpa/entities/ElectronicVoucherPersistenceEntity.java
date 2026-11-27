@@ -93,6 +93,9 @@ public class ElectronicVoucherPersistenceEntity extends AuditableAbstractPersist
     @Column(name = "sunat_cdr_url", length = 255)
     private String sunatCdrUrl;
 
+    @Column(name = "sunat_qr_code", length = 512)
+    private String sunatQrCode;
+
     @Column(name = "digital_signature_hash", length = 100)
     private String digitalSignatureHash;
 
@@ -374,6 +377,14 @@ public class ElectronicVoucherPersistenceEntity extends AuditableAbstractPersist
 
     public String getSunatDescription() {
         return sunatDescription;
+    }
+
+    public String getSunatQrCode() {
+        return sunatQrCode;
+    }
+
+    public void setSunatQrCode(String sunatQrCode) {
+        this.sunatQrCode = sunatQrCode;
     }
 
     public void setSunatDescription(String sunatDescription) {
